@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Container,
+  Divider,
   Toolbar,
   Typography,
 } from '@mui/material'
@@ -17,6 +18,27 @@ function navButtonSx(active: boolean) {
     opacity: active ? 1 : 0.75,
     bgcolor: active ? 'rgba(255,255,255,0.15)' : 'transparent',
   }
+}
+
+function NavGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+      <Typography
+        variant="caption"
+        sx={{
+          fontWeight: 700,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          opacity: 0.85,
+          px: 0.5,
+          display: { xs: 'none', sm: 'block' },
+        }}
+      >
+        {label}
+      </Typography>
+      {children}
+    </Box>
+  )
 }
 
 export default function Layout() {
@@ -37,64 +59,103 @@ export default function Layout() {
           borderBottom: '1px solid rgba(255,255,255,0.12)',
         }}
       >
-        <Toolbar sx={{ gap: 1, flexWrap: 'wrap' }}>
-          <HomeIcon sx={{ fontSize: 28 }} />
+        <Toolbar sx={{ gap: 1, flexWrap: 'wrap', py: 1 }}>
           <Typography
             variant="h6"
             component={RouterLink}
             to="/"
-            sx={{ flexGrow: 1, fontWeight: 700, color: 'inherit', textDecoration: 'none' }}
+            sx={{
+              fontWeight: 700,
+              color: 'inherit',
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              mr: { xs: 0, md: 1 },
+            }}
           >
+            <HomeIcon sx={{ fontSize: 28 }} />
             Request Portal
           </Typography>
 
-          <Button
-            component={RouterLink}
-            to="/"
-            color="inherit"
-            startIcon={<HomeIcon />}
-            sx={navButtonSx(isHome)}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              flexWrap: 'wrap',
+              flex: 1,
+              justifyContent: { xs: 'flex-start', md: 'flex-end' },
+            }}
           >
-            Home
-          </Button>
+            <Button
+              component={RouterLink}
+              to="/"
+              color="inherit"
+              size="small"
+              sx={navButtonSx(isHome)}
+            >
+              Home
+            </Button>
 
-          <Button
-            component={RouterLink}
-            to="/onboarding"
-            color="inherit"
-            startIcon={<PersonAddIcon />}
-            sx={navButtonSx(isOnboarding && path === '/onboarding')}
-          >
-            Onboarding
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/onboarding/manager"
-            color="inherit"
-            startIcon={<ManageAccountsIcon />}
-            sx={navButtonSx(isOnboarding && path === '/onboarding/manager')}
-          >
-            Onboarding Review
-          </Button>
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ borderColor: 'rgba(255,255,255,0.25)', display: { xs: 'none', sm: 'block' } }}
+            />
 
-          <Button
-            component={RouterLink}
-            to="/labour-change"
-            color="inherit"
-            startIcon={<DescriptionIcon />}
-            sx={navButtonSx(isLabour && path === '/labour-change')}
-          >
-            Labour Change
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/labour-change/manager"
-            color="inherit"
-            startIcon={<ManageAccountsIcon />}
-            sx={navButtonSx(isLabour && path === '/labour-change/manager')}
-          >
-            Labour Review
-          </Button>
+            <NavGroup label="Onboarding">
+              <Button
+                component={RouterLink}
+                to="/onboarding"
+                color="inherit"
+                size="small"
+                startIcon={<PersonAddIcon />}
+                sx={navButtonSx(isOnboarding && path === '/onboarding')}
+              >
+                New Request
+              </Button>
+              <Button
+                component={RouterLink}
+                to="/onboarding/manager"
+                color="inherit"
+                size="small"
+                startIcon={<ManageAccountsIcon />}
+                sx={navButtonSx(isOnboarding && path === '/onboarding/manager')}
+              >
+                Review
+              </Button>
+            </NavGroup>
+
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ borderColor: 'rgba(255,255,255,0.25)', display: { xs: 'none', sm: 'block' } }}
+            />
+
+            <NavGroup label="Labour Request">
+              <Button
+                component={RouterLink}
+                to="/labour-change"
+                color="inherit"
+                size="small"
+                startIcon={<DescriptionIcon />}
+                sx={navButtonSx(isLabour && path === '/labour-change')}
+              >
+                New Request
+              </Button>
+              <Button
+                component={RouterLink}
+                to="/labour-change/manager"
+                color="inherit"
+                size="small"
+                startIcon={<ManageAccountsIcon />}
+                sx={navButtonSx(isLabour && path === '/labour-change/manager')}
+              >
+                Review
+              </Button>
+            </NavGroup>
+          </Box>
         </Toolbar>
       </AppBar>
 
