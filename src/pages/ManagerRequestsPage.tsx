@@ -20,8 +20,6 @@ import { useRequests } from '../context/RequestContext'
 import RejectDialog from '../components/RejectDialog'
 import ApprovalFormDialog from '../components/ApprovalFormDialog'
 import ThankYouDialog from '../components/ThankYouDialog'
-import { useSessionValue } from '../hooks/useSessionForm'
-import { SESSION_KEYS } from '../storage/sessionStorage'
 import type { ApprovalDetails, ApprovalFormData, OnboardingRequest } from '../types/request'
 
 type FilterTab = 'all' | 'pending' | 'approved' | 'rejected'
@@ -47,7 +45,7 @@ function formatDate(dateString: string) {
 
 export default function ManagerRequestsPage() {
   const { requests, rejectRequest, approveRequest } = useRequests()
-  const [filter, setFilter] = useSessionValue<FilterTab>(SESSION_KEYS.MANAGER_FILTER, 'all')
+  const [filter, setFilter] = useState<FilterTab>('all')
   const [rejectTarget, setRejectTarget] = useState<OnboardingRequest | null>(null)
   const [approveTarget, setApproveTarget] = useState<OnboardingRequest | null>(null)
   const [showThankYou, setShowThankYou] = useState(false)

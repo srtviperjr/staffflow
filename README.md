@@ -27,11 +27,4 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ## Data Storage
 
-All application data is persisted in the browser's `sessionStorage`:
-
-- **Submitted requests** — stored and available across page refreshes within the same browser tab/session
-- **New hire request form draft** — in-progress form data is auto-saved as you type
-- **Approval form drafts** — partially completed approval forms are saved per request
-- **Manager filter tab** — the selected status filter is remembered during the session
-
-Data is cleared when the browser tab is closed. Existing data from the previous `localStorage` implementation is automatically migrated on first load.
+Requests are persisted in the browser's `localStorage`, so submissions remain available across page refreshes.

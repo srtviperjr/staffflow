@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Button,
   Checkbox,
@@ -18,12 +18,6 @@ import {
   Typography,
 } from '@mui/material'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import {
-  approvalFormDraftKey,
-  getSessionItem,
-  removeSessionItem,
-  setSessionItem,
-} from '../storage/sessionStorage'
 import {
   APPLICATIONS,
   ENGINEERING_TOOLS,
@@ -57,38 +51,13 @@ export default function ApprovalFormDialog({
 }: ApprovalFormDialogProps) {
   const [form, setForm] = useState<ApprovalFormData>(initialForm)
   const [errors, setErrors] = useState<Partial<Record<keyof ApprovalFormData, string>>>({})
-  const draftLoadedRef = useRef(false)
 
   useEffect(() => {
-    if (open && request) {
-      setForm(getSessionItem(approvalFormDraftKey(request.id), initialForm))
+    if (open) {
+      setForm(initialForm)
       setErrors({})
-      draftLoadedRef.current = true
-    } else {
-      draftLoadedRef.current = false
     }
-  }, [open, request])
-
-  useEffect(() => {
-    if (!open || !request || !draftLoadedRef.current) return
-    setSessionItem(approvalFormDraftKey(request.id), form)
-  }, [form, open, request])
-
-  const clearDraft = () => {
-    if (request) {
-      removeSessionItem(approvalFormDraftKey(request.id))
-    }
-  }
-
-  const handleClose = () => {
-    onClose()
-  }
-
-  const handleSubmit = () => {
-    if (!validate()) return
-    clearDraft()
-    onSubmit(form)
-  }
+  }, [open])
 
   if (!request) return null
 
@@ -131,8 +100,13 @@ export default function ApprovalFormDialog({
     return Object.keys(nextErrors).length === 0
   }
 
+  const handleSubmit = () => {
+    if (!validate()) return
+    onSubmit(form)
+  }
+
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth scroll="paper">
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth scroll="paper">
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <CheckCircleIcon color="success" />
         Approve Request — {request.firstName} {request.lastName}
@@ -275,7 +249,7 @@ export default function ApprovalFormDialog({
         )}
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={handleClose}>Cancel</Button>
+        <Button onClick={onClose}>Cancel</Button>
         <Button onClick={handleSubmit} variant="contained" color="success">
           Submit Approval
         </Button>

@@ -18,8 +18,6 @@ import {
 import SendIcon from '@mui/icons-material/Send'
 import PersonAddIcon from '@mui/icons-material/PersonAdd'
 import { useRequests } from '../context/RequestContext'
-import { useSessionForm } from '../hooks/useSessionForm'
-import { SESSION_KEYS } from '../storage/sessionStorage'
 import { DEPARTMENTS, ROLES, type RequestFormData } from '../types/request'
 
 const initialForm: RequestFormData = {
@@ -34,10 +32,7 @@ const initialForm: RequestFormData = {
 
 export default function RequestFormPage() {
   const { addRequest } = useRequests()
-  const { form, setForm, resetForm } = useSessionForm(
-    SESSION_KEYS.REQUEST_FORM_DRAFT,
-    initialForm,
-  )
+  const [form, setForm] = useState<RequestFormData>(initialForm)
   const [errors, setErrors] = useState<Partial<Record<keyof RequestFormData, string>>>({})
   const [showSuccess, setShowSuccess] = useState(false)
 
@@ -72,7 +67,7 @@ export default function RequestFormPage() {
     if (!validate()) return
 
     addRequest(form)
-    resetForm()
+    setForm(initialForm)
     setShowSuccess(true)
   }
 

@@ -11,14 +11,8 @@ import type {
   OnboardingRequest,
   RequestFormData,
 } from '../types/request'
-import {
-  SESSION_KEYS,
-  getSessionItem,
-  migrateLegacyLocalStorage,
-  setSessionItem,
-} from '../storage/sessionStorage'
 
-const STORAGE_KEY = SESSION_KEYS.REQUESTS
+const STORAGE_KEY = 'onboarding-requests'
 
 interface RequestContextValue {
   requests: OnboardingRequest[]
@@ -30,12 +24,16 @@ interface RequestContextValue {
 const RequestContext = createContext<RequestContextValue | null>(null)
 
 function loadRequests(): OnboardingRequest[] {
-  migrateLegacyLocalStorage()
-  return getSessionItem<OnboardingRequest[]>(STORAGE_KEY, [])
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    return stored ? (JSON.parse(stored) as OnboardingRequest[]) : []
+  } catch {
+    return []
+  }
 }
 
 function saveRequests(requests: OnboardingRequest[]) {
-  setSessionItem(STORAGE_KEY, requests)
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(requests))
 }
 
 export function RequestProvider({ children }: { children: ReactNode }) {
