@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   Button,
   Dialog,
@@ -12,33 +12,37 @@ import CancelIcon from '@mui/icons-material/Cancel'
 
 interface RejectDialogProps {
   open: boolean
-  requesterName: string
+  message: ReactNode
+  fieldLabel: string
+  emptyError: string
   onClose: () => void
-  onConfirm: (comment: string) => void
+  onConfirm: (reason: string) => void
 }
 
 export default function RejectDialog({
   open,
-  requesterName,
+  message,
+  fieldLabel,
+  emptyError,
   onClose,
   onConfirm,
 }: RejectDialogProps) {
-  const [comment, setComment] = useState('')
+  const [reason, setReason] = useState('')
   const [error, setError] = useState('')
 
   const handleClose = () => {
-    setComment('')
+    setReason('')
     setError('')
     onClose()
   }
 
   const handleConfirm = () => {
-    if (!comment.trim()) {
-      setError('A comment is required when rejecting a request')
+    if (!reason.trim()) {
+      setError(emptyError)
       return
     }
-    onConfirm(comment.trim())
-    setComment('')
+    onConfirm(reason.trim())
+    setReason('')
     setError('')
   }
 
@@ -49,15 +53,14 @@ export default function RejectDialog({
         Reject Request
       </DialogTitle>
       <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          You are rejecting the labour change request submitted by{' '}
-          <strong>{requesterName}</strong>. Please provide a comment explaining the rejection.
+        <Typography variant="body2" color="text.secondary" component="div" sx={{ mb: 2 }}>
+          {message}
         </Typography>
         <TextField
-          label="Rejection Comment"
-          value={comment}
+          label={fieldLabel}
+          value={reason}
           onChange={(e) => {
-            setComment(e.target.value)
+            setReason(e.target.value)
             setError('')
           }}
           error={Boolean(error)}

@@ -18,10 +18,10 @@ import {
 } from '@mui/material'
 import SendIcon from '@mui/icons-material/Send'
 import DescriptionIcon from '@mui/icons-material/Description'
-import { useRequests } from '../context/RequestContext'
-import type { RequestFormData } from '../types/request'
+import { useLabourChangeRequests } from '../../context/LabourChangeContext'
+import type { LabourChangeFormData } from '../../types/labourChange'
 
-const initialForm: RequestFormData = {
+const initialForm: LabourChangeFormData = {
   requesterName: '',
   email: '',
   isUrgent: '',
@@ -51,18 +51,18 @@ function QuestionLabel({ number, children }: { number: number; children: React.R
 }
 
 export default function RequestFormPage() {
-  const { addRequest } = useRequests()
-  const [form, setForm] = useState<RequestFormData>(initialForm)
-  const [errors, setErrors] = useState<Partial<Record<keyof RequestFormData, string>>>({})
+  const { addRequest } = useLabourChangeRequests()
+  const [form, setForm] = useState<LabourChangeFormData>(initialForm)
+  const [errors, setErrors] = useState<Partial<Record<keyof LabourChangeFormData, string>>>({})
   const [showSuccess, setShowSuccess] = useState(false)
 
-  const updateField = <K extends keyof RequestFormData>(field: K, value: RequestFormData[K]) => {
+  const updateField = <K extends keyof LabourChangeFormData>(field: K, value: LabourChangeFormData[K]) => {
     setForm((prev) => ({ ...prev, [field]: value }))
     setErrors((prev) => ({ ...prev, [field]: undefined }))
   }
 
   const validate = () => {
-    const nextErrors: Partial<Record<keyof RequestFormData, string>> = {}
+    const nextErrors: Partial<Record<keyof LabourChangeFormData, string>> = {}
 
     if (!form.requesterName.trim()) nextErrors.requesterName = 'Name is required'
     if (!form.email.trim()) {
@@ -143,7 +143,7 @@ export default function RequestFormPage() {
               <FormControl error={Boolean(errors.isUrgent)}>
                 <RadioGroup
                   value={form.isUrgent}
-                  onChange={(e) => updateField('isUrgent', e.target.value as RequestFormData['isUrgent'])}
+                  onChange={(e) => updateField('isUrgent', e.target.value as LabourChangeFormData['isUrgent'])}
                 >
                   <FormControlLabel value="yes" control={<Radio />} label="Yes" />
                   <FormControlLabel value="no" control={<Radio />} label="No" />
@@ -160,7 +160,7 @@ export default function RequestFormPage() {
               <FormControl error={Boolean(errors.project)}>
                 <RadioGroup
                   value={form.project}
-                  onChange={(e) => updateField('project', e.target.value as RequestFormData['project'])}
+                  onChange={(e) => updateField('project', e.target.value as LabourChangeFormData['project'])}
                 >
                   <FormControlLabel value="JS1" control={<Radio />} label="JS1" />
                   <FormControlLabel value="JS2" control={<Radio />} label="JS2" />
@@ -200,7 +200,7 @@ export default function RequestFormPage() {
                 <RadioGroup
                   value={form.organization}
                   onChange={(e) =>
-                    updateField('organization', e.target.value as RequestFormData['organization'])
+                    updateField('organization', e.target.value as LabourChangeFormData['organization'])
                   }
                 >
                   <FormControlLabel value="BHP" control={<Radio />} label="BHP" />
@@ -229,7 +229,7 @@ export default function RequestFormPage() {
               <FormControl error={Boolean(errors.roleType)}>
                 <RadioGroup
                   value={form.roleType}
-                  onChange={(e) => updateField('roleType', e.target.value as RequestFormData['roleType'])}
+                  onChange={(e) => updateField('roleType', e.target.value as LabourChangeFormData['roleType'])}
                 >
                   <FormControlLabel value="New" control={<Radio />} label="New" />
                   <FormControlLabel value="Existing" control={<Radio />} label="Existing" />

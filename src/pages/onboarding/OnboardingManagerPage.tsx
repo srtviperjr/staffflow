@@ -16,22 +16,23 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 import PendingActionsIcon from '@mui/icons-material/PendingActions'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
-import PriorityHighIcon from '@mui/icons-material/PriorityHigh'
-import { useRequests } from '../context/RequestContext'
-import RejectDialog from '../components/RejectDialog'
-import type { LabourChangeRequest } from '../types/request'
+import { useOnboardingRequests } from '../../context/OnboardingContext'
+import RejectDialog from '../../components/RejectDialog'
+import ApprovalFormDialog from '../../components/ApprovalFormDialog'
+import ThankYouDialog from '../../components/ThankYouDialog'
+import type { ApprovalDetails, ApprovalFormData, OnboardingRequest } from '../../types/onboarding'
 
 type FilterTab = 'all' | 'pending' | 'approved' | 'rejected'
 
-function StatusChip({ status }: { status: LabourChangeRequest['status'] }) {
+function StatusChip({ status }: { status: OnboardingRequest['status'] }) {
   const config = {
-    pending: { label: 'Pending Review', color: 'warning' as const },
+    pending: { label: 'Pending', color: 'warning' as const },
     approved: { label: 'Approved', color: 'success' as const },
     rejected: { label: 'Rejected', color: 'error' as const },
   }
 
   const { label, color } = config[status]
-  return <Chip label={label} color={color} size="small" />
+  return <Chip label={label} color={color} size="small" variant="outlined" />
 }
 
 function formatDate(dateString: string) {
@@ -39,15 +40,15 @@ function formatDate(dateString: string) {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
   })
 }
 
 export default function ManagerRequestsPage() {
-  const { requests, rejectRequest, approveRequest } = useRequests()
+  const { requests, rejectRequest, approveRequest } = useOnboardingRequests()
   const [filter, setFilter] = useState<FilterTab>('all')
-  const [rejectTarget, setRejectTarget] = useState<LabourChangeRequest | null>(null)
+  const [rejectTarget, setRejectTarget] = useState<OnboardingRequest | null>(null)
+  const [approveTarget, setApproveTarget] = useState<OnboardingRequest | null>(null)
+  const [showThankYou, setShowThankYou] = useState(false)
 
   const filteredRequests = useMemo(() => {
     if (filter === 'all') return requests
@@ -64,10 +65,28 @@ export default function ManagerRequestsPage() {
     [requests],
   )
 
-  const handleReject = (comment: string) => {
+  const handleReject = (reason: string) => {
     if (!rejectTarget) return
-    rejectRequest(rejectTarget.id, comment)
+    rejectRequest(rejectTarget.id, reason)
     setRejectTarget(null)
+  }
+
+  const handleApprove = (data: ApprovalFormData) => {
+    if (!approveTarget) return
+
+    const details: ApprovalDetails = {
+      buddyName: data.buddyName.trim(),
+      buddyEmail: data.buddyEmail.trim(),
+      onboardingDate: data.onboardingDate,
+      machineSetup: data.machineSetup as ApprovalDetails['machineSetup'],
+      applications: data.applications,
+      engineeringTools: data.engineeringTools,
+      procurementTools: data.procurementTools,
+    }
+
+    approveRequest(approveTarget.id, details)
+    setApproveTarget(null)
+    setShowThankYou(true)
   }
 
   return (
@@ -78,10 +97,10 @@ export default function ManagerRequestsPage() {
             <ManageAccountsIcon color="primary" sx={{ fontSize: 36 }} />
             <Box>
               <Typography variant="h4" color="primary">
-                Submitted Requests
+                Manager Review
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Review labour change requests and update their status
+                Review, approve, or reject submitted onboarding requests
               </Typography>
             </Box>
           </Box>
@@ -126,18 +145,9 @@ export default function ManagerRequestsPage() {
                       }}
                     >
                       <Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                          <Typography variant="h6">{request.requesterName}</Typography>
-                          {request.isUrgent && (
-                            <Chip
-                              icon={<PriorityHighIcon />}
-                              label="Urgent"
-                              color="error"
-                              size="small"
-                              variant="outlined"
-                            />
-                          )}
-                        </Box>
+                        <Typography variant="h6">
+                          {request.firstName} {request.lastName}
+                        </Typography>
                         <Typography variant="body2" color="text.secondary">
                           {request.email}
                         </Typography>
@@ -155,48 +165,23 @@ export default function ManagerRequestsPage() {
                       }}
                     >
                       <Typography variant="body2">
-                        <strong>Project:</strong> {request.project}
+                        <strong>Manager:</strong> {request.requestingManagerName}
                       </Typography>
                       <Typography variant="body2">
-                        <strong>Organization:</strong> {request.organization}
+                        <strong>Start Date:</strong> {formatDate(request.startDate)}
                       </Typography>
                       <Typography variant="body2">
-                        <strong>Area / Function / Discipline:</strong>{' '}
-                        {request.areaFunctionDiscipline}
+                        <strong>Role:</strong> {request.role}
                       </Typography>
                       <Typography variant="body2">
-                        <strong>Role Type:</strong> {request.roleType}
-                      </Typography>
-                      <Typography variant="body2">
-                        <strong>Endorsing Head:</strong> {request.endorsingHeadName}
+                        <strong>Department:</strong> {request.department}
                       </Typography>
                       <Typography variant="body2">
                         <strong>Submitted:</strong> {formatDate(request.submittedAt)}
                       </Typography>
-                      {request.reviewedAt && (
-                        <Typography variant="body2">
-                          <strong>Reviewed:</strong> {formatDate(request.reviewedAt)}
-                        </Typography>
-                      )}
                     </Box>
 
-                    <Box
-                      sx={{
-                        mt: 2,
-                        p: 2,
-                        bgcolor: 'grey.50',
-                        borderRadius: 2,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                      }}
-                    >
-                      <Typography variant="subtitle2" gutterBottom>
-                        Reason for Change
-                      </Typography>
-                      <Typography variant="body2">{request.changeReason}</Typography>
-                    </Box>
-
-                    {request.status === 'rejected' && request.rejectionComment && (
+                    {request.status === 'rejected' && request.rejectionReason && (
                       <Box
                         sx={{
                           mt: 2,
@@ -208,9 +193,55 @@ export default function ManagerRequestsPage() {
                         }}
                       >
                         <Typography variant="subtitle2" color="error.main">
-                          Rejection Comment
+                          Rejection Reason
                         </Typography>
-                        <Typography variant="body2">{request.rejectionComment}</Typography>
+                        <Typography variant="body2">{request.rejectionReason}</Typography>
+                      </Box>
+                    )}
+
+                    {request.status === 'approved' && request.approvalDetails && (
+                      <Box
+                        sx={{
+                          mt: 2,
+                          p: 2,
+                          bgcolor: 'success.50',
+                          borderRadius: 2,
+                          border: '1px solid',
+                          borderColor: 'success.light',
+                        }}
+                      >
+                        <Typography variant="subtitle2" color="success.main" gutterBottom>
+                          Onboarding Details
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>Buddy:</strong> {request.approvalDetails.buddyName} (
+                          {request.approvalDetails.buddyEmail})
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>Onboarding Date:</strong>{' '}
+                          {formatDate(request.approvalDetails.onboardingDate)}
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>Machine:</strong> {request.approvalDetails.machineSetup}
+                        </Typography>
+                        {request.approvalDetails.applications.length > 0 && (
+                          <Typography variant="body2">
+                            <strong>Applications:</strong>{' '}
+                            {request.approvalDetails.applications.join(', ')}
+                          </Typography>
+                        )}
+                        {request.approvalDetails.engineeringTools.length > 0 && (
+                          <Typography variant="body2">
+                            <strong>Engineering Tools:</strong>{' '}
+                            {request.approvalDetails.engineeringTools.join(', ')}
+                          </Typography>
+                        )}
+                        {request.approvalDetails.procurementTools.length > 0 && (
+                          <Typography variant="body2">
+                            <strong>Procurement Tools:</strong>{' '}
+                            {request.approvalDetails.procurementTools.join(', ')}
+                          </Typography>
+                        )}
                       </Box>
                     )}
                   </CardContent>
@@ -221,7 +252,7 @@ export default function ManagerRequestsPage() {
                         variant="contained"
                         color="success"
                         startIcon={<CheckCircleIcon />}
-                        onClick={() => approveRequest(request.id)}
+                        onClick={() => setApproveTarget(request)}
                       >
                         Approve
                       </Button>
@@ -244,10 +275,29 @@ export default function ManagerRequestsPage() {
 
       <RejectDialog
         open={Boolean(rejectTarget)}
-        requesterName={rejectTarget?.requesterName ?? ''}
+        message={
+          <>
+            You are rejecting the onboarding request for{' '}
+            <strong>
+              {rejectTarget ? `${rejectTarget.firstName} ${rejectTarget.lastName}` : ''}
+            </strong>
+            . Please provide an explanation.
+          </>
+        }
+        fieldLabel="Rejection Explanation"
+        emptyError="Please provide an explanation for the rejection"
         onClose={() => setRejectTarget(null)}
         onConfirm={handleReject}
       />
+
+      <ApprovalFormDialog
+        open={Boolean(approveTarget)}
+        request={approveTarget}
+        onClose={() => setApproveTarget(null)}
+        onSubmit={handleApprove}
+      />
+
+      <ThankYouDialog open={showThankYou} onClose={() => setShowThankYou(false)} />
     </>
   )
 }
