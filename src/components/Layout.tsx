@@ -8,6 +8,7 @@ import {
   Toolbar,
   Typography,
 } from '@mui/material'
+import TableChartIcon from '@mui/icons-material/TableChart'
 import HomeIcon from '@mui/icons-material/Home'
 import PersonAddIcon from '@mui/icons-material/PersonAdd'
 import DescriptionIcon from '@mui/icons-material/Description'
@@ -48,6 +49,7 @@ export default function Layout() {
   const isHome = path === '/'
   const isOnboarding = path.startsWith('/onboarding')
   const isLabour = path.startsWith('/labour-change')
+  const isStaffingPlan = path.startsWith('/staffing-plan')
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -154,6 +156,16 @@ export default function Layout() {
               >
                 Review
               </Button>
+              <Button
+                component={RouterLink}
+                to="/staffing-plan"
+                color="inherit"
+                size="small"
+                startIcon={<TableChartIcon />}
+                sx={navButtonSx(isStaffingPlan)}
+              >
+                Staffing Plan
+              </Button>
             </NavGroup>
           </Box>
         </Toolbar>
@@ -168,7 +180,7 @@ export default function Layout() {
             'radial-gradient(circle at top right, rgba(21,101,192,0.06), transparent 40%), radial-gradient(circle at bottom left, rgba(0,131,143,0.06), transparent 40%)',
         }}
       >
-        <Container maxWidth="md">
+        <Container maxWidth={isStaffingPlan ? 'xl' : 'md'}>
           <Outlet />
         </Container>
       </Box>

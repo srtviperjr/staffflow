@@ -33,6 +33,7 @@ Open [http://localhost:5173](http://localhost:5173) and choose a workflow from t
 | `/onboarding/manager` | Review onboarding requests |
 | `/labour-change` | Submit labour change request |
 | `/labour-change/manager` | Review labour change requests |
+| `/staffing-plan` | Staffing plan matrix (Excel-style table with approval status filter) |
 
 ## Data Storage
 

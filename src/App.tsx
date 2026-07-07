@@ -9,6 +9,7 @@ import OnboardingRequestFormPage from './pages/onboarding/OnboardingRequestFormP
 import OnboardingManagerPage from './pages/onboarding/OnboardingManagerPage'
 import LabourChangeFormPage from './pages/labour/LabourChangeFormPage'
 import LabourChangeManagerPage from './pages/labour/LabourChangeManagerPage'
+import StaffingPlanPage from './pages/StaffingPlanPage'
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
                 <Route path="onboarding/manager" element={<OnboardingManagerPage />} />
                 <Route path="labour-change" element={<LabourChangeFormPage />} />
                 <Route path="labour-change/manager" element={<LabourChangeManagerPage />} />
+                <Route path="staffing-plan" element={<StaffingPlanPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>
