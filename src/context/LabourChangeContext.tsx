@@ -6,18 +6,18 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type { LabourChangeRequest, RequestFormData } from '../types/request'
+import type { LabourChangeFormData, LabourChangeRequest } from '../types/labourChange'
 
 const STORAGE_KEY = 'labour-change-requests'
 
-interface RequestContextValue {
+interface LabourChangeContextValue {
   requests: LabourChangeRequest[]
-  addRequest: (data: RequestFormData) => void
+  addRequest: (data: LabourChangeFormData) => void
   rejectRequest: (id: string, comment: string) => void
   approveRequest: (id: string) => void
 }
 
-const RequestContext = createContext<RequestContextValue | null>(null)
+const LabourChangeContext = createContext<LabourChangeContextValue | null>(null)
 
 function loadRequests(): LabourChangeRequest[] {
   try {
@@ -32,7 +32,7 @@ function saveRequests(requests: LabourChangeRequest[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(requests))
 }
 
-export function RequestProvider({ children }: { children: ReactNode }) {
+export function LabourChangeProvider({ children }: { children: ReactNode }) {
   const [requests, setRequests] = useState<LabourChangeRequest[]>(loadRequests)
 
   const persist = useCallback((updated: LabourChangeRequest[]) => {
@@ -41,7 +41,7 @@ export function RequestProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const addRequest = useCallback(
-    (data: RequestFormData) => {
+    (data: LabourChangeFormData) => {
       const newRequest: LabourChangeRequest = {
         id: crypto.randomUUID(),
         requesterName: data.requesterName.trim(),
@@ -102,14 +102,14 @@ export function RequestProvider({ children }: { children: ReactNode }) {
   )
 
   return (
-    <RequestContext.Provider value={value}>{children}</RequestContext.Provider>
+    <LabourChangeContext.Provider value={value}>{children}</LabourChangeContext.Provider>
   )
 }
 
-export function useRequests() {
-  const context = useContext(RequestContext)
+export function useLabourChangeRequests() {
+  const context = useContext(LabourChangeContext)
   if (!context) {
-    throw new Error('useRequests must be used within a RequestProvider')
+    throw new Error('useLabourChangeRequests must be used within a LabourChangeProvider')
   }
   return context
 }

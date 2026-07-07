@@ -7,11 +7,25 @@ import {
   Toolbar,
   Typography,
 } from '@mui/material'
+import HomeIcon from '@mui/icons-material/Home'
+import PersonAddIcon from '@mui/icons-material/PersonAdd'
 import DescriptionIcon from '@mui/icons-material/Description'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 
+function navButtonSx(active: boolean) {
+  return {
+    opacity: active ? 1 : 0.75,
+    bgcolor: active ? 'rgba(255,255,255,0.15)' : 'transparent',
+  }
+}
+
 export default function Layout() {
   const location = useLocation()
+  const path = location.pathname
+
+  const isHome = path === '/'
+  const isOnboarding = path.startsWith('/onboarding')
+  const isLabour = path.startsWith('/labour-change')
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -23,35 +37,63 @@ export default function Layout() {
           borderBottom: '1px solid rgba(255,255,255,0.12)',
         }}
       >
-        <Toolbar sx={{ gap: 2 }}>
-          <DescriptionIcon sx={{ fontSize: 32 }} />
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
-            Labour Change Request
+        <Toolbar sx={{ gap: 1, flexWrap: 'wrap' }}>
+          <HomeIcon sx={{ fontSize: 28 }} />
+          <Typography
+            variant="h6"
+            component={RouterLink}
+            to="/"
+            sx={{ flexGrow: 1, fontWeight: 700, color: 'inherit', textDecoration: 'none' }}
+          >
+            Request Portal
           </Typography>
+
           <Button
             component={RouterLink}
             to="/"
             color="inherit"
-            startIcon={<DescriptionIcon />}
-            sx={{
-              opacity: location.pathname === '/' ? 1 : 0.75,
-              bgcolor: location.pathname === '/' ? 'rgba(255,255,255,0.15)' : 'transparent',
-            }}
+            startIcon={<HomeIcon />}
+            sx={navButtonSx(isHome)}
           >
-            New Request
+            Home
+          </Button>
+
+          <Button
+            component={RouterLink}
+            to="/onboarding"
+            color="inherit"
+            startIcon={<PersonAddIcon />}
+            sx={navButtonSx(isOnboarding && path === '/onboarding')}
+          >
+            Onboarding
           </Button>
           <Button
             component={RouterLink}
-            to="/manager"
+            to="/onboarding/manager"
             color="inherit"
             startIcon={<ManageAccountsIcon />}
-            sx={{
-              opacity: location.pathname === '/manager' ? 1 : 0.75,
-              bgcolor:
-                location.pathname === '/manager' ? 'rgba(255,255,255,0.15)' : 'transparent',
-            }}
+            sx={navButtonSx(isOnboarding && path === '/onboarding/manager')}
           >
-            Review Requests
+            Onboarding Review
+          </Button>
+
+          <Button
+            component={RouterLink}
+            to="/labour-change"
+            color="inherit"
+            startIcon={<DescriptionIcon />}
+            sx={navButtonSx(isLabour && path === '/labour-change')}
+          >
+            Labour Change
+          </Button>
+          <Button
+            component={RouterLink}
+            to="/labour-change/manager"
+            color="inherit"
+            startIcon={<ManageAccountsIcon />}
+            sx={navButtonSx(isLabour && path === '/labour-change/manager')}
+          >
+            Labour Review
           </Button>
         </Toolbar>
       </AppBar>

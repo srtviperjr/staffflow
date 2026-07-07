@@ -1,7 +1,7 @@
 export type Project = 'JS1' | 'JS2'
 export type Organization = 'BHP' | 'HBJV'
 export type RoleType = 'New' | 'Existing'
-export type RequestStatus = 'pending' | 'approved' | 'rejected'
+export type LabourChangeStatus = 'pending' | 'approved' | 'rejected'
 
 export interface LabourChangeRequest {
   id: string
@@ -14,13 +14,13 @@ export interface LabourChangeRequest {
   organization: Organization
   changeReason: string
   roleType: RoleType
-  status: RequestStatus
+  status: LabourChangeStatus
   submittedAt: string
   rejectionComment?: string
   reviewedAt?: string
 }
 
-export interface RequestFormData {
+export interface LabourChangeFormData {
   requesterName: string
   email: string
   isUrgent: '' | 'yes' | 'no'
