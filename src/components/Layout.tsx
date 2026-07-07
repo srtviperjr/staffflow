@@ -7,7 +7,7 @@ import {
   Toolbar,
   Typography,
 } from '@mui/material'
-import AssignmentIndIcon from '@mui/icons-material/AssignmentInd'
+import DescriptionIcon from '@mui/icons-material/Description'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 
 export default function Layout() {
@@ -24,15 +24,15 @@ export default function Layout() {
         }}
       >
         <Toolbar sx={{ gap: 2 }}>
-          <AssignmentIndIcon sx={{ fontSize: 32 }} />
+          <DescriptionIcon sx={{ fontSize: 32 }} />
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
-            Employee Onboarding Portal
+            Labour Change Request
           </Typography>
           <Button
             component={RouterLink}
             to="/"
             color="inherit"
-            startIcon={<AssignmentIndIcon />}
+            startIcon={<DescriptionIcon />}
             sx={{
               opacity: location.pathname === '/' ? 1 : 0.75,
               bgcolor: location.pathname === '/' ? 'rgba(255,255,255,0.15)' : 'transparent',
@@ -51,7 +51,7 @@ export default function Layout() {
                 location.pathname === '/manager' ? 'rgba(255,255,255,0.15)' : 'transparent',
             }}
           >
-            Manager Review
+            Review Requests
           </Button>
         </Toolbar>
       </AppBar>

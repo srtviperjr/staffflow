@@ -12,33 +12,33 @@ import CancelIcon from '@mui/icons-material/Cancel'
 
 interface RejectDialogProps {
   open: boolean
-  employeeName: string
+  requesterName: string
   onClose: () => void
-  onConfirm: (reason: string) => void
+  onConfirm: (comment: string) => void
 }
 
 export default function RejectDialog({
   open,
-  employeeName,
+  requesterName,
   onClose,
   onConfirm,
 }: RejectDialogProps) {
-  const [reason, setReason] = useState('')
+  const [comment, setComment] = useState('')
   const [error, setError] = useState('')
 
   const handleClose = () => {
-    setReason('')
+    setComment('')
     setError('')
     onClose()
   }
 
   const handleConfirm = () => {
-    if (!reason.trim()) {
-      setError('Please provide an explanation for the rejection')
+    if (!comment.trim()) {
+      setError('A comment is required when rejecting a request')
       return
     }
-    onConfirm(reason.trim())
-    setReason('')
+    onConfirm(comment.trim())
+    setComment('')
     setError('')
   }
 
@@ -50,14 +50,14 @@ export default function RejectDialog({
       </DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          You are rejecting the onboarding request for{' '}
-          <strong>{employeeName}</strong>. Please provide an explanation.
+          You are rejecting the labour change request submitted by{' '}
+          <strong>{requesterName}</strong>. Please provide a comment explaining the rejection.
         </Typography>
         <TextField
-          label="Rejection Explanation"
-          value={reason}
+          label="Rejection Comment"
+          value={comment}
           onChange={(e) => {
-            setReason(e.target.value)
+            setComment(e.target.value)
             setError('')
           }}
           error={Boolean(error)}

@@ -1,14 +1,13 @@
-# Employee Onboarding Portal
+# Labour Change Request
 
-A React application for submitting and managing new hire onboarding requests, built with Vite, TypeScript, Material UI, and React Router.
+A React application for submitting and reviewing labour change requests across projects JS1 and JS2. Built with Vite, TypeScript, Material UI, and React Router.
 
 ## Features
 
-- **New Hire Request Form** — Requesting managers can submit onboarding requests with employee details, role, department, and start date.
-- **Manager Review** — Managers can view all submitted requests, filter by status, and approve or reject pending requests.
-- **Rejection Flow** — Rejecting a request requires an explanation.
-- **Approval Flow** — Approving a request opens an onboarding details form (buddy info, machine setup, applications, and department-specific tools).
-- **Confirmation** — A thank-you dialog appears after an approval form is submitted.
+- **Labour Change Request Form** — Capture requester details, project, organization, role type, and reason for change
+- **Review Requests Page** — Managers can view all submitted requests with review status (Pending, Approved, Rejected)
+- **Approve / Reject** — Pending requests can be approved directly or rejected with a required comment
+- **Status Filtering** — Filter the request list by All, Pending, Approved, or Rejected
 
 ## Getting Started
 

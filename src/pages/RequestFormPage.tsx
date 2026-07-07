@@ -7,27 +7,47 @@ import {
   CardContent,
   Divider,
   FormControl,
-  Grid,
-  InputLabel,
-  MenuItem,
-  Select,
+  FormControlLabel,
+  FormHelperText,
+  FormLabel,
+  Radio,
+  RadioGroup,
   Snackbar,
   TextField,
   Typography,
 } from '@mui/material'
 import SendIcon from '@mui/icons-material/Send'
-import PersonAddIcon from '@mui/icons-material/PersonAdd'
+import DescriptionIcon from '@mui/icons-material/Description'
 import { useRequests } from '../context/RequestContext'
-import { DEPARTMENTS, ROLES, type RequestFormData } from '../types/request'
+import type { RequestFormData } from '../types/request'
 
 const initialForm: RequestFormData = {
-  firstName: '',
-  lastName: '',
+  requesterName: '',
   email: '',
-  requestingManagerName: '',
-  startDate: '',
-  role: '',
-  department: '',
+  isUrgent: '',
+  project: '',
+  areaFunctionDiscipline: '',
+  endorsingHeadName: '',
+  organization: '',
+  changeReason: '',
+  roleType: '',
+}
+
+function QuestionLabel({ number, children }: { number: number; children: React.ReactNode }) {
+  return (
+    <FormLabel
+      required
+      sx={{
+        display: 'block',
+        color: 'primary.main',
+        fontWeight: 600,
+        fontSize: '1rem',
+        mb: 1,
+      }}
+    >
+      {number}. {children}
+    </FormLabel>
+  )
 }
 
 export default function RequestFormPage() {
@@ -44,19 +64,23 @@ export default function RequestFormPage() {
   const validate = () => {
     const nextErrors: Partial<Record<keyof RequestFormData, string>> = {}
 
-    if (!form.firstName.trim()) nextErrors.firstName = 'First name is required'
-    if (!form.lastName.trim()) nextErrors.lastName = 'Last name is required'
+    if (!form.requesterName.trim()) nextErrors.requesterName = 'Name is required'
     if (!form.email.trim()) {
       nextErrors.email = 'Email is required'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       nextErrors.email = 'Enter a valid email address'
     }
-    if (!form.requestingManagerName.trim()) {
-      nextErrors.requestingManagerName = 'Requesting manager name is required'
+    if (!form.isUrgent) nextErrors.isUrgent = 'Please select an option'
+    if (!form.project) nextErrors.project = 'Please select a project'
+    if (!form.areaFunctionDiscipline.trim()) {
+      nextErrors.areaFunctionDiscipline = 'Area, function or discipline is required'
     }
-    if (!form.startDate) nextErrors.startDate = 'Start date is required'
-    if (!form.role) nextErrors.role = 'Please select a role'
-    if (!form.department) nextErrors.department = 'Please select a department'
+    if (!form.endorsingHeadName.trim()) {
+      nextErrors.endorsingHeadName = 'Endorsing head name is required'
+    }
+    if (!form.organization) nextErrors.organization = 'Please select an organization'
+    if (!form.changeReason.trim()) nextErrors.changeReason = 'Reason for change is required'
+    if (!form.roleType) nextErrors.roleType = 'Please select an option'
 
     setErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
@@ -74,129 +98,149 @@ export default function RequestFormPage() {
   return (
     <>
       <Card>
-        <CardContent sx={{ p: { xs: 3.3, sm: 4 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-            <PersonAddIcon color="primary" sx={{ fontSize: 36 }} />
-            <Box>
-              <Typography variant="h4" color="primary">
-                New Hire Request
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Submit a request for a new team member onboarding
-              </Typography>
-            </Box>
+        <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+            <DescriptionIcon color="primary" sx={{ fontSize: 36 }} />
+            <Typography variant="h4" color="primary">
+              Labour Change Request
+            </Typography>
           </Box>
 
-          <Divider sx={{ my: 3 }} />
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3, lineHeight: 1.7 }}>
+            This is a temporary solution for labour changes across projects JS1 and JS2. For
+            urgent follow-ups, please contact Ebele Afamefune or Heather McMeekin directly.
+          </Typography>
+
+          <Divider sx={{ mb: 4 }} />
 
           <Box component="form" onSubmit={handleSubmit} noValidate>
-            <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-              Employee Information
-            </Typography>
+            <StackField>
+              <QuestionLabel number={1}>
+                What is your name? Please put who is raising the request, not who the change is
+                for.
+              </QuestionLabel>
+              <TextField
+                value={form.requesterName}
+                onChange={(e) => updateField('requesterName', e.target.value)}
+                error={Boolean(errors.requesterName)}
+                helperText={errors.requesterName}
+              />
+            </StackField>
 
-            <Grid container spacing={2.5}>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  label="First Name"
-                  value={form.firstName}
-                  onChange={(e) => updateField('firstName', e.target.value)}
-                  error={Boolean(errors.firstName)}
-                  helperText={errors.firstName}
-                  required
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  label="Last Name"
-                  value={form.lastName}
-                  onChange={(e) => updateField('lastName', e.target.value)}
-                  error={Boolean(errors.lastName)}
-                  helperText={errors.lastName}
-                  required
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  label="Email Address"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => updateField('email', e.target.value)}
-                  error={Boolean(errors.email)}
-                  helperText={errors.email}
-                  required
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  label="Requesting Manager's Name"
-                  value={form.requestingManagerName}
-                  onChange={(e) => updateField('requestingManagerName', e.target.value)}
-                  error={Boolean(errors.requestingManagerName)}
-                  helperText={errors.requestingManagerName}
-                  required
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  label="Start Date"
-                  type="date"
-                  value={form.startDate}
-                  onChange={(e) => updateField('startDate', e.target.value)}
-                  error={Boolean(errors.startDate)}
-                  helperText={errors.startDate}
-                  slotProps={{ inputLabel: { shrink: true } }}
-                  required
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <FormControl fullWidth error={Boolean(errors.role)} required>
-                  <InputLabel>Role</InputLabel>
-                  <Select
-                    label="Role"
-                    value={form.role}
-                    onChange={(e) => updateField('role', e.target.value as RequestFormData['role'])}
-                  >
-                    {ROLES.map((role) => (
-                      <MenuItem key={role} value={role}>
-                        {role}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.role && (
-                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-                      {errors.role}
-                    </Typography>
-                  )}
-                </FormControl>
-              </Grid>
-              <Grid size={12}>
-                <FormControl fullWidth error={Boolean(errors.department)} required>
-                  <InputLabel>Department</InputLabel>
-                  <Select
-                    label="Department"
-                    value={form.department}
-                    onChange={(e) =>
-                      updateField('department', e.target.value as RequestFormData['department'])
-                    }
-                  >
-                    {DEPARTMENTS.map((department) => (
-                      <MenuItem key={department} value={department}>
-                        {department}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.department && (
-                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-                      {errors.department}
-                    </Typography>
-                  )}
-                </FormControl>
-              </Grid>
-            </Grid>
+            <StackField>
+              <QuestionLabel number={2}>What is your email address?</QuestionLabel>
+              <TextField
+                type="email"
+                value={form.email}
+                onChange={(e) => updateField('email', e.target.value)}
+                error={Boolean(errors.email)}
+                helperText={errors.email}
+              />
+            </StackField>
 
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
+            <StackField>
+              <QuestionLabel number={3}>Is this an urgent request?</QuestionLabel>
+              <FormControl error={Boolean(errors.isUrgent)}>
+                <RadioGroup
+                  value={form.isUrgent}
+                  onChange={(e) => updateField('isUrgent', e.target.value as RequestFormData['isUrgent'])}
+                >
+                  <FormControlLabel value="yes" control={<Radio />} label="Yes" />
+                  <FormControlLabel value="no" control={<Radio />} label="No" />
+                </RadioGroup>
+                {errors.isUrgent && <FormHelperText>{errors.isUrgent}</FormHelperText>}
+              </FormControl>
+            </StackField>
+
+            <StackField>
+              <QuestionLabel number={4}>
+                Which project does this change pertain to? (please keep separate requests on
+                their own form)
+              </QuestionLabel>
+              <FormControl error={Boolean(errors.project)}>
+                <RadioGroup
+                  value={form.project}
+                  onChange={(e) => updateField('project', e.target.value as RequestFormData['project'])}
+                >
+                  <FormControlLabel value="JS1" control={<Radio />} label="JS1" />
+                  <FormControlLabel value="JS2" control={<Radio />} label="JS2" />
+                </RadioGroup>
+                {errors.project && <FormHelperText>{errors.project}</FormHelperText>}
+              </FormControl>
+            </StackField>
+
+            <StackField>
+              <QuestionLabel number={5}>Area, Function or Discipline</QuestionLabel>
+              <TextField
+                value={form.areaFunctionDiscipline}
+                onChange={(e) => updateField('areaFunctionDiscipline', e.target.value)}
+                error={Boolean(errors.areaFunctionDiscipline)}
+                helperText={errors.areaFunctionDiscipline}
+              />
+            </StackField>
+
+            <StackField>
+              <QuestionLabel number={6}>
+                Please provide the name of the Head of that has endorsed this change ahead of
+                submission.
+              </QuestionLabel>
+              <TextField
+                value={form.endorsingHeadName}
+                onChange={(e) => updateField('endorsingHeadName', e.target.value)}
+                error={Boolean(errors.endorsingHeadName)}
+                helperText={errors.endorsingHeadName}
+              />
+            </StackField>
+
+            <StackField>
+              <QuestionLabel number={7}>
+                What organization does the role currently sit in?
+              </QuestionLabel>
+              <FormControl error={Boolean(errors.organization)}>
+                <RadioGroup
+                  value={form.organization}
+                  onChange={(e) =>
+                    updateField('organization', e.target.value as RequestFormData['organization'])
+                  }
+                >
+                  <FormControlLabel value="BHP" control={<Radio />} label="BHP" />
+                  <FormControlLabel value="HBJV" control={<Radio />} label="HBJV" />
+                </RadioGroup>
+                {errors.organization && <FormHelperText>{errors.organization}</FormHelperText>}
+              </FormControl>
+            </StackField>
+
+            <StackField>
+              <QuestionLabel number={8}>What is the reason for this change?</QuestionLabel>
+              <TextField
+                value={form.changeReason}
+                onChange={(e) => updateField('changeReason', e.target.value)}
+                error={Boolean(errors.changeReason)}
+                helperText={errors.changeReason}
+                multiline
+                rows={4}
+              />
+            </StackField>
+
+            <StackField>
+              <QuestionLabel number={9}>
+                Is this related to a new role or existing role?
+              </QuestionLabel>
+              <FormControl error={Boolean(errors.roleType)}>
+                <RadioGroup
+                  value={form.roleType}
+                  onChange={(e) => updateField('roleType', e.target.value as RequestFormData['roleType'])}
+                >
+                  <FormControlLabel value="New" control={<Radio />} label="New" />
+                  <FormControlLabel value="Existing" control={<Radio />} label="Existing" />
+                </RadioGroup>
+                {errors.roleType && <FormHelperText>{errors.roleType}</FormHelperText>}
+              </FormControl>
+            </StackField>
+
+            <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 2 }}>
               <Button type="submit" variant="contained" size="large" startIcon={<SendIcon />}>
-                Submit Request
+                Submit
               </Button>
             </Box>
           </Box>
@@ -210,9 +254,13 @@ export default function RequestFormPage() {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert severity="success" variant="filled" onClose={() => setShowSuccess(false)}>
-          Request submitted successfully! A manager will review it shortly.
+          Your labour change request has been submitted successfully.
         </Alert>
       </Snackbar>
     </>
   )
+}
+
+function StackField({ children }: { children: React.ReactNode }) {
+  return <Box sx={{ mb: 3.5 }}>{children}</Box>
 }
