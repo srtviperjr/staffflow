@@ -6,55 +6,53 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type {
-  ApprovalDetails,
-  OnboardingRequest,
-  RequestFormData,
-} from '../types/request'
+import type { LabourChangeRequest, RequestFormData } from '../types/request'
 
-const STORAGE_KEY = 'onboarding-requests'
+const STORAGE_KEY = 'labour-change-requests'
 
 interface RequestContextValue {
-  requests: OnboardingRequest[]
+  requests: LabourChangeRequest[]
   addRequest: (data: RequestFormData) => void
-  rejectRequest: (id: string, reason: string) => void
-  approveRequest: (id: string, details: ApprovalDetails) => void
+  rejectRequest: (id: string, comment: string) => void
+  approveRequest: (id: string) => void
 }
 
 const RequestContext = createContext<RequestContextValue | null>(null)
 
-function loadRequests(): OnboardingRequest[] {
+function loadRequests(): LabourChangeRequest[] {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    return stored ? (JSON.parse(stored) as OnboardingRequest[]) : []
+    return stored ? (JSON.parse(stored) as LabourChangeRequest[]) : []
   } catch {
     return []
   }
 }
 
-function saveRequests(requests: OnboardingRequest[]) {
+function saveRequests(requests: LabourChangeRequest[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(requests))
 }
 
 export function RequestProvider({ children }: { children: ReactNode }) {
-  const [requests, setRequests] = useState<OnboardingRequest[]>(loadRequests)
+  const [requests, setRequests] = useState<LabourChangeRequest[]>(loadRequests)
 
-  const persist = useCallback((updated: OnboardingRequest[]) => {
+  const persist = useCallback((updated: LabourChangeRequest[]) => {
     setRequests(updated)
     saveRequests(updated)
   }, [])
 
   const addRequest = useCallback(
     (data: RequestFormData) => {
-      const newRequest: OnboardingRequest = {
+      const newRequest: LabourChangeRequest = {
         id: crypto.randomUUID(),
-        firstName: data.firstName.trim(),
-        lastName: data.lastName.trim(),
+        requesterName: data.requesterName.trim(),
         email: data.email.trim(),
-        requestingManagerName: data.requestingManagerName.trim(),
-        startDate: data.startDate,
-        role: data.role as OnboardingRequest['role'],
-        department: data.department as OnboardingRequest['department'],
+        isUrgent: data.isUrgent === 'yes',
+        project: data.project as LabourChangeRequest['project'],
+        areaFunctionDiscipline: data.areaFunctionDiscipline.trim(),
+        endorsingHeadName: data.endorsingHeadName.trim(),
+        organization: data.organization as LabourChangeRequest['organization'],
+        changeReason: data.changeReason.trim(),
+        roleType: data.roleType as LabourChangeRequest['roleType'],
         status: 'pending',
         submittedAt: new Date().toISOString(),
       }
@@ -64,11 +62,16 @@ export function RequestProvider({ children }: { children: ReactNode }) {
   )
 
   const rejectRequest = useCallback(
-    (id: string, reason: string) => {
+    (id: string, comment: string) => {
       persist(
         requests.map((request) =>
           request.id === id
-            ? { ...request, status: 'rejected' as const, rejectionReason: reason.trim() }
+            ? {
+                ...request,
+                status: 'rejected' as const,
+                rejectionComment: comment.trim(),
+                reviewedAt: new Date().toISOString(),
+              }
             : request,
         ),
       )
@@ -77,11 +80,15 @@ export function RequestProvider({ children }: { children: ReactNode }) {
   )
 
   const approveRequest = useCallback(
-    (id: string, details: ApprovalDetails) => {
+    (id: string) => {
       persist(
         requests.map((request) =>
           request.id === id
-            ? { ...request, status: 'approved' as const, approvalDetails: details }
+            ? {
+                ...request,
+                status: 'approved' as const,
+                reviewedAt: new Date().toISOString(),
+              }
             : request,
         ),
       )
