@@ -11,6 +11,8 @@ import HomeIcon from '@mui/icons-material/Home'
 import PersonAddIcon from '@mui/icons-material/PersonAdd'
 import DescriptionIcon from '@mui/icons-material/Description'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
+import AssignmentIcon from '@mui/icons-material/Assignment'
+import VerifiedIcon from '@mui/icons-material/Verified'
 
 function navButtonSx(active: boolean) {
   return {
@@ -26,6 +28,8 @@ export default function Layout() {
   const isHome = path === '/'
   const isOnboarding = path.startsWith('/onboarding')
   const isLabour = path.startsWith('/labour-change')
+  const isStaffing = path.startsWith('/staffing-plan')
+  const isAuthorization = path.startsWith('/project-authorization')
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -45,7 +49,7 @@ export default function Layout() {
             to="/"
             sx={{ flexGrow: 1, fontWeight: 700, color: 'inherit', textDecoration: 'none' }}
           >
-            Request Portal
+            Jansen StaffFlow
           </Typography>
 
           <Button
@@ -95,6 +99,44 @@ export default function Layout() {
           >
             Labour Review
           </Button>
+
+          <Button
+            component={RouterLink}
+            to="/staffing-plan"
+            color="inherit"
+            startIcon={<AssignmentIcon />}
+            sx={navButtonSx(isStaffing && path === '/staffing-plan')}
+          >
+            Staffing Plan
+          </Button>
+          <Button
+            component={RouterLink}
+            to="/staffing-plan/manager"
+            color="inherit"
+            startIcon={<ManageAccountsIcon />}
+            sx={navButtonSx(isStaffing && path === '/staffing-plan/manager')}
+          >
+            Staffing Review
+          </Button>
+
+          <Button
+            component={RouterLink}
+            to="/project-authorization"
+            color="inherit"
+            startIcon={<VerifiedIcon />}
+            sx={navButtonSx(isAuthorization && path === '/project-authorization')}
+          >
+            Authorization
+          </Button>
+          <Button
+            component={RouterLink}
+            to="/project-authorization/manager"
+            color="inherit"
+            startIcon={<ManageAccountsIcon />}
+            sx={navButtonSx(isAuthorization && path === '/project-authorization/manager')}
+          >
+            Authorization Review
+          </Button>
         </Toolbar>
       </AppBar>
 
@@ -107,7 +149,7 @@ export default function Layout() {
             'radial-gradient(circle at top right, rgba(21,101,192,0.06), transparent 40%), radial-gradient(circle at bottom left, rgba(0,131,143,0.06), transparent 40%)',
         }}
       >
-        <Container maxWidth="md">
+        <Container maxWidth="lg">
           <Outlet />
         </Container>
       </Box>

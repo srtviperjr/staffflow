@@ -13,8 +13,8 @@ import CancelIcon from '@mui/icons-material/Cancel'
 interface RejectDialogProps {
   open: boolean
   message: ReactNode
-  fieldLabel: string
-  emptyError: string
+  fieldLabel?: string
+  emptyError?: string
   onClose: () => void
   onConfirm: (reason: string) => void
 }
@@ -22,8 +22,8 @@ interface RejectDialogProps {
 export default function RejectDialog({
   open,
   message,
-  fieldLabel,
-  emptyError,
+  fieldLabel = 'Rejection Comment',
+  emptyError = 'A comment is required when rejecting a request',
   onClose,
   onConfirm,
 }: RejectDialogProps) {
@@ -69,6 +69,7 @@ export default function RejectDialog({
           rows={4}
           required
           placeholder="Explain why this request is being rejected..."
+          fullWidth
         />
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>

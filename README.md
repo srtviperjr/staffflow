@@ -1,6 +1,6 @@
-# Request Portal
+# Jansen StaffFlow
 
-A React application with two separate workflows for submitting and reviewing requests. Built with Vite, TypeScript, Material UI, and React Router.
+React + TypeScript + Material UI app with multiple request workflows for submitting and reviewing requests. Built with Vite and React Router.
 
 ## Workflows
 
@@ -15,14 +15,14 @@ A React application with two separate workflows for submitting and reviewing req
 - Manager review with approve/reject and review status display
 - Rejection requires a comment
 
-## Getting Started
+### Staffing Plan (`/staffing-plan`)
+- Position request form with searchable dropdowns, date pickers, and validation
+- Manager review page with approve/reject (rejection requires a comment)
 
-```bash
-npm install
-npm run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173) and choose a workflow from the home page.
+### Project Authorization (`/project-authorization`)
+- Authorization request form linked to approved staffing plan positions (cascading Functional Group → DSG → Position)
+- Candidate details, roster, hours, and calendar date fields
+- Manager review page with review status and approve/reject workflow
 
 ## Routes
 
@@ -33,12 +33,27 @@ Open [http://localhost:5173](http://localhost:5173) and choose a workflow from t
 | `/onboarding/manager` | Review onboarding requests |
 | `/labour-change` | Submit labour change request |
 | `/labour-change/manager` | Review labour change requests |
+| `/staffing-plan` | New staffing plan position request |
+| `/staffing-plan/manager` | Staffing plan manager review |
+| `/project-authorization` | New project authorization request |
+| `/project-authorization/manager` | Project authorization manager review |
 
 ## Data Storage
 
 Each workflow stores requests separately in `localStorage`:
 - `onboarding-requests`
 - `labour-change-requests`
+- `staffing-plan-requests`
+- `project-authorization-requests`
+
+## Development
+
+```bash
+npm install
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173) and choose a workflow from the home page.
 
 ## Scripts
 
