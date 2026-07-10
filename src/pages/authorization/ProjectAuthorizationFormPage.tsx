@@ -15,6 +15,7 @@ import SendIcon from '@mui/icons-material/Send'
 import VerifiedIcon from '@mui/icons-material/Verified'
 import SearchableSelect from '../../components/SearchableSelect'
 import SearchableOptionSelect from '../../components/SearchableOptionSelect'
+import SundayWeekDatePicker from '../../components/SundayWeekDatePicker'
 import { useProjectAuthorizationRequests } from '../../context/ProjectAuthorizationContext'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
 import { CLASSES, HIRING_SOURCES, ROSTERS } from '../../constants/staffingPlanOptions'
@@ -305,29 +306,25 @@ export default function ProjectAuthorizationFormPage() {
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                <TextField
+                <SundayWeekDatePicker
                   label="Start Bi-Week"
-                  type="date"
                   value={form.startBiWeek}
-                  onChange={(e) => updateField('startBiWeek', e.target.value)}
-                  error={Boolean(errors.startBiWeek)}
-                  helperText={errors.startBiWeek ?? 'Bi-weekly Sunday start date'}
-                  slotProps={{ inputLabel: { shrink: true } }}
+                  onChange={(value) => updateField('startBiWeek', value)}
+                  mode="biweekly"
+                  error={errors.startBiWeek}
+                  helperText="Bi-weekly Sunday start date"
                   required
-                  fullWidth
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                <TextField
+                <SundayWeekDatePicker
                   label="LWP"
-                  type="date"
                   value={form.lwp}
-                  onChange={(e) => updateField('lwp', e.target.value)}
-                  error={Boolean(errors.lwp)}
-                  helperText={errors.lwp ?? 'Weekly Sunday date'}
-                  slotProps={{ inputLabel: { shrink: true } }}
+                  onChange={(value) => updateField('lwp', value)}
+                  mode="weekly"
+                  error={errors.lwp}
+                  helperText="Weekly Sunday date"
                   required
-                  fullWidth
                 />
               </Grid>
             </Grid>

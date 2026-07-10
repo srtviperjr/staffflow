@@ -14,6 +14,7 @@ import {
 import SendIcon from '@mui/icons-material/Send'
 import AssignmentIcon from '@mui/icons-material/Assignment'
 import SearchableSelect from '../../components/SearchableSelect'
+import SundayWeekDatePicker from '../../components/SundayWeekDatePicker'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
 import {
   AREAS,
@@ -307,29 +308,25 @@ export default function StaffingPlanFormPage() {
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                <TextField
+                <SundayWeekDatePicker
                   label="Start Bi-Week"
-                  type="date"
                   value={form.startBiWeek}
-                  onChange={(e) => updateField('startBiWeek', e.target.value)}
-                  error={Boolean(errors.startBiWeek)}
-                  helperText={errors.startBiWeek ?? 'Bi-weekly Sunday start date'}
-                  slotProps={{ inputLabel: { shrink: true } }}
+                  onChange={(value) => updateField('startBiWeek', value)}
+                  mode="biweekly"
+                  error={errors.startBiWeek}
+                  helperText="Bi-weekly Sunday start date"
                   required
-                  fullWidth
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                <TextField
+                <SundayWeekDatePicker
                   label="LWP"
-                  type="date"
                   value={form.lwp}
-                  onChange={(e) => updateField('lwp', e.target.value)}
-                  error={Boolean(errors.lwp)}
-                  helperText={errors.lwp ?? 'Weekly Sunday date'}
-                  slotProps={{ inputLabel: { shrink: true } }}
+                  onChange={(value) => updateField('lwp', value)}
+                  mode="weekly"
+                  error={errors.lwp}
+                  helperText="Weekly Sunday date"
                   required
-                  fullWidth
                 />
               </Grid>
             </Grid>
