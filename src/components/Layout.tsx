@@ -34,7 +34,7 @@ export default function Layout() {
         position="sticky"
         elevation={0}
         sx={{
-          background: 'linear-gradient(135deg, #D35400 0%, #7A3400 100%)',
+          background: 'linear-gradient(135deg, #DC7633 0%, #955D33 100%)',
           borderBottom: '1px solid rgba(255,255,255,0.12)',
         }}
       >

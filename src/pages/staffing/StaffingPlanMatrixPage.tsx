@@ -190,7 +190,7 @@ export default function StaffingPlanMatrixPage() {
                           align="center"
                           sx={{
                             ...cellSx,
-                            bgcolor: row.loads[period] != null ? 'rgba(211, 84, 0, 0.08)' : undefined,
+                            bgcolor: row.loads[period] != null ? 'rgba(220, 118, 51, 0.08)' : undefined,
                             fontWeight: row.loads[period] != null ? 600 : 400,
                             color: row.loads[period] != null ? 'primary.main' : 'text.secondary',
                           }}

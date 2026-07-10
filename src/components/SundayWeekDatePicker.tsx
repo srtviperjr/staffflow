@@ -161,9 +161,9 @@ export default function SundayWeekDatePicker({
                   gridTemplateColumns: 'repeat(7, 1fr)',
                   gap: 0.5,
                   borderRadius: 1,
-                  bgcolor: selectable ? 'rgba(211, 84, 0, 0.08)' : 'transparent',
+                  bgcolor: selectable ? 'rgba(220, 118, 51, 0.08)' : 'transparent',
                   outline: selectable ? '1px solid' : 'none',
-                  outlineColor: selectable ? 'rgba(211, 84, 0, 0.22)' : 'transparent',
+                  outlineColor: selectable ? 'rgba(220, 118, 51, 0.22)' : 'transparent',
                   opacity: inCurrentMonth || selectable ? 1 : 0.55,
                 }}
               >
