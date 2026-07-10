@@ -2,6 +2,10 @@ export type ProjectAuthorizationStatus = 'pending' | 'approved' | 'rejected'
 
 export interface ProjectAuthorizationRequest {
   id: string
+  revisionGroupId: string
+  revision: number
+  supersedesId?: string
+  isCurrentRevision: boolean
   staffingPlanRequestId: string
   functionalGroup: string
   dsg: string

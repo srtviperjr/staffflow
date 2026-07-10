@@ -1,6 +1,7 @@
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import type { StaffingPlanRequest } from '../types/staffingPlan'
 import { getApprovedStaffingRequests } from './approvedPositions'
+import { getLatestApprovedAuthorizationByPosition } from './projectAuthorizationRevisions'
 import { generateBiWeeklyPeriods, parseDateInput } from './staffingPlanDates'
 
 export type LocationCategory = 'Site - Comm' | 'Site - Const' | 'Office'
@@ -66,7 +67,7 @@ export function getMatrixPeriods(count = 16): string[] {
 }
 
 function getApprovedAuthorizations(requests: ProjectAuthorizationRequest[]) {
-  return requests.filter((request) => request.status === 'approved')
+  return [...getLatestApprovedAuthorizationByPosition(requests).values()]
 }
 
 function toLocationCategory(locationType: string): LocationCategory {

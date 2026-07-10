@@ -38,6 +38,10 @@ function App() {
                     <Route path="staffing-plan/matrix" element={<StaffingPlanMatrixPage />} />
                     <Route path="project-authorization" element={<ProjectAuthorizationFormPage />} />
                     <Route
+                      path="project-authorization/revise/:requestId"
+                      element={<ProjectAuthorizationFormPage />}
+                    />
+                    <Route
                       path="project-authorization/manager"
                       element={<ProjectAuthorizationManagerPage />}
                     />

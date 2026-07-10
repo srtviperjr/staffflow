@@ -1,18 +1,23 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import {
   Alert,
   Box,
   Button,
   Card,
   CardContent,
+  Chip,
   Divider,
   Grid,
   Snackbar,
+  Stack,
   TextField,
   Typography,
 } from '@mui/material'
 import SendIcon from '@mui/icons-material/Send'
 import VerifiedIcon from '@mui/icons-material/Verified'
+import EditIcon from '@mui/icons-material/Edit'
+import HistoryIcon from '@mui/icons-material/History'
 import SearchableSelect from '../../components/SearchableSelect'
 import SearchableOptionSelect from '../../components/SearchableOptionSelect'
 import SundayWeekDatePicker from '../../components/SundayWeekDatePicker'
@@ -28,6 +33,7 @@ import {
   getApprovedPositionOptions,
   getApprovedStaffingRequests,
 } from '../../utils/approvedPositions'
+import { requestToFormData } from '../../utils/projectAuthorizationRevisions'
 import { validateBiWeekDate, validateLwpDate } from '../../utils/staffingPlanDates'
 
 const initialForm: ProjectAuthorizationFormData = {
@@ -54,14 +60,37 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   )
 }
 
+function statusColor(status: string): 'default' | 'warning' | 'success' | 'error' {
+  if (status === 'approved') return 'success'
+  if (status === 'rejected') return 'error'
+  return 'warning'
+}
+
 export default function ProjectAuthorizationFormPage() {
+  const { requestId } = useParams()
+  const navigate = useNavigate()
   const { requests: staffingRequests } = useStaffingPlanRequests()
-  const { addRequest } = useProjectAuthorizationRequests()
+  const { currentRequests, addRequest, reviseRequest } = useProjectAuthorizationRequests()
   const [form, setForm] = useState<ProjectAuthorizationFormData>(initialForm)
   const [errors, setErrors] = useState<Partial<Record<keyof ProjectAuthorizationFormData, string>>>(
     {},
   )
   const [showSuccess, setShowSuccess] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
+
+  const revisionSource = useMemo(
+    () => currentRequests.find((request) => request.id === requestId),
+    [currentRequests, requestId],
+  )
+  const isRevisionMode = Boolean(requestId && revisionSource)
+  const invalidRevisionId = Boolean(requestId && !revisionSource)
+
+  useEffect(() => {
+    if (revisionSource) {
+      setForm(requestToFormData(revisionSource))
+      setErrors({})
+    }
+  }, [revisionSource])
 
   const approvedRequests = useMemo(
     () => getApprovedStaffingRequests(staffingRequests),
@@ -141,26 +170,59 @@ export default function ProjectAuthorizationFormPage() {
     )
     if (!selectedPosition) return
 
-    addRequest(form, formatApprovedPositionLabel(selectedPosition), selectedPosition.position)
-    setForm(initialForm)
+    const positionLabel = formatApprovedPositionLabel(selectedPosition)
+    const position = selectedPosition.position
+
+    if (isRevisionMode && revisionSource) {
+      reviseRequest(revisionSource.id, form, positionLabel, position)
+      setSuccessMessage(
+        `Revision ${revisionSource.revision + 1} submitted for ${revisionSource.candidateName}.`,
+      )
+      navigate('/project-authorization')
+    } else {
+      addRequest(form, positionLabel, position)
+      setSuccessMessage('Project authorization request submitted successfully.')
+      setForm(initialForm)
+    }
+
     setShowSuccess(true)
   }
 
   return (
     <>
-      <Card>
+      <Card sx={{ mb: 3 }}>
         <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
             <VerifiedIcon color="primary" sx={{ fontSize: 36 }} />
             <Box>
               <Typography variant="h4" color="primary">
-                Project Authorization Request
+                {isRevisionMode ? 'Revise Authorization Request' : 'Project Authorization Request'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Authorize a candidate against an approved staffing plan position
+                {isRevisionMode
+                  ? `Creating revision ${revisionSource!.revision + 1} from revision ${revisionSource!.revision}. Each update is saved as a new revision for review.`
+                  : 'Authorize a candidate against an approved staffing plan position'}
               </Typography>
             </Box>
           </Box>
+
+          {invalidRevisionId && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              The authorization request could not be found. It may have been superseded by a newer
+              revision.{' '}
+              <Button component={RouterLink} to="/project-authorization" size="small">
+                Back to requests
+              </Button>
+            </Alert>
+          )}
+
+          {isRevisionMode && (
+            <Alert severity="info" icon={<HistoryIcon />} sx={{ mb: 2 }}>
+              You are revising <strong>{revisionSource!.candidateName}</strong> (
+              {revisionSource!.approvedPositionLabel}). Submitting will create revision{' '}
+              <strong>{revisionSource!.revision + 1}</strong> and send it for manager review.
+            </Alert>
+          )}
 
           {approvedRequests.length === 0 && (
             <Alert severity="info" sx={{ mb: 3 }}>
@@ -329,20 +391,77 @@ export default function ProjectAuthorizationFormPage() {
               </Grid>
             </Grid>
 
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 4, flexWrap: 'wrap' }}>
+              {isRevisionMode && (
+                <Button component={RouterLink} to="/project-authorization" variant="outlined">
+                  Cancel Revision
+                </Button>
+              )}
               <Button
                 type="submit"
                 variant="contained"
                 size="large"
-                startIcon={<SendIcon />}
-                disabled={approvedRequests.length === 0}
+                startIcon={isRevisionMode ? <EditIcon /> : <SendIcon />}
+                disabled={approvedRequests.length === 0 || invalidRevisionId}
               >
-                Submit Request
+                {isRevisionMode ? `Submit Revision ${revisionSource!.revision + 1}` : 'Submit Request'}
               </Button>
             </Box>
           </Box>
         </CardContent>
       </Card>
+
+      {!isRevisionMode && currentRequests.length > 0 && (
+        <Card>
+          <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+            <SectionTitle>Submitted Requests</SectionTitle>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Revise an existing request to create a new revision for manager review.
+            </Typography>
+            <Stack spacing={2}>
+              {currentRequests.map((request) => (
+                <Box
+                  key={request.id}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: { xs: 'flex-start', sm: 'center' },
+                    gap: 2,
+                    flexWrap: 'wrap',
+                    p: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 2,
+                  }}
+                >
+                  <Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                      <Typography variant="subtitle1">{request.candidateName}</Typography>
+                      <Chip label={`Rev ${request.revision}`} size="small" variant="outlined" />
+                      <Chip
+                        label={request.status}
+                        size="small"
+                        color={statusColor(request.status)}
+                      />
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      {request.approvedPositionLabel}
+                    </Typography>
+                  </Box>
+                  <Button
+                    component={RouterLink}
+                    to={`/project-authorization/revise/${request.id}`}
+                    variant="outlined"
+                    startIcon={<EditIcon />}
+                  >
+                    Revise
+                  </Button>
+                </Box>
+              ))}
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
 
       <Snackbar
         open={showSuccess}
@@ -351,7 +470,7 @@ export default function ProjectAuthorizationFormPage() {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert severity="success" variant="filled" onClose={() => setShowSuccess(false)}>
-          Project authorization request submitted successfully.
+          {successMessage}
         </Alert>
       </Snackbar>
     </>
