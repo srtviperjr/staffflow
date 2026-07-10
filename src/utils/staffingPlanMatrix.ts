@@ -9,6 +9,7 @@ export type LocationCategory = 'Site - Comm' | 'Site - Const' | 'Office'
 
 export interface StaffingMatrixRow {
   id: string
+  authorization?: ProjectAuthorizationRequest
   phase: string
   projectOffice: string
   functionalDsg: string
@@ -113,19 +114,24 @@ function buildRow(
   periods: string[],
 ): StaffingMatrixRow {
   const isAuthorized = Boolean(authorization)
-  const rowId = authorization?.id ?? position.id
 
   const loads = Object.fromEntries(
     periods.map((period) => [
       period,
       isAuthorized
-        ? generateDemoLoad(rowId, period, authorization!.startBiWeek, authorization!.lwp)
+        ? generateDemoLoad(
+            authorization!.id,
+            period,
+            authorization!.startBiWeek,
+            authorization!.lwp,
+          )
         : null,
     ]),
   ) as Record<string, number | null>
 
   return {
-    id: rowId,
+    id: position.id,
+    authorization,
     phase: position.phase,
     projectOffice: position.locationType,
     functionalDsg: position.dsg,
@@ -134,11 +140,11 @@ function buildRow(
     country: authorization?.country ?? position.country,
     discipline: position.discipline,
     position: position.position,
-    candidate: authorization?.candidateName ?? 'Vacant',
+    candidate: authorization?.candidateName ?? 'None',
     class: authorization?.class ?? position.class,
     hiringSource: authorization?.hiringSource ?? position.hiringSource,
     eeIdSap: authorization?.eeIdSap ?? position.eeIdSap,
-    paf: authorization?.pafNumber ?? '—',
+    paf: authorization?.pafNumber ?? 'None',
     sortNumber: authorization?.sortNumber ?? position.sortNumber,
     totalHours: authorization?.totalHours ?? position.totalHours,
     hoursToGo: position.hoursToGo,

@@ -1,6 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Box,
+  Button,
   Card,
   CardContent,
   Table,
@@ -12,15 +13,20 @@ import {
   Typography,
 } from '@mui/material'
 import TableChartIcon from '@mui/icons-material/TableChart'
+import PafDetailDialog from '../../components/PafDetailDialog'
 import { useProjectAuthorizationRequests } from '../../context/ProjectAuthorizationContext'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
+import type { ProjectAuthorizationRequest } from '../../types/projectAuthorization'
 import {
   METADATA_COLUMNS,
   buildStaffingMatrixRows,
   buildSummaryRows,
   getMatrixPeriods,
   getRowMetadataValues,
+  type StaffingMatrixRow,
 } from '../../utils/staffingPlanMatrix'
+
+const CANDIDATE_COLUMN_INDEX = METADATA_COLUMNS.indexOf('Candidate')
 
 const cellSx = {
   border: '1px solid #bdbdbd',
@@ -66,9 +72,26 @@ function formatLoad(value: number | null | undefined) {
   return Number.isInteger(value) ? String(value) : value.toFixed(2)
 }
 
+function renderMetadataCell(row: StaffingMatrixRow, index: number, value: string) {
+  if (index !== CANDIDATE_COLUMN_INDEX) {
+    return value
+  }
+
+  if (!row.authorization) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        None
+      </Typography>
+    )
+  }
+
+  return value
+}
+
 export default function StaffingPlanMatrixPage() {
   const { requests: staffingRequests } = useStaffingPlanRequests()
   const { requests: authorizationRequests } = useProjectAuthorizationRequests()
+  const [selectedPaf, setSelectedPaf] = useState<ProjectAuthorizationRequest | null>(null)
 
   const periods = useMemo(() => getMatrixPeriods(), [])
   const rows = useMemo(
@@ -86,7 +109,7 @@ export default function StaffingPlanMatrixPage() {
             Staffing Plan
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Approved positions and authorized candidates with bi-weekly full-time load
+            All approved positions with optional PAF-approved candidates and bi-weekly load
           </Typography>
         </Box>
       </Box>
@@ -99,8 +122,8 @@ export default function StaffingPlanMatrixPage() {
                 No approved positions yet
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Approve position requests and PAF approvals to populate the staffing plan
-                matrix.
+                Approve position requests to populate the staffing plan matrix. PAF approvals are
+                optional and can be linked later.
               </Typography>
             </Box>
           ) : (
@@ -178,10 +201,27 @@ export default function StaffingPlanMatrixPage() {
                             left: index === 0 ? 0 : undefined,
                             zIndex: index === 0 ? 1 : undefined,
                             bgcolor: index === 0 ? 'background.paper' : undefined,
-                            fontWeight: index === 8 && row.candidate !== 'Vacant' ? 600 : 400,
                           }}
                         >
-                          {value}
+                          {index === CANDIDATE_COLUMN_INDEX && row.authorization ? (
+                            <Button
+                              variant="text"
+                              size="small"
+                              onClick={() => setSelectedPaf(row.authorization!)}
+                              sx={{
+                                textTransform: 'none',
+                                p: 0,
+                                minWidth: 0,
+                                fontWeight: 600,
+                                fontSize: '0.75rem',
+                                verticalAlign: 'baseline',
+                              }}
+                            >
+                              {value}
+                            </Button>
+                          ) : (
+                            renderMetadataCell(row, index, value)
+                          )}
                         </TableCell>
                       ))}
                       {periods.map((period) => (
@@ -206,6 +246,8 @@ export default function StaffingPlanMatrixPage() {
           )}
         </CardContent>
       </Card>
+
+      <PafDetailDialog authorization={selectedPaf} onClose={() => setSelectedPaf(null)} />
     </Box>
   )
 }
