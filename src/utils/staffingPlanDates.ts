@@ -85,3 +85,20 @@ export function formatDisplayDate(value: string): string {
     day: 'numeric',
   })
 }
+
+export function generateBiWeeklyPeriods(start: Date, count: number): string[] {
+  const cursor = new Date(start)
+  if (!isSunday(cursor)) {
+    cursor.setDate(cursor.getDate() - cursor.getDay())
+  }
+  if (!isBiWeeklySunday(cursor)) {
+    cursor.setDate(cursor.getDate() + 7)
+  }
+
+  const periods: string[] = []
+  for (let index = 0; index < count; index += 1) {
+    periods.push(formatDateInput(cursor))
+    cursor.setDate(cursor.getDate() + 14)
+  }
+  return periods
+}

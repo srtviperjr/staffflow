@@ -11,6 +11,7 @@ import HomeIcon from '@mui/icons-material/Home'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import AssignmentIcon from '@mui/icons-material/Assignment'
 import VerifiedIcon from '@mui/icons-material/Verified'
+import TableChartIcon from '@mui/icons-material/TableChart'
 
 function navButtonSx(active: boolean) {
   return {
@@ -76,6 +77,15 @@ export default function Layout() {
           >
             Position Requests Review
           </Button>
+          <Button
+            component={RouterLink}
+            to="/staffing-plan/matrix"
+            color="inherit"
+            startIcon={<TableChartIcon />}
+            sx={navButtonSx(isStaffing && path === '/staffing-plan/matrix')}
+          >
+            Staffing Plan
+          </Button>
 
           <Button
             component={RouterLink}
@@ -107,7 +117,7 @@ export default function Layout() {
             'radial-gradient(circle at top right, rgba(21,101,192,0.06), transparent 40%), radial-gradient(circle at bottom left, rgba(0,131,143,0.06), transparent 40%)',
         }}
       >
-        <Container maxWidth="lg">
+        <Container maxWidth={path.startsWith('/staffing-plan/matrix') ? false : 'lg'}>
           <Outlet />
         </Container>
       </Box>

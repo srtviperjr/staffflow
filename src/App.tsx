@@ -13,6 +13,7 @@ import LabourChangeFormPage from './pages/labour/LabourChangeFormPage'
 import LabourChangeManagerPage from './pages/labour/LabourChangeManagerPage'
 import StaffingPlanFormPage from './pages/staffing/StaffingPlanFormPage'
 import StaffingPlanManagerPage from './pages/staffing/StaffingPlanManagerPage'
+import StaffingPlanMatrixPage from './pages/staffing/StaffingPlanMatrixPage'
 import ProjectAuthorizationFormPage from './pages/authorization/ProjectAuthorizationFormPage'
 import ProjectAuthorizationManagerPage from './pages/authorization/ProjectAuthorizationManagerPage'
 
@@ -34,6 +35,7 @@ function App() {
                     <Route path="labour-change/manager" element={<LabourChangeManagerPage />} />
                     <Route path="staffing-plan" element={<StaffingPlanFormPage />} />
                     <Route path="staffing-plan/manager" element={<StaffingPlanManagerPage />} />
+                    <Route path="staffing-plan/matrix" element={<StaffingPlanMatrixPage />} />
                     <Route path="project-authorization" element={<ProjectAuthorizationFormPage />} />
                     <Route
                       path="project-authorization/manager"

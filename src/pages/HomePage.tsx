@@ -117,6 +117,9 @@ export default function HomePage() {
               <Button component={RouterLink} to="/staffing-plan/manager" variant="outlined">
                 Manager Review
               </Button>
+              <Button component={RouterLink} to="/staffing-plan/matrix" variant="outlined">
+                View Staffing Plan
+              </Button>
             </CardActions>
           </Card>
         </Grid>

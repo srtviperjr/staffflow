@@ -18,6 +18,7 @@ React + TypeScript + Material UI app with multiple request workflows for submitt
 ### Staffing Plan (`/staffing-plan`)
 - Position request form with searchable dropdowns, date pickers, and validation
 - Manager review page with approve/reject (rejection requires a comment)
+- Excel-like staffing plan matrix (`/staffing-plan/matrix`) showing approved positions and authorized candidates with bi-weekly load
 
 ### Project Authorization (`/project-authorization`)
 - Authorization request form linked to approved staffing plan positions (cascading Functional Group → DSG → Position)
@@ -35,6 +36,7 @@ React + TypeScript + Material UI app with multiple request workflows for submitt
 | `/labour-change/manager` | Review labour change requests |
 | `/staffing-plan` | New staffing plan position request |
 | `/staffing-plan/manager` | Staffing plan manager review |
+| `/staffing-plan/matrix` | Staffing plan matrix view |
 | `/project-authorization` | New project authorization request |
 | `/project-authorization/manager` | Project authorization manager review |
 
