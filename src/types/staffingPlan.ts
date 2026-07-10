@@ -1,0 +1,78 @@
+import {
+  AREAS,
+  CLASSES,
+  COUNTRIES,
+  DISCIPLINES,
+  DSG_OPTIONS,
+  FUNCTIONAL_GROUPS,
+  HIRING_SOURCES,
+  LOCATION_TYPES,
+  PHASES,
+  POSITIONS,
+  ROSTERS,
+  SUB_AREAS,
+} from '../constants/staffingPlanOptions'
+
+export type Phase = (typeof PHASES)[number]
+export type LocationType = (typeof LOCATION_TYPES)[number]
+export type FunctionalGroup = (typeof FUNCTIONAL_GROUPS)[number]
+export type Dsg = (typeof DSG_OPTIONS)[number]
+export type Area = (typeof AREAS)[number]
+export type SubArea = (typeof SUB_AREAS)[number]
+export type Discipline = (typeof DISCIPLINES)[number]
+export type PositionClass = (typeof CLASSES)[number]
+export type HiringSource = (typeof HIRING_SOURCES)[number]
+export type Roster = (typeof ROSTERS)[number]
+export type RequestStatus = 'pending' | 'approved' | 'rejected'
+
+export interface StaffingPlanRequest {
+  id: string
+  phase: Phase
+  locationType: LocationType
+  functionalGroup: FunctionalGroup
+  dsg: string
+  area: Area
+  subArea: SubArea
+  country: string
+  discipline: Discipline
+  position: string
+  class: PositionClass
+  hiringSource: HiringSource
+  eeIdSap: string
+  pafStatus: string
+  sortNumber: string
+  totalHours: string
+  hoursToGo: string
+  roster: Roster
+  startBiWeek: string
+  lwp: string
+  status: RequestStatus
+  submittedAt: string
+  rejectionComment?: string
+  reviewedAt?: string
+}
+
+export interface StaffingPlanFormData {
+  phase: Phase | ''
+  locationType: LocationType | ''
+  functionalGroup: FunctionalGroup | ''
+  dsg: string
+  area: Area | ''
+  subArea: SubArea | ''
+  country: string
+  discipline: Discipline | ''
+  position: string
+  class: PositionClass | ''
+  hiringSource: HiringSource | ''
+  eeIdSap: string
+  pafStatus: string
+  sortNumber: string
+  totalHours: string
+  hoursToGo: string
+  roster: Roster | ''
+  startBiWeek: string
+  lwp: string
+}
+
+export const COUNTRY_SUGGESTIONS = [...COUNTRIES] as string[]
+export const POSITION_SUGGESTIONS = [...POSITIONS] as string[]
