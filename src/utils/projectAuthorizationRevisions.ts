@@ -12,7 +12,10 @@ export function normalizeAuthorizationRequest(
     revisionGroupId: request.revisionGroupId ?? request.id,
     revision: request.revision ?? 1,
     isCurrentRevision: request.isCurrentRevision ?? true,
-    pafNumber: request.pafNumber ?? generatePafNumber(request.id),
+    pafNumber:
+      request.pafNumber?.length === 8
+        ? request.pafNumber
+        : generatePafNumber(request.revisionGroupId ?? request.id),
   }
 }
 
