@@ -74,7 +74,7 @@ export default function Layout() {
             startIcon={<ManageAccountsIcon />}
             sx={navButtonSx(isStaffing && path === '/staffing-plan/manager')}
           >
-            Staffing Review
+            Position Requests Review
           </Button>
 
           <Button
