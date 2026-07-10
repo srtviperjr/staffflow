@@ -56,7 +56,6 @@ export function StaffingPlanProvider({ children }: { children: ReactNode }) {
         class: data.class as StaffingPlanRequest['class'],
         hiringSource: data.hiringSource as StaffingPlanRequest['hiringSource'],
         eeIdSap: data.eeIdSap.trim(),
-        pafStatus: data.pafStatus.trim(),
         sortNumber: data.sortNumber.trim(),
         totalHours: data.totalHours.trim(),
         hoursToGo: data.hoursToGo.trim(),

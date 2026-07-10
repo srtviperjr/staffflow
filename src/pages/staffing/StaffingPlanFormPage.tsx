@@ -51,7 +51,6 @@ const initialForm: StaffingPlanFormData = {
   class: '',
   hiringSource: '',
   eeIdSap: '',
-  pafStatus: '',
   sortNumber: '',
   totalHours: '',
   hoursToGo: '',
@@ -372,35 +371,28 @@ export default function StaffingPlanFormPage() {
 
             <SectionTitle>Identifiers &amp; Hours</SectionTitle>
             <Grid container spacing={2.5} sx={{ mb: 4 }}>
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                 <TextField
                   label="EE Id # / SAP"
                   value={form.eeIdSap}
                   onChange={(e) => updateField('eeIdSap', e.target.value)}
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <TextField
-                  label="PAF Status"
-                  value={form.pafStatus}
-                  onChange={(e) => updateField('pafStatus', e.target.value)}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                 <TextField
                   label="Sort Number"
                   value={form.sortNumber}
                   onChange={(e) => updateField('sortNumber', e.target.value)}
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                 <TextField
                   label="Total Hours"
                   value={form.totalHours}
                   onChange={(e) => updateField('totalHours', e.target.value)}
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                 <TextField
                   label="Hours To Go"
                   value={form.hoursToGo}

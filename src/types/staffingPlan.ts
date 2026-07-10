@@ -39,7 +39,6 @@ export interface StaffingPlanRequest {
   class: PositionClass
   hiringSource: HiringSource
   eeIdSap: string
-  pafStatus: string
   sortNumber: string
   totalHours: string
   hoursToGo: string
@@ -65,7 +64,6 @@ export interface StaffingPlanFormData {
   class: PositionClass | ''
   hiringSource: HiringSource | ''
   eeIdSap: string
-  pafStatus: string
   sortNumber: string
   totalHours: string
   hoursToGo: string

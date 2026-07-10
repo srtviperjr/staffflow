@@ -159,7 +159,6 @@ export default function StaffingPlanManagerPage() {
                       <Detail label="Hiring Source" value={request.hiringSource} />
                       <Detail label="Roster" value={request.roster} />
                       <Detail label="EE Id / SAP" value={request.eeIdSap} />
-                      <Detail label="PAF Status" value={request.pafStatus} />
                       <Detail label="Sort Number" value={request.sortNumber} />
                       <Detail label="Total Hours" value={request.totalHours} />
                       <Detail label="Hours To Go" value={request.hoursToGo} />
