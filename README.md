@@ -1,4 +1,4 @@
-# Staffing Plan Portal
+# StaffFlow
 
 A React application for submitting and reviewing staffing plan position requests. Built with Vite, TypeScript, Material UI, and React Router.
 

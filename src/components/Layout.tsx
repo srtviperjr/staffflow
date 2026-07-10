@@ -46,7 +46,7 @@ export default function Layout() {
               textDecoration: 'none',
             }}
           >
-            Staffing Plan Portal
+            StaffFlow
           </Typography>
 
           <Button
