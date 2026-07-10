@@ -65,7 +65,7 @@ export default function Layout() {
             startIcon={<AssignmentIcon />}
             sx={navButtonSx(isStaffing && path === '/staffing-plan')}
           >
-            Staffing Plan
+            Position Request
           </Button>
           <Button
             component={RouterLink}
