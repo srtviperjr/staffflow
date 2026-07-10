@@ -14,7 +14,6 @@ export interface ProjectAuthorizationRequest {
   eeIdSap: string
   sortNumber: string
   totalHours: string
-  hoursToGo: string
   roster: string
   startBiWeek: string
   lwp: string
@@ -35,7 +34,6 @@ export interface ProjectAuthorizationFormData {
   eeIdSap: string
   sortNumber: string
   totalHours: string
-  hoursToGo: string
   roster: string
   startBiWeek: string
   lwp: string

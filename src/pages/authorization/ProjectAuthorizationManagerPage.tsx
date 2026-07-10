@@ -160,7 +160,6 @@ export default function ProjectAuthorizationManagerPage() {
                       <Detail label="EE Id / SAP" value={request.eeIdSap} />
                       <Detail label="Sort Number" value={request.sortNumber} />
                       <Detail label="Total Hours" value={request.totalHours} />
-                      <Detail label="Hours To Go" value={request.hoursToGo} />
                       <Detail label="Start Bi-Week" value={formatDisplayDate(request.startBiWeek)} />
                       <Detail label="LWP" value={formatDisplayDate(request.lwp)} />
                       <Detail label="Submitted" value={formatTimestamp(request.submittedAt)} />

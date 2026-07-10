@@ -40,7 +40,6 @@ const initialForm: ProjectAuthorizationFormData = {
   eeIdSap: '',
   sortNumber: '',
   totalHours: '',
-  hoursToGo: '',
   roster: '',
   startBiWeek: '',
   lwp: '',
@@ -288,14 +287,6 @@ export default function ProjectAuthorizationFormPage() {
                   label="Total Hours"
                   value={form.totalHours}
                   onChange={(e) => updateField('totalHours', e.target.value)}
-                  fullWidth
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 2 }}>
-                <TextField
-                  label="Hours To Go"
-                  value={form.hoursToGo}
-                  onChange={(e) => updateField('hoursToGo', e.target.value)}
                   fullWidth
                 />
               </Grid>

@@ -63,7 +63,6 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
         eeIdSap: data.eeIdSap.trim(),
         sortNumber: data.sortNumber.trim(),
         totalHours: data.totalHours.trim(),
-        hoursToGo: data.hoursToGo.trim(),
         roster: data.roster,
         startBiWeek: data.startBiWeek,
         lwp: data.lwp,
