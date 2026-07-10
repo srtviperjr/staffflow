@@ -1,7 +1,7 @@
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 
 export function generatePafNumber(uuid: string = crypto.randomUUID()): string {
-  return uuid.replace(/-/g, '').slice(0, 2).toUpperCase()
+  return uuid.split('-')[0].toUpperCase()
 }
 
 export function normalizeAuthorizationRequest(
