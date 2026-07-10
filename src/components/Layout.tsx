@@ -8,8 +8,6 @@ import {
   Typography,
 } from '@mui/material'
 import HomeIcon from '@mui/icons-material/Home'
-import PersonAddIcon from '@mui/icons-material/PersonAdd'
-import DescriptionIcon from '@mui/icons-material/Description'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import AssignmentIcon from '@mui/icons-material/Assignment'
 import VerifiedIcon from '@mui/icons-material/Verified'
@@ -26,8 +24,6 @@ export default function Layout() {
   const path = location.pathname
 
   const isHome = path === '/'
-  const isOnboarding = path.startsWith('/onboarding')
-  const isLabour = path.startsWith('/labour-change')
   const isStaffing = path.startsWith('/staffing-plan')
   const isAuthorization = path.startsWith('/project-authorization')
 
@@ -60,44 +56,6 @@ export default function Layout() {
             sx={navButtonSx(isHome)}
           >
             Home
-          </Button>
-
-          <Button
-            component={RouterLink}
-            to="/onboarding"
-            color="inherit"
-            startIcon={<PersonAddIcon />}
-            sx={navButtonSx(isOnboarding && path === '/onboarding')}
-          >
-            Onboarding
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/onboarding/manager"
-            color="inherit"
-            startIcon={<ManageAccountsIcon />}
-            sx={navButtonSx(isOnboarding && path === '/onboarding/manager')}
-          >
-            Onboarding Review
-          </Button>
-
-          <Button
-            component={RouterLink}
-            to="/labour-change"
-            color="inherit"
-            startIcon={<DescriptionIcon />}
-            sx={navButtonSx(isLabour && path === '/labour-change')}
-          >
-            Labour Change
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/labour-change/manager"
-            color="inherit"
-            startIcon={<ManageAccountsIcon />}
-            sx={navButtonSx(isLabour && path === '/labour-change/manager')}
-          >
-            Labour Review
           </Button>
 
           <Button
