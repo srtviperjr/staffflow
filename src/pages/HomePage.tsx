@@ -11,16 +11,32 @@ import {
 import AssignmentIcon from '@mui/icons-material/Assignment'
 import VerifiedIcon from '@mui/icons-material/Verified'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import ScienceIcon from '@mui/icons-material/Science'
+import { seedSampleData } from '../data/sampleData'
 
 export default function HomePage() {
+  const handleLoadSampleData = () => {
+    seedSampleData()
+    window.location.reload()
+  }
+
   return (
     <Box>
       <Typography variant="h4" color="primary" gutterBottom sx={{ fontWeight: 700 }}>
         Jansen StaffFlow
       </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
         Submit position requests, PAF approvals, and view the staffing plan matrix.
       </Typography>
+      <Button
+        variant="outlined"
+        size="small"
+        startIcon={<ScienceIcon />}
+        onClick={handleLoadSampleData}
+        sx={{ mb: 4 }}
+      >
+        Load Sample Data
+      </Button>
 
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 6 }}>

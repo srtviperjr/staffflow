@@ -16,6 +16,7 @@ import {
   getRevisionHistory,
   normalizeAuthorizationRequests,
 } from '../utils/projectAuthorizationRevisions'
+import { SAMPLE_PROJECT_AUTHORIZATION_REQUESTS } from '../data/sampleData'
 
 const STORAGE_KEY = 'project-authorization-requests'
 
@@ -43,9 +44,13 @@ const ProjectAuthorizationContext = createContext<ProjectAuthorizationContextVal
 function loadRequests(): ProjectAuthorizationRequest[] {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    return stored
-      ? normalizeAuthorizationRequests(JSON.parse(stored) as ProjectAuthorizationRequest[])
-      : []
+    if (stored) {
+      return normalizeAuthorizationRequests(JSON.parse(stored) as ProjectAuthorizationRequest[])
+    }
+
+    const seeded = normalizeAuthorizationRequests(SAMPLE_PROJECT_AUTHORIZATION_REQUESTS)
+    saveRequests(seeded)
+    return seeded
   } catch {
     return []
   }

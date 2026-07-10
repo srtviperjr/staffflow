@@ -13,6 +13,7 @@ import {
   getStaffingRevisionHistory,
   normalizeStaffingPlanRequests,
 } from '../utils/staffingPlanRevisions'
+import { SAMPLE_STAFFING_PLAN_REQUESTS } from '../data/sampleData'
 
 const STORAGE_KEY = 'staffing-plan-requests'
 
@@ -31,9 +32,13 @@ const StaffingPlanContext = createContext<StaffingPlanContextValue | null>(null)
 function loadRequests(): StaffingPlanRequest[] {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    return stored
-      ? normalizeStaffingPlanRequests(JSON.parse(stored) as StaffingPlanRequest[])
-      : []
+    if (stored) {
+      return normalizeStaffingPlanRequests(JSON.parse(stored) as StaffingPlanRequest[])
+    }
+
+    const seeded = normalizeStaffingPlanRequests(SAMPLE_STAFFING_PLAN_REQUESTS)
+    saveRequests(seeded)
+    return seeded
   } catch {
     return []
   }
