@@ -1,31 +1,8 @@
-import { Link as RouterLink, Outlet, useLocation } from 'react-router-dom'
-import {
-  AppBar,
-  Box,
-  Button,
-  Container,
-  Toolbar,
-  Typography,
-} from '@mui/material'
-import AssignmentIndIcon from '@mui/icons-material/AssignmentInd'
-import PersonAddIcon from '@mui/icons-material/PersonAdd'
-import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
-
-function navButtonSx(active: boolean) {
-  return {
-    opacity: active ? 1 : 0.75,
-    bgcolor: active ? 'rgba(255,255,255,0.15)' : 'transparent',
-  }
-}
+import { Link as RouterLink, Outlet } from 'react-router-dom'
+import { AppBar, Box, Container, Toolbar, Typography } from '@mui/material'
+import HomeIcon from '@mui/icons-material/Home'
 
 export default function Layout() {
-  const location = useLocation()
-  const path = location.pathname
-
-  const isHome = path === '/'
-  const isOnboarding = path === '/onboarding'
-  const isManager = path === '/onboarding/manager'
-
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <AppBar
@@ -36,51 +13,16 @@ export default function Layout() {
           borderBottom: '1px solid rgba(255,255,255,0.12)',
         }}
       >
-        <Toolbar sx={{ gap: 1, flexWrap: 'wrap' }}>
-          <AssignmentIndIcon sx={{ fontSize: 32 }} />
+        <Toolbar>
+          <HomeIcon sx={{ fontSize: 28, mr: 1 }} />
           <Typography
             variant="h6"
             component={RouterLink}
             to="/"
-            sx={{
-              flexGrow: 1,
-              fontWeight: 700,
-              color: 'inherit',
-              textDecoration: 'none',
-            }}
+            sx={{ fontWeight: 700, color: 'inherit', textDecoration: 'none' }}
           >
-            Employee Onboarding Portal
+            Request Portal
           </Typography>
-
-          <Button
-            component={RouterLink}
-            to="/"
-            color="inherit"
-            size="small"
-            sx={navButtonSx(isHome)}
-          >
-            Home
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/onboarding"
-            color="inherit"
-            size="small"
-            startIcon={<PersonAddIcon />}
-            sx={navButtonSx(isOnboarding)}
-          >
-            New Request
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/onboarding/manager"
-            color="inherit"
-            size="small"
-            startIcon={<ManageAccountsIcon />}
-            sx={navButtonSx(isManager)}
-          >
-            Manager Review
-          </Button>
         </Toolbar>
       </AppBar>
 
