@@ -434,3 +434,7 @@ export const ROSTERS = [
   '21x7 (10 hrs)',
   '10x4 (10hrs)',
 ] as const
+
+export function sortAlpha<T extends string>(items: readonly T[]): T[] {
+  return [...items].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+}

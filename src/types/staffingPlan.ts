@@ -11,6 +11,7 @@ import {
   POSITIONS,
   ROSTERS,
   SUB_AREAS,
+  sortAlpha,
 } from '../constants/staffingPlanOptions'
 
 export type Phase = (typeof PHASES)[number]
@@ -72,5 +73,5 @@ export interface StaffingPlanFormData {
   lwp: string
 }
 
-export const COUNTRY_SUGGESTIONS = [...COUNTRIES] as string[]
-export const POSITION_SUGGESTIONS = [...POSITIONS] as string[]
+export const COUNTRY_SUGGESTIONS = sortAlpha(COUNTRIES)
+export const POSITION_SUGGESTIONS = sortAlpha(POSITIONS)

@@ -30,6 +30,7 @@ import {
   PHASES,
   ROSTERS,
   SUB_AREAS,
+  sortAlpha,
 } from '../../constants/staffingPlanOptions'
 import {
   COUNTRY_SUGGESTIONS,
@@ -143,7 +144,7 @@ export default function StaffingPlanFormPage() {
                     value={form.phase}
                     onChange={(e) => updateField('phase', e.target.value as StaffingPlanFormData['phase'])}
                   >
-                    {PHASES.map((phase) => (
+                    {sortAlpha(PHASES).map((phase) => (
                       <MenuItem key={phase} value={phase}>
                         {phase}
                       </MenuItem>
@@ -161,7 +162,7 @@ export default function StaffingPlanFormPage() {
                       updateField('locationType', e.target.value as StaffingPlanFormData['locationType'])
                     }
                   >
-                    {LOCATION_TYPES.map((type) => (
+                    {sortAlpha(LOCATION_TYPES).map((type) => (
                       <MenuItem key={type} value={type}>
                         {type}
                       </MenuItem>
@@ -187,7 +188,7 @@ export default function StaffingPlanFormPage() {
                       )
                     }
                   >
-                    {FUNCTIONAL_GROUPS.map((group) => (
+                    {sortAlpha(FUNCTIONAL_GROUPS).map((group) => (
                       <MenuItem key={group} value={group}>
                         {group}
                       </MenuItem>
@@ -202,7 +203,7 @@ export default function StaffingPlanFormPage() {
               </Grid>
               <Grid size={12}>
                 <Autocomplete
-                  options={[...DSG_OPTIONS]}
+                  options={sortAlpha(DSG_OPTIONS)}
                   value={form.dsg || null}
                   onChange={(_, value) => updateField('dsg', value ?? '')}
                   renderInput={(params) => (
@@ -224,7 +225,7 @@ export default function StaffingPlanFormPage() {
                     value={form.area}
                     onChange={(e) => updateField('area', e.target.value as StaffingPlanFormData['area'])}
                   >
-                    {AREAS.map((area) => (
+                    {sortAlpha(AREAS).map((area) => (
                       <MenuItem key={area} value={area}>
                         {area}
                       </MenuItem>
@@ -247,7 +248,7 @@ export default function StaffingPlanFormPage() {
                       updateField('subArea', e.target.value as StaffingPlanFormData['subArea'])
                     }
                   >
-                    {SUB_AREAS.map((subArea) => (
+                    {sortAlpha(SUB_AREAS).map((subArea) => (
                       <MenuItem key={subArea} value={subArea}>
                         {subArea}
                       </MenuItem>
@@ -292,7 +293,7 @@ export default function StaffingPlanFormPage() {
                       updateField('discipline', e.target.value as StaffingPlanFormData['discipline'])
                     }
                   >
-                    {DISCIPLINES.map((discipline) => (
+                    {sortAlpha(DISCIPLINES).map((discipline) => (
                       <MenuItem key={discipline} value={discipline}>
                         {discipline}
                       </MenuItem>
@@ -331,7 +332,7 @@ export default function StaffingPlanFormPage() {
                     value={form.class}
                     onChange={(e) => updateField('class', e.target.value as StaffingPlanFormData['class'])}
                   >
-                    {CLASSES.map((cls) => (
+                    {sortAlpha(CLASSES).map((cls) => (
                       <MenuItem key={cls} value={cls}>
                         {cls}
                       </MenuItem>
@@ -354,7 +355,7 @@ export default function StaffingPlanFormPage() {
                       updateField('hiringSource', e.target.value as StaffingPlanFormData['hiringSource'])
                     }
                   >
-                    {HIRING_SOURCES.map((source) => (
+                    {sortAlpha(HIRING_SOURCES).map((source) => (
                       <MenuItem key={source} value={source}>
                         {source}
                       </MenuItem>
@@ -411,7 +412,7 @@ export default function StaffingPlanFormPage() {
                     value={form.roster}
                     onChange={(e) => updateField('roster', e.target.value as StaffingPlanFormData['roster'])}
                   >
-                    {ROSTERS.map((roster) => (
+                    {sortAlpha(ROSTERS).map((roster) => (
                       <MenuItem key={roster} value={roster}>
                         {roster}
                       </MenuItem>
