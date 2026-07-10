@@ -1,4 +1,5 @@
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
+import type { StaffingPlanRequest } from '../types/staffingPlan'
 
 export function generatePafNumber(uuid: string = crypto.randomUUID()): string {
   return uuid.split('-')[0].toUpperCase()
@@ -91,5 +92,25 @@ export function requestToFormData(
     roster: request.roster,
     startBiWeek: request.startBiWeek,
     lwp: request.lwp,
+  }
+}
+
+export function staffingPlanToFormData(
+  position: StaffingPlanRequest,
+): import('../types/projectAuthorization').ProjectAuthorizationFormData {
+  return {
+    staffingPlanRequestId: position.id,
+    functionalGroup: position.functionalGroup,
+    dsg: position.dsg,
+    candidateName: '',
+    country: position.country,
+    class: position.class,
+    hiringSource: position.hiringSource,
+    eeIdSap: position.eeIdSap,
+    sortNumber: position.sortNumber,
+    totalHours: position.totalHours,
+    roster: position.roster,
+    startBiWeek: position.startBiWeek,
+    lwp: position.lwp,
   }
 }
