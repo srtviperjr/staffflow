@@ -11,6 +11,7 @@ import type {
   ProjectAuthorizationRequest,
 } from '../types/projectAuthorization'
 import {
+  generatePafNumber,
   getCurrentAuthorizationRequests,
   getRevisionHistory,
   normalizeAuthorizationRequests,
@@ -21,7 +22,11 @@ const STORAGE_KEY = 'project-authorization-requests'
 interface ProjectAuthorizationContextValue {
   requests: ProjectAuthorizationRequest[]
   currentRequests: ProjectAuthorizationRequest[]
-  addRequest: (data: ProjectAuthorizationFormData, positionLabel: string, position: string) => void
+  addRequest: (
+    data: ProjectAuthorizationFormData,
+    positionLabel: string,
+    position: string,
+  ) => ProjectAuthorizationRequest
   reviseRequest: (
     sourceId: string,
     data: ProjectAuthorizationFormData,
@@ -72,6 +77,7 @@ function buildRequestFromForm(
     class: data.class,
     hiringSource: data.hiringSource,
     eeIdSap: data.eeIdSap.trim(),
+    pafNumber: overrides.pafNumber ?? generatePafNumber(overrides.id ?? crypto.randomUUID()),
     sortNumber: data.sortNumber.trim(),
     totalHours: data.totalHours.trim(),
     roster: data.roster,
@@ -101,8 +107,10 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
         revisionGroupId: id,
         revision: 1,
         isCurrentRevision: true,
+        pafNumber: generatePafNumber(id),
       })
       persist([newRequest, ...requests])
+      return newRequest
     },
     [persist, requests],
   )
@@ -122,6 +130,7 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
         revision: source.revision + 1,
         supersedesId: source.id,
         isCurrentRevision: true,
+        pafNumber: source.pafNumber,
       })
 
       const updatedRequests = requests.map((request) =>

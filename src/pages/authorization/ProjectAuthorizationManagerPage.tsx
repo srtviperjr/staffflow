@@ -73,6 +73,7 @@ function RequestDetails({ request }: { request: ProjectAuthorizationRequest }) {
       <Detail label="Hiring Source" value={request.hiringSource} />
       <Detail label="Roster" value={request.roster} />
       <Detail label="EE Id / SAP" value={request.eeIdSap} />
+      <Detail label="PAF" value={request.pafNumber} />
       <Detail label="Sort Number" value={request.sortNumber} />
       <Detail label="Total Hours" value={request.totalHours} />
       <Detail label="Start Bi-Week" value={formatDisplayDate(request.startBiWeek)} />
@@ -181,6 +182,12 @@ export default function ProjectAuthorizationManagerPage() {
                         <Box>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                             <Typography variant="h6">{request.candidateName}</Typography>
+                            <Chip
+                              label={`PAF ${request.pafNumber}`}
+                              size="small"
+                              color="info"
+                              variant="outlined"
+                            />
                             <Chip
                               label={`Revision ${request.revision}`}
                               size="small"

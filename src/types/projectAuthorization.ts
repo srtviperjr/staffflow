@@ -16,6 +16,7 @@ export interface ProjectAuthorizationRequest {
   class: string
   hiringSource: string
   eeIdSap: string
+  pafNumber: string
   sortNumber: string
   totalHours: string
   roster: string

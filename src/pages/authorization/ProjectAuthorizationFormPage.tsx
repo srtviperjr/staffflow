@@ -176,12 +176,14 @@ export default function ProjectAuthorizationFormPage() {
     if (isRevisionMode && revisionSource) {
       reviseRequest(revisionSource.id, form, positionLabel, position)
       setSuccessMessage(
-        `Revision ${revisionSource.revision + 1} submitted for ${revisionSource.candidateName}.`,
+        `Revision ${revisionSource.revision + 1} submitted for ${revisionSource.candidateName} (PAF ${revisionSource.pafNumber}).`,
       )
       navigate('/project-authorization')
     } else {
-      addRequest(form, positionLabel, position)
-      setSuccessMessage('Project authorization request submitted successfully.')
+      const created = addRequest(form, positionLabel, position)
+      setSuccessMessage(
+        `Project authorization request submitted successfully. PAF: ${created.pafNumber}.`,
+      )
       setForm(initialForm)
     }
 
@@ -437,6 +439,7 @@ export default function ProjectAuthorizationFormPage() {
                   <Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                       <Typography variant="subtitle1">{request.candidateName}</Typography>
+                      <Chip label={`PAF ${request.pafNumber}`} size="small" color="info" variant="outlined" />
                       <Chip label={`Rev ${request.revision}`} size="small" variant="outlined" />
                       <Chip
                         label={request.status}

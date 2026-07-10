@@ -137,7 +137,7 @@ function buildRow(
     class: authorization?.class ?? position.class,
     hiringSource: authorization?.hiringSource ?? position.hiringSource,
     eeIdSap: authorization?.eeIdSap ?? position.eeIdSap,
-    paf: '—',
+    paf: authorization?.pafNumber ?? '—',
     sortNumber: authorization?.sortNumber ?? position.sortNumber,
     totalHours: authorization?.totalHours ?? position.totalHours,
     hoursToGo: position.hoursToGo,
