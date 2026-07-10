@@ -38,7 +38,6 @@ const initialForm: ProjectAuthorizationFormData = {
   class: '',
   hiringSource: '',
   eeIdSap: '',
-  pafStatus: '',
   sortNumber: '',
   totalHours: '',
   hoursToGo: '',
@@ -273,14 +272,6 @@ export default function ProjectAuthorizationFormPage() {
                   label="EE Id # / SAP"
                   value={form.eeIdSap}
                   onChange={(e) => updateField('eeIdSap', e.target.value)}
-                  fullWidth
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <TextField
-                  label="PAF Status"
-                  value={form.pafStatus}
-                  onChange={(e) => updateField('pafStatus', e.target.value)}
                   fullWidth
                 />
               </Grid>

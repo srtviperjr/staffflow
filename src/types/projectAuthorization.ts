@@ -12,7 +12,6 @@ export interface ProjectAuthorizationRequest {
   class: string
   hiringSource: string
   eeIdSap: string
-  pafStatus: string
   sortNumber: string
   totalHours: string
   hoursToGo: string
@@ -34,7 +33,6 @@ export interface ProjectAuthorizationFormData {
   class: string
   hiringSource: string
   eeIdSap: string
-  pafStatus: string
   sortNumber: string
   totalHours: string
   hoursToGo: string

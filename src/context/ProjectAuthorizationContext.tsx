@@ -61,7 +61,6 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
         class: data.class,
         hiringSource: data.hiringSource,
         eeIdSap: data.eeIdSap.trim(),
-        pafStatus: data.pafStatus.trim(),
         sortNumber: data.sortNumber.trim(),
         totalHours: data.totalHours.trim(),
         hoursToGo: data.hoursToGo.trim(),
