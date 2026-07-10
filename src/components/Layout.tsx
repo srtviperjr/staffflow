@@ -77,15 +77,6 @@ export default function Layout() {
           >
             Position Requests Review
           </Button>
-          <Button
-            component={RouterLink}
-            to="/staffing-plan/matrix"
-            color="inherit"
-            startIcon={<TableChartIcon />}
-            sx={navButtonSx(isStaffing && path === '/staffing-plan/matrix')}
-          >
-            Staffing Plan
-          </Button>
 
           <Button
             component={RouterLink}
@@ -104,6 +95,15 @@ export default function Layout() {
             sx={navButtonSx(isAuthorization && path === '/project-authorization/manager')}
           >
             Authorization Review
+          </Button>
+          <Button
+            component={RouterLink}
+            to="/staffing-plan/matrix"
+            color="inherit"
+            startIcon={<TableChartIcon />}
+            sx={{ ...navButtonSx(isStaffing && path === '/staffing-plan/matrix'), ml: 'auto' }}
+          >
+            Staffing Plan
           </Button>
         </Toolbar>
       </AppBar>
