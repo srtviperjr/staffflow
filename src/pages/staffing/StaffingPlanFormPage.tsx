@@ -1,23 +1,19 @@
 import { useState } from 'react'
 import {
   Alert,
-  Autocomplete,
   Box,
   Button,
   Card,
   CardContent,
   Divider,
-  FormControl,
   Grid,
-  InputLabel,
-  MenuItem,
-  Select,
   Snackbar,
   TextField,
   Typography,
 } from '@mui/material'
 import SendIcon from '@mui/icons-material/Send'
 import AssignmentIcon from '@mui/icons-material/Assignment'
+import SearchableSelect from '../../components/SearchableSelect'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
 import {
   AREAS,
@@ -30,7 +26,6 @@ import {
   PHASES,
   ROSTERS,
   SUB_AREAS,
-  sortAlpha,
 } from '../../constants/staffingPlanOptions'
 import {
   COUNTRY_SUGGESTIONS,
@@ -137,146 +132,78 @@ export default function StaffingPlanFormPage() {
             <SectionTitle>Project &amp; Organization</SectionTitle>
             <Grid container spacing={2.5} sx={{ mb: 4 }}>
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                <FormControl fullWidth>
-                  <InputLabel>Phase</InputLabel>
-                  <Select
-                    label="Phase"
-                    value={form.phase}
-                    onChange={(e) => updateField('phase', e.target.value as StaffingPlanFormData['phase'])}
-                  >
-                    {sortAlpha(PHASES).map((phase) => (
-                      <MenuItem key={phase} value={phase}>
-                        {phase}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                <FormControl fullWidth error={Boolean(errors.locationType)} required>
-                  <InputLabel>Location Type</InputLabel>
-                  <Select
-                    label="Location Type"
-                    value={form.locationType}
-                    onChange={(e) =>
-                      updateField('locationType', e.target.value as StaffingPlanFormData['locationType'])
-                    }
-                  >
-                    {sortAlpha(LOCATION_TYPES).map((type) => (
-                      <MenuItem key={type} value={type}>
-                        {type}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.locationType && (
-                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-                      {errors.locationType}
-                    </Typography>
-                  )}
-                </FormControl>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                <FormControl fullWidth error={Boolean(errors.functionalGroup)} required>
-                  <InputLabel>Functional Group</InputLabel>
-                  <Select
-                    label="Functional Group"
-                    value={form.functionalGroup}
-                    onChange={(e) =>
-                      updateField(
-                        'functionalGroup',
-                        e.target.value as StaffingPlanFormData['functionalGroup'],
-                      )
-                    }
-                  >
-                    {sortAlpha(FUNCTIONAL_GROUPS).map((group) => (
-                      <MenuItem key={group} value={group}>
-                        {group}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.functionalGroup && (
-                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-                      {errors.functionalGroup}
-                    </Typography>
-                  )}
-                </FormControl>
-              </Grid>
-              <Grid size={12}>
-                <Autocomplete
-                  options={sortAlpha(DSG_OPTIONS)}
-                  value={form.dsg || null}
-                  onChange={(_, value) => updateField('dsg', value ?? '')}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="DSG"
-                      required
-                      error={Boolean(errors.dsg)}
-                      helperText={errors.dsg ?? 'Search and select a DSG code'}
-                    />
-                  )}
+                <SearchableSelect
+                  label="Phase"
+                  options={PHASES}
+                  value={form.phase}
+                  onChange={(value) => updateField('phase', value as StaffingPlanFormData['phase'])}
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                <FormControl fullWidth error={Boolean(errors.area)} required>
-                  <InputLabel>Area</InputLabel>
-                  <Select
-                    label="Area"
-                    value={form.area}
-                    onChange={(e) => updateField('area', e.target.value as StaffingPlanFormData['area'])}
-                  >
-                    {sortAlpha(AREAS).map((area) => (
-                      <MenuItem key={area} value={area}>
-                        {area}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.area && (
-                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-                      {errors.area}
-                    </Typography>
-                  )}
-                </FormControl>
+                <SearchableSelect
+                  label="Location Type"
+                  options={LOCATION_TYPES}
+                  value={form.locationType}
+                  onChange={(value) =>
+                    updateField('locationType', value as StaffingPlanFormData['locationType'])
+                  }
+                  required
+                  error={errors.locationType}
+                />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                <FormControl fullWidth error={Boolean(errors.subArea)} required>
-                  <InputLabel>Sub Area</InputLabel>
-                  <Select
-                    label="Sub Area"
-                    value={form.subArea}
-                    onChange={(e) =>
-                      updateField('subArea', e.target.value as StaffingPlanFormData['subArea'])
-                    }
-                  >
-                    {sortAlpha(SUB_AREAS).map((subArea) => (
-                      <MenuItem key={subArea} value={subArea}>
-                        {subArea}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.subArea && (
-                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-                      {errors.subArea}
-                    </Typography>
-                  )}
-                </FormControl>
+                <SearchableSelect
+                  label="Functional Group"
+                  options={FUNCTIONAL_GROUPS}
+                  value={form.functionalGroup}
+                  onChange={(value) =>
+                    updateField('functionalGroup', value as StaffingPlanFormData['functionalGroup'])
+                  }
+                  required
+                  error={errors.functionalGroup}
+                />
+              </Grid>
+              <Grid size={12}>
+                <SearchableSelect
+                  label="DSG"
+                  options={DSG_OPTIONS}
+                  value={form.dsg}
+                  onChange={(value) => updateField('dsg', value)}
+                  required
+                  error={errors.dsg}
+                  helperText="Search and select a DSG code"
+                />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                <Autocomplete
-                  freeSolo
+                <SearchableSelect
+                  label="Area"
+                  options={AREAS}
+                  value={form.area}
+                  onChange={(value) => updateField('area', value as StaffingPlanFormData['area'])}
+                  required
+                  error={errors.area}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                <SearchableSelect
+                  label="Sub Area"
+                  options={SUB_AREAS}
+                  value={form.subArea}
+                  onChange={(value) => updateField('subArea', value as StaffingPlanFormData['subArea'])}
+                  required
+                  error={errors.subArea}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                <SearchableSelect
+                  label="Country"
                   options={COUNTRY_SUGGESTIONS}
                   value={form.country}
-                  onChange={(_, value) => updateField('country', value ?? '')}
-                  onInputChange={(_, value) => updateField('country', value)}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Country"
-                      required
-                      error={Boolean(errors.country)}
-                      helperText={errors.country ?? 'Select or type a country'}
-                    />
-                  )}
+                  onChange={(value) => updateField('country', value)}
+                  freeSolo
+                  required
+                  error={errors.country}
+                  helperText="Search, select, or type a country"
                 />
               </Grid>
             </Grid>
@@ -284,89 +211,50 @@ export default function StaffingPlanFormPage() {
             <SectionTitle>Position Details</SectionTitle>
             <Grid container spacing={2.5} sx={{ mb: 4 }}>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <FormControl fullWidth error={Boolean(errors.discipline)} required>
-                  <InputLabel>Discipline</InputLabel>
-                  <Select
-                    label="Discipline"
-                    value={form.discipline}
-                    onChange={(e) =>
-                      updateField('discipline', e.target.value as StaffingPlanFormData['discipline'])
-                    }
-                  >
-                    {sortAlpha(DISCIPLINES).map((discipline) => (
-                      <MenuItem key={discipline} value={discipline}>
-                        {discipline}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.discipline && (
-                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-                      {errors.discipline}
-                    </Typography>
-                  )}
-                </FormControl>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Autocomplete
-                  freeSolo
-                  options={POSITION_SUGGESTIONS}
-                  value={form.position}
-                  onChange={(_, value) => updateField('position', value ?? '')}
-                  onInputChange={(_, value) => updateField('position', value)}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Position"
-                      required
-                      error={Boolean(errors.position)}
-                      helperText={errors.position ?? 'Search existing or type a new position'}
-                    />
-                  )}
+                <SearchableSelect
+                  label="Discipline"
+                  options={DISCIPLINES}
+                  value={form.discipline}
+                  onChange={(value) =>
+                    updateField('discipline', value as StaffingPlanFormData['discipline'])
+                  }
+                  required
+                  error={errors.discipline}
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <FormControl fullWidth error={Boolean(errors.class)} required>
-                  <InputLabel>Class</InputLabel>
-                  <Select
-                    label="Class"
-                    value={form.class}
-                    onChange={(e) => updateField('class', e.target.value as StaffingPlanFormData['class'])}
-                  >
-                    {sortAlpha(CLASSES).map((cls) => (
-                      <MenuItem key={cls} value={cls}>
-                        {cls}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.class && (
-                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-                      {errors.class}
-                    </Typography>
-                  )}
-                </FormControl>
+                <SearchableSelect
+                  label="Position"
+                  options={POSITION_SUGGESTIONS}
+                  value={form.position}
+                  onChange={(value) => updateField('position', value)}
+                  freeSolo
+                  required
+                  error={errors.position}
+                  helperText="Search existing or type a new position"
+                />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <FormControl fullWidth error={Boolean(errors.hiringSource)} required>
-                  <InputLabel>Hiring Source</InputLabel>
-                  <Select
-                    label="Hiring Source"
-                    value={form.hiringSource}
-                    onChange={(e) =>
-                      updateField('hiringSource', e.target.value as StaffingPlanFormData['hiringSource'])
-                    }
-                  >
-                    {sortAlpha(HIRING_SOURCES).map((source) => (
-                      <MenuItem key={source} value={source}>
-                        {source}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.hiringSource && (
-                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-                      {errors.hiringSource}
-                    </Typography>
-                  )}
-                </FormControl>
+                <SearchableSelect
+                  label="Class"
+                  options={CLASSES}
+                  value={form.class}
+                  onChange={(value) => updateField('class', value as StaffingPlanFormData['class'])}
+                  required
+                  error={errors.class}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <SearchableSelect
+                  label="Hiring Source"
+                  options={HIRING_SOURCES}
+                  value={form.hiringSource}
+                  onChange={(value) =>
+                    updateField('hiringSource', value as StaffingPlanFormData['hiringSource'])
+                  }
+                  required
+                  error={errors.hiringSource}
+                />
               </Grid>
             </Grid>
 
@@ -377,6 +265,7 @@ export default function StaffingPlanFormPage() {
                   label="EE Id # / SAP"
                   value={form.eeIdSap}
                   onChange={(e) => updateField('eeIdSap', e.target.value)}
+                  fullWidth
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
@@ -384,6 +273,7 @@ export default function StaffingPlanFormPage() {
                   label="Sort Number"
                   value={form.sortNumber}
                   onChange={(e) => updateField('sortNumber', e.target.value)}
+                  fullWidth
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
@@ -391,6 +281,7 @@ export default function StaffingPlanFormPage() {
                   label="Total Hours"
                   value={form.totalHours}
                   onChange={(e) => updateField('totalHours', e.target.value)}
+                  fullWidth
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
@@ -398,6 +289,7 @@ export default function StaffingPlanFormPage() {
                   label="Hours To Go"
                   value={form.hoursToGo}
                   onChange={(e) => updateField('hoursToGo', e.target.value)}
+                  fullWidth
                 />
               </Grid>
             </Grid>
@@ -405,25 +297,14 @@ export default function StaffingPlanFormPage() {
             <SectionTitle>Schedule</SectionTitle>
             <Grid container spacing={2.5}>
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                <FormControl fullWidth error={Boolean(errors.roster)} required>
-                  <InputLabel>Roster</InputLabel>
-                  <Select
-                    label="Roster"
-                    value={form.roster}
-                    onChange={(e) => updateField('roster', e.target.value as StaffingPlanFormData['roster'])}
-                  >
-                    {sortAlpha(ROSTERS).map((roster) => (
-                      <MenuItem key={roster} value={roster}>
-                        {roster}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.roster && (
-                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-                      {errors.roster}
-                    </Typography>
-                  )}
-                </FormControl>
+                <SearchableSelect
+                  label="Roster"
+                  options={ROSTERS}
+                  value={form.roster}
+                  onChange={(value) => updateField('roster', value as StaffingPlanFormData['roster'])}
+                  required
+                  error={errors.roster}
+                />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                 <TextField
@@ -435,6 +316,7 @@ export default function StaffingPlanFormPage() {
                   helperText={errors.startBiWeek ?? 'Bi-weekly Sunday start date'}
                   slotProps={{ inputLabel: { shrink: true } }}
                   required
+                  fullWidth
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
@@ -447,6 +329,7 @@ export default function StaffingPlanFormPage() {
                   helperText={errors.lwp ?? 'Weekly Sunday date'}
                   slotProps={{ inputLabel: { shrink: true } }}
                   required
+                  fullWidth
                 />
               </Grid>
             </Grid>
