@@ -1,52 +1,57 @@
+import { Box, Button, Card, CardActions, CardContent, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
-import {
-  Box,
-  Button,
-  Card,
-  CardActions,
-  CardContent,
-  Typography,
-} from '@mui/material'
-import AssignmentIcon from '@mui/icons-material/Assignment'
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 
-export default function HomePage() {
+export function HomePage() {
   return (
     <Box>
-      <Typography variant="h4" color="primary" gutterBottom sx={{ fontWeight: 700 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
         Jansen StaffFlow
       </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-        Submit staffing plan position requests or review submitted requests as a manager.
+      <Typography color="text.secondary" sx={{ mb: 4 }}>
+        Submit staffing plan position requests and project authorization requests for manager review.
       </Typography>
 
-      <Card>
-        <CardContent sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-            <AssignmentIcon color="primary" sx={{ fontSize: 40 }} />
-            <Typography variant="h5" color="primary">
-              Staffing Plan Position Requests
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Staffing Plan
             </Typography>
-          </Box>
-          <Typography variant="body2" color="text.secondary">
-            Capture position details including phase, functional group, DSG, area, discipline,
-            position, roster, and schedule dates for manager approval.
-          </Typography>
-        </CardContent>
-        <CardActions sx={{ px: 3, pb: 3, gap: 1, flexWrap: 'wrap' }}>
-          <Button
-            component={RouterLink}
-            to="/staffing-plan"
-            variant="contained"
-            endIcon={<ArrowForwardIcon />}
-          >
-            New Position Request
-          </Button>
-          <Button component={RouterLink} to="/staffing-plan/manager" variant="outlined">
-            Manager Review
-          </Button>
-        </CardActions>
-      </Card>
+            <Typography color="text.secondary">
+              Submit position requests for manager approval. Approved positions can be used for
+              project authorization.
+            </Typography>
+          </CardContent>
+          <CardActions sx={{ px: 2, pb: 2, gap: 1, flexWrap: 'wrap' }}>
+            <Button variant="contained" component={RouterLink} to="/staffing-plan">
+              New Position Request
+            </Button>
+            <Button variant="outlined" component={RouterLink} to="/staffing-plan/manager">
+              Manager Review
+            </Button>
+          </CardActions>
+        </Card>
+
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Project Authorization
+            </Typography>
+            <Typography color="text.secondary">
+              Request authorization for a candidate against an approved staffing plan position.
+              Managers can approve or reject with comments.
+            </Typography>
+          </CardContent>
+          <CardActions sx={{ px: 2, pb: 2, gap: 1, flexWrap: 'wrap' }}>
+            <Button variant="contained" component={RouterLink} to="/project-authorization">
+              New Authorization Request
+            </Button>
+            <Button variant="outlined" component={RouterLink} to="/project-authorization/manager">
+              Manager Review
+            </Button>
+          </CardActions>
+        </Card>
+      </Box>
     </Box>
   )
 }

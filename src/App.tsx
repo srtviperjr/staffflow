@@ -1,29 +1,31 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { CssBaseline, ThemeProvider } from '@mui/material'
-import theme from './theme'
+import { Layout } from './components/Layout'
+import { ProjectAuthorizationProvider } from './context/ProjectAuthorizationContext'
 import { StaffingPlanProvider } from './context/StaffingPlanContext'
-import Layout from './components/Layout'
-import HomePage from './pages/HomePage'
+import { HomePage } from './pages/HomePage'
+import ProjectAuthorizationFormPage from './pages/authorization/ProjectAuthorizationFormPage'
+import ProjectAuthorizationManagerPage from './pages/authorization/ProjectAuthorizationManagerPage'
 import StaffingPlanFormPage from './pages/staffing/StaffingPlanFormPage'
 import StaffingPlanManagerPage from './pages/staffing/StaffingPlanManagerPage'
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <BrowserRouter>
       <StaffingPlanProvider>
-        <BrowserRouter>
+        <ProjectAuthorizationProvider>
           <Routes>
             <Route element={<Layout />}>
               <Route index element={<HomePage />} />
               <Route path="staffing-plan" element={<StaffingPlanFormPage />} />
               <Route path="staffing-plan/manager" element={<StaffingPlanManagerPage />} />
+              <Route path="project-authorization" element={<ProjectAuthorizationFormPage />} />
+              <Route path="project-authorization/manager" element={<ProjectAuthorizationManagerPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>
-        </BrowserRouter>
+        </ProjectAuthorizationProvider>
       </StaffingPlanProvider>
-    </ThemeProvider>
+    </BrowserRouter>
   )
 }
 

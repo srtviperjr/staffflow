@@ -1,37 +1,37 @@
 # Jansen StaffFlow
 
-A React application for submitting and reviewing staffing plan position requests. Built with Vite, TypeScript, Material UI, and React Router.
+React + TypeScript + Material UI app for staffing plan position requests and project authorization requests with manager review workflows.
 
 ## Features
 
-- **Position Request Form** — Capture phase, location, functional group, DSG, area, discipline, position, roster, hours, and schedule dates
-- **Searchable dropdowns** — DSG, country (select or type), and position (search or type new)
-- **Date validation** — Start bi-week must be a bi-weekly Sunday; LWP must be a weekly Sunday
-- **Manager Review** — Approve or reject requests with required rejection comments and status filtering
+### Staffing Plan
+- Position request form with searchable dropdowns, date pickers, and validation
+- Manager review page with approve/reject (rejection requires a comment)
 
-## Getting Started
-
-```bash
-npm install
-npm run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+### Project Authorization
+- Authorization request form linked to approved staffing plan positions (cascading Functional Group → DSG → Position)
+- Candidate details, roster, hours, and calendar date fields
+- Manager review page with review status and approve/reject workflow
 
 ## Routes
 
 | Route | Description |
 |-------|-------------|
 | `/` | Home |
-| `/staffing-plan` | Submit position request |
-| `/staffing-plan/manager` | Review position requests |
+| `/staffing-plan` | New staffing plan position request |
+| `/staffing-plan/manager` | Staffing plan manager review |
+| `/project-authorization` | New project authorization request |
+| `/project-authorization/manager` | Project authorization manager review |
 
-## Data Storage
+## Development
 
-Position requests are persisted in `localStorage` under `staffing-plan-requests`.
+```bash
+npm install
+npm run dev
+```
 
-## Scripts
+## Build
 
-- `npm run dev` — Start development server
-- `npm run build` — Production build
-- `npm run preview` — Preview production build
+```bash
+npm run build
+```
