@@ -19,7 +19,7 @@ export default function HomePage() {
         Jansen StaffFlow
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-        Submit position requests, project authorizations, and view the staffing plan matrix.
+        Submit position requests, PAF approvals, and view the staffing plan matrix.
       </Typography>
 
       <Grid container spacing={3}>
@@ -34,7 +34,7 @@ export default function HomePage() {
               </Box>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 Submit position requests for manager approval. Approved positions can be used for
-                project authorization.
+                PAF approvals.
               </Typography>
             </CardContent>
             <CardActions sx={{ px: 3, pb: 3, gap: 1, flexWrap: 'wrap' }}>
@@ -62,11 +62,11 @@ export default function HomePage() {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
                 <VerifiedIcon color="secondary" sx={{ fontSize: 40 }} />
                 <Typography variant="h5" color="secondary">
-                  Project Authorization
+                  PAF Approvals
                 </Typography>
               </Box>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Request authorization for a candidate against an approved staffing plan position.
+                Request PAF approval for a candidate against an approved staffing plan position.
                 Managers can approve or reject with comments.
               </Typography>
             </CardContent>
@@ -78,7 +78,7 @@ export default function HomePage() {
                 color="secondary"
                 endIcon={<ArrowForwardIcon />}
               >
-                New Authorization Request
+                New PAF Approval
               </Button>
               <Button
                 component={RouterLink}

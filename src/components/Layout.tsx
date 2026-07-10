@@ -85,7 +85,7 @@ export default function Layout() {
             startIcon={<VerifiedIcon />}
             sx={navButtonSx(isAuthorization && path === '/project-authorization')}
           >
-            Authorization
+            PAF Approval
           </Button>
           <Button
             component={RouterLink}
@@ -94,7 +94,7 @@ export default function Layout() {
             startIcon={<ManageAccountsIcon />}
             sx={navButtonSx(isAuthorization && path === '/project-authorization/manager')}
           >
-            Authorization Review
+            PAF Approvals Review
           </Button>
           <Button
             component={RouterLink}
@@ -114,7 +114,7 @@ export default function Layout() {
           flex: 1,
           py: { xs: 3, md: 5 },
           background:
-            'radial-gradient(circle at top right, rgba(220,118,51,0.07), transparent 40%), radial-gradient(circle at bottom left, rgba(149,93,51,0.06), transparent 40%)',
+            'radial-gradient(circle at top right, rgba(211,84,0,0.07), transparent 40%), radial-gradient(circle at bottom left, rgba(122,52,0,0.06), transparent 40%)',
         }}
       >
         <Container maxWidth={path.startsWith('/staffing-plan/matrix') ? false : 'lg'}>

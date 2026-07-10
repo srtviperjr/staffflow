@@ -127,10 +127,10 @@ export default function ProjectAuthorizationManagerPage() {
             <ManageAccountsIcon color="primary" sx={{ fontSize: 36 }} />
             <Box>
               <Typography variant="h4" color="primary">
-                Project Authorization Review
+                PAF Approvals Review
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Review current revisions of project authorization requests
+                Review current revisions of PAF approval requests
               </Typography>
             </Box>
           </Box>
@@ -156,7 +156,7 @@ export default function ProjectAuthorizationManagerPage() {
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 {filter === 'all'
-                  ? 'Submitted project authorization requests will appear here for review.'
+                  ? 'Submitted PAF approval requests will appear here for review.'
                   : `No ${filter} requests at this time.`}
               </Typography>
             </Box>
@@ -316,7 +316,7 @@ export default function ProjectAuthorizationManagerPage() {
         open={Boolean(rejectTarget)}
         message={
           <>
-            You are rejecting revision {rejectTarget?.revision ?? ''} of the project authorization
+            You are rejecting revision {rejectTarget?.revision ?? ''} of the PAF approval
             request for <strong>{rejectTarget?.candidateName ?? ''}</strong> (
             {rejectTarget?.approvedPositionLabel}). Please provide a comment explaining the
             rejection.

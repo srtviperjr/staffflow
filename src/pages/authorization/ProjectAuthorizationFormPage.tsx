@@ -182,7 +182,7 @@ export default function ProjectAuthorizationFormPage() {
     } else {
       const created = addRequest(form, positionLabel, position)
       setSuccessMessage(
-        `Project authorization request submitted successfully. PAF: ${created.pafNumber}.`,
+        `PAF approval submitted successfully. PAF: ${created.pafNumber}.`,
       )
       setForm(initialForm)
     }
@@ -198,19 +198,19 @@ export default function ProjectAuthorizationFormPage() {
             <VerifiedIcon color="primary" sx={{ fontSize: 36 }} />
             <Box>
               <Typography variant="h4" color="primary">
-                {isRevisionMode ? 'Revise Authorization Request' : 'Project Authorization Request'}
+                {isRevisionMode ? 'Revise PAF Approval' : 'PAF Approval Request'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 {isRevisionMode
                   ? `Creating revision ${revisionSource!.revision + 1} from revision ${revisionSource!.revision}. Each update is saved as a new revision for review.`
-                  : 'Authorize a candidate against an approved staffing plan position'}
+                  : 'Submit a PAF approval for a candidate against an approved staffing plan position'}
               </Typography>
             </Box>
           </Box>
 
           {invalidRevisionId && (
             <Alert severity="error" sx={{ mb: 2 }}>
-              The authorization request could not be found. It may have been superseded by a newer
+              The PAF approval could not be found. It may have been superseded by a newer
               revision.{' '}
               <Button component={RouterLink} to="/project-authorization" size="small">
                 Back to requests
@@ -229,7 +229,7 @@ export default function ProjectAuthorizationFormPage() {
           {approvedRequests.length === 0 && (
             <Alert severity="info" sx={{ mb: 3 }}>
               No approved staffing plan positions are available yet. Approve a staffing plan
-              request before submitting a project authorization.
+              request before submitting a PAF approval.
             </Alert>
           )}
 

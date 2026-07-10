@@ -99,7 +99,7 @@ export default function StaffingPlanMatrixPage() {
                 No approved positions yet
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Approve position requests and project authorizations to populate the staffing plan
+                Approve position requests and PAF approvals to populate the staffing plan
                 matrix.
               </Typography>
             </Box>
