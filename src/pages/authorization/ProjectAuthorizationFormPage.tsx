@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Alert,
   Box,
@@ -33,7 +33,7 @@ import {
   getApprovedPositionOptions,
   getApprovedStaffingRequests,
 } from '../../utils/approvedPositions'
-import { requestToFormData } from '../../utils/projectAuthorizationRevisions'
+import { requestToFormData, staffingPlanToFormData } from '../../utils/projectAuthorizationRevisions'
 import { validateBiWeekDate, validateLwpDate } from '../../utils/staffingPlanDates'
 
 const initialForm: ProjectAuthorizationFormData = {
@@ -68,6 +68,8 @@ function statusColor(status: string): 'default' | 'warning' | 'success' | 'error
 
 export default function ProjectAuthorizationFormPage() {
   const { requestId } = useParams()
+  const [searchParams] = useSearchParams()
+  const positionId = searchParams.get('positionId')
   const navigate = useNavigate()
   const { requests: staffingRequests } = useStaffingPlanRequests()
   const { currentRequests, addRequest, reviseRequest } = useProjectAuthorizationRequests()
@@ -85,17 +87,28 @@ export default function ProjectAuthorizationFormPage() {
   const isRevisionMode = Boolean(requestId && revisionSource)
   const invalidRevisionId = Boolean(requestId && !revisionSource)
 
-  useEffect(() => {
-    if (revisionSource) {
-      setForm(requestToFormData(revisionSource))
-      setErrors({})
-    }
-  }, [revisionSource])
-
   const approvedRequests = useMemo(
     () => getApprovedStaffingRequests(staffingRequests),
     [staffingRequests],
   )
+
+  const prefillPosition = useMemo(
+    () => approvedRequests.find((request) => request.id === positionId),
+    [approvedRequests, positionId],
+  )
+
+  useEffect(() => {
+    if (revisionSource) {
+      setForm(requestToFormData(revisionSource))
+      setErrors({})
+      return
+    }
+
+    if (prefillPosition) {
+      setForm(staffingPlanToFormData(prefillPosition))
+      setErrors({})
+    }
+  }, [revisionSource, prefillPosition])
 
   const functionalGroupOptions = useMemo(
     () => getApprovedFunctionalGroups(staffingRequests),
@@ -223,6 +236,14 @@ export default function ProjectAuthorizationFormPage() {
               You are revising <strong>{revisionSource!.candidateName}</strong> (
               {revisionSource!.approvedPositionLabel}). Submitting will create revision{' '}
               <strong>{revisionSource!.revision + 1}</strong> and send it for manager review.
+            </Alert>
+          )}
+
+          {prefillPosition && !isRevisionMode && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Creating a PAF approval for approved position{' '}
+              <strong>{formatApprovedPositionLabel(prefillPosition)}</strong>. Position details
+              have been prefilled from the staffing plan.
             </Alert>
           )}
 
