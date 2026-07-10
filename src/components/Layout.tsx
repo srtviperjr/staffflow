@@ -46,7 +46,7 @@ export default function Layout() {
               textDecoration: 'none',
             }}
           >
-            StaffFlow
+            Jansen StaffFlow
           </Typography>
 
           <Button

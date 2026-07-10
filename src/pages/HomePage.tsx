@@ -14,7 +14,7 @@ export default function HomePage() {
   return (
     <Box>
       <Typography variant="h4" color="primary" gutterBottom sx={{ fontWeight: 700 }}>
-        StaffFlow
+        Jansen StaffFlow
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
         Submit staffing plan position requests or review submitted requests as a manager.
