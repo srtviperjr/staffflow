@@ -28,6 +28,11 @@ export type RequestStatus = 'pending' | 'approved' | 'rejected'
 
 export interface StaffingPlanRequest {
   id: string
+  revisionGroupId: string
+  revision: number
+  supersedesId?: string
+  isCurrentRevision: boolean
+  positionNumber: string
   phase: Phase
   locationType: LocationType
   functionalGroup: FunctionalGroup

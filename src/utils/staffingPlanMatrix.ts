@@ -2,6 +2,7 @@ import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import type { StaffingPlanRequest } from '../types/staffingPlan'
 import { getApprovedStaffingRequests } from './approvedPositions'
 import { getLatestApprovedAuthorizationByPosition } from './projectAuthorizationRevisions'
+import { findAuthorizationForPosition } from './staffingPlanRevisions'
 import { generateBiWeeklyPeriods, parseDateInput } from './staffingPlanDates'
 
 export type LocationCategory = 'Site - Comm' | 'Site - Const' | 'Office'
@@ -155,12 +156,16 @@ export function buildStaffingMatrixRows(
   periods: string[],
 ): StaffingMatrixRow[] {
   const approvedPositions = getApprovedStaffingRequests(staffingRequests)
-  const authByPositionId = new Map(
-    getApprovedAuthorizations(authorizations).map((auth) => [auth.staffingPlanRequestId, auth]),
-  )
+  const approvedAuthorizations = getApprovedAuthorizations(authorizations)
 
   return approvedPositions
-    .map((position) => buildRow(position, authByPositionId.get(position.id), periods))
+    .map((position) =>
+      buildRow(
+        position,
+        findAuthorizationForPosition(position, staffingRequests, approvedAuthorizations),
+        periods,
+      ),
+    )
     .sort((a, b) => a.sortNumber.localeCompare(b.sortNumber, undefined, { numeric: true }))
 }
 

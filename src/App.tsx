@@ -34,6 +34,7 @@ function App() {
                     <Route path="labour-change" element={<LabourChangeFormPage />} />
                     <Route path="labour-change/manager" element={<LabourChangeManagerPage />} />
                     <Route path="staffing-plan" element={<StaffingPlanFormPage />} />
+                    <Route path="staffing-plan/revise/:requestId" element={<StaffingPlanFormPage />} />
                     <Route path="staffing-plan/manager" element={<StaffingPlanManagerPage />} />
                     <Route path="staffing-plan/matrix" element={<StaffingPlanMatrixPage />} />
                     <Route path="project-authorization" element={<ProjectAuthorizationFormPage />} />

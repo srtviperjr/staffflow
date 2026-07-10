@@ -1,8 +1,9 @@
 import type { StaffingPlanRequest } from '../types/staffingPlan'
 import { sortAlpha } from '../constants/staffingPlanOptions'
+import { getCurrentStaffingPlanRequests } from './staffingPlanRevisions'
 
 export function getApprovedStaffingRequests(requests: StaffingPlanRequest[]) {
-  return requests.filter((request) => request.status === 'approved')
+  return getCurrentStaffingPlanRequests(requests).filter((request) => request.status === 'approved')
 }
 
 export function getApprovedFunctionalGroups(requests: StaffingPlanRequest[]) {
