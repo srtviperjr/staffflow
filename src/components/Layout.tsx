@@ -34,7 +34,7 @@ export default function Layout() {
         position="sticky"
         elevation={0}
         sx={{
-          background: 'linear-gradient(135deg, #1565c0 0%, #00838f 100%)',
+          background: 'linear-gradient(135deg, #D35400 0%, #7A3400 100%)',
           borderBottom: '1px solid rgba(255,255,255,0.12)',
         }}
       >
@@ -114,7 +114,7 @@ export default function Layout() {
           flex: 1,
           py: { xs: 3, md: 5 },
           background:
-            'radial-gradient(circle at top right, rgba(21,101,192,0.06), transparent 40%), radial-gradient(circle at bottom left, rgba(0,131,143,0.06), transparent 40%)',
+            'radial-gradient(circle at top right, rgba(211,84,0,0.07), transparent 40%), radial-gradient(circle at bottom left, rgba(122,52,0,0.06), transparent 40%)',
         }}
       >
         <Container maxWidth={path.startsWith('/staffing-plan/matrix') ? false : 'lg'}>

@@ -4,17 +4,17 @@ const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#1565c0',
-      light: '#5e92f3',
-      dark: '#003c8f',
+      main: '#D35400',
+      light: '#F59A3D',
+      dark: '#9A3F00',
     },
     secondary: {
-      main: '#00838f',
-      light: '#4fb3bf',
-      dark: '#005662',
+      main: '#B84A00',
+      light: '#E87722',
+      dark: '#7A3400',
     },
     background: {
-      default: '#f4f7fb',
+      default: '#faf6f3',
       paper: '#ffffff',
     },
     success: {
@@ -57,8 +57,8 @@ const theme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          boxShadow: '0 8px 32px rgba(21, 101, 192, 0.08)',
-          border: '1px solid rgba(21, 101, 192, 0.08)',
+          boxShadow: '0 8px 32px rgba(211, 84, 0, 0.08)',
+          border: '1px solid rgba(211, 84, 0, 0.1)',
         },
       },
     },
