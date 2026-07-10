@@ -23,8 +23,14 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
 import RejectDialog from '../../components/RejectDialog'
+import { ChangedFieldDetail, RevisionChangesLegend } from '../../components/ChangedFieldDetail'
 import type { StaffingPlanRequest } from '../../types/staffingPlan'
 import { formatDisplayDate } from '../../utils/staffingPlanDates'
+import {
+  getChangedFieldKeys,
+  getPreviousRevision,
+  STAFFING_PLAN_COMPARE_FIELDS,
+} from '../../utils/revisionDiff'
 
 type FilterTab = 'all' | 'pending' | 'approved' | 'rejected'
 
@@ -48,15 +54,15 @@ function formatTimestamp(dateString: string) {
   })
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <Typography variant="body2">
-      <strong>{label}:</strong> {value || '—'}
-    </Typography>
-  )
-}
+function RequestDetails({
+  request,
+  changedFields,
+}: {
+  request: StaffingPlanRequest
+  changedFields?: Set<string>
+}) {
+  const changed = (field: string) => changedFields?.has(field) ?? false
 
-function RequestDetails({ request }: { request: StaffingPlanRequest }) {
   return (
     <Box
       sx={{
@@ -65,23 +71,64 @@ function RequestDetails({ request }: { request: StaffingPlanRequest }) {
         gap: 1.5,
       }}
     >
-      <Detail label="Position Number" value={request.positionNumber} />
-      <Detail label="Location Type" value={request.locationType} />
-      <Detail label="Functional Group" value={request.functionalGroup} />
-      <Detail label="DSG" value={request.dsg} />
-      <Detail label="Country" value={request.country} />
-      <Detail label="Discipline" value={request.discipline} />
-      <Detail label="Class" value={request.class} />
-      <Detail label="Hiring Source" value={request.hiringSource} />
-      <Detail label="Roster" value={request.roster} />
-      <Detail label="EE Id / SAP" value={request.eeIdSap} />
-      <Detail label="Sort Number" value={request.sortNumber} />
-      <Detail label="Total Hours" value={request.totalHours} />
-      <Detail label="Hours To Go" value={request.hoursToGo} />
-      <Detail label="Start Bi-Week" value={formatDisplayDate(request.startBiWeek)} />
-      <Detail label="LWP" value={formatDisplayDate(request.lwp)} />
-      <Detail label="Submitted" value={formatTimestamp(request.submittedAt)} />
-      {request.reviewedAt && <Detail label="Reviewed" value={formatTimestamp(request.reviewedAt)} />}
+      <ChangedFieldDetail label="Position Number" value={request.positionNumber} />
+      <ChangedFieldDetail label="Phase" value={request.phase} changed={changed('phase')} />
+      <ChangedFieldDetail label="Area" value={request.area} changed={changed('area')} />
+      <ChangedFieldDetail label="Sub Area" value={request.subArea} changed={changed('subArea')} />
+      <ChangedFieldDetail
+        label="Location Type"
+        value={request.locationType}
+        changed={changed('locationType')}
+      />
+      <ChangedFieldDetail
+        label="Functional Group"
+        value={request.functionalGroup}
+        changed={changed('functionalGroup')}
+      />
+      <ChangedFieldDetail label="DSG" value={request.dsg} changed={changed('dsg')} />
+      <ChangedFieldDetail label="Country" value={request.country} changed={changed('country')} />
+      <ChangedFieldDetail
+        label="Discipline"
+        value={request.discipline}
+        changed={changed('discipline')}
+      />
+      <ChangedFieldDetail label="Class" value={request.class} changed={changed('class')} />
+      <ChangedFieldDetail
+        label="Hiring Source"
+        value={request.hiringSource}
+        changed={changed('hiringSource')}
+      />
+      <ChangedFieldDetail label="Roster" value={request.roster} changed={changed('roster')} />
+      <ChangedFieldDetail label="EE Id / SAP" value={request.eeIdSap} changed={changed('eeIdSap')} />
+      <ChangedFieldDetail
+        label="Sort Number"
+        value={request.sortNumber}
+        changed={changed('sortNumber')}
+      />
+      <ChangedFieldDetail
+        label="Total Hours"
+        value={request.totalHours}
+        changed={changed('totalHours')}
+      />
+      <ChangedFieldDetail
+        label="Hours To Go"
+        value={request.hoursToGo}
+        changed={changed('hoursToGo')}
+      />
+      <ChangedFieldDetail
+        label="Start Bi-Week"
+        value={formatDisplayDate(request.startBiWeek)}
+        changed={changed('startBiWeek')}
+      />
+      <ChangedFieldDetail
+        label="LWP"
+        value={formatDisplayDate(request.lwp)}
+        changed={changed('lwp')}
+      />
+      <ChangedFieldDetail label="Submitted" value={formatTimestamp(request.submittedAt)} />
+      {request.reviewedAt && (
+        <ChangedFieldDetail label="Reviewed" value={formatTimestamp(request.reviewedAt)} />
+      )}
     </Box>
   )
 }
@@ -167,6 +214,12 @@ export default function StaffingPlanManagerPage() {
                 const history = getHistory(request.revisionGroupId)
                 const hasHistory = history.length > 1
                 const historyOpen = expandedGroups[request.revisionGroupId] ?? false
+                const previousRevision = getPreviousRevision(history, request)
+                const changedFields = getChangedFieldKeys(
+                  request,
+                  previousRevision,
+                  STAFFING_PLAN_COMPARE_FIELDS,
+                )
 
                 return (
                   <Card key={request.id} variant="outlined" sx={{ boxShadow: 'none' }}>
@@ -205,7 +258,8 @@ export default function StaffingPlanManagerPage() {
 
                       <Divider sx={{ my: 2 }} />
 
-                      <RequestDetails request={request} />
+                      <RevisionChangesLegend visible={request.revision > 1} />
+                      <RequestDetails request={request} changedFields={changedFields} />
 
                       {request.status === 'rejected' && request.rejectionComment && (
                         <Box
@@ -238,7 +292,15 @@ export default function StaffingPlanManagerPage() {
                             <Stack spacing={1.5} sx={{ mt: 1.5 }}>
                               {history
                                 .filter((entry) => entry.id !== request.id)
-                                .map((entry) => (
+                                .map((entry) => {
+                                  const entryPrevious = getPreviousRevision(history, entry)
+                                  const entryChangedFields = getChangedFieldKeys(
+                                    entry,
+                                    entryPrevious,
+                                    STAFFING_PLAN_COMPARE_FIELDS,
+                                  )
+
+                                  return (
                                   <Box
                                     key={entry.id}
                                     sx={{
@@ -266,9 +328,11 @@ export default function StaffingPlanManagerPage() {
                                         Submitted {formatTimestamp(entry.submittedAt)}
                                       </Typography>
                                     </Box>
-                                    <RequestDetails request={entry} />
+                                    <RevisionChangesLegend visible={entry.revision > 1} />
+                                    <RequestDetails request={entry} changedFields={entryChangedFields} />
                                   </Box>
-                                ))}
+                                  )
+                                })}
                             </Stack>
                           </Collapse>
                         </Box>

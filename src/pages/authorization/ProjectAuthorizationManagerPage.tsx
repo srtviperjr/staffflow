@@ -23,8 +23,14 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import { useProjectAuthorizationRequests } from '../../context/ProjectAuthorizationContext'
 import RejectDialog from '../../components/RejectDialog'
+import { ChangedFieldDetail, RevisionChangesLegend } from '../../components/ChangedFieldDetail'
 import type { ProjectAuthorizationRequest } from '../../types/projectAuthorization'
 import { formatDisplayDate } from '../../utils/staffingPlanDates'
+import {
+  getChangedFieldKeys,
+  getPreviousRevision,
+  PAF_APPROVAL_COMPARE_FIELDS,
+} from '../../utils/revisionDiff'
 
 type FilterTab = 'all' | 'pending' | 'approved' | 'rejected'
 
@@ -48,15 +54,15 @@ function formatTimestamp(dateString: string) {
   })
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <Typography variant="body2">
-      <strong>{label}:</strong> {value || '—'}
-    </Typography>
-  )
-}
+function RequestDetails({
+  request,
+  changedFields,
+}: {
+  request: ProjectAuthorizationRequest
+  changedFields?: Set<string>
+}) {
+  const changed = (field: string) => changedFields?.has(field) ?? false
 
-function RequestDetails({ request }: { request: ProjectAuthorizationRequest }) {
   return (
     <Box
       sx={{
@@ -65,21 +71,57 @@ function RequestDetails({ request }: { request: ProjectAuthorizationRequest }) {
         gap: 1.5,
       }}
     >
-      <Detail label="Functional Group" value={request.functionalGroup} />
-      <Detail label="DSG" value={request.dsg} />
-      <Detail label="Position" value={request.position} />
-      <Detail label="Country" value={request.country} />
-      <Detail label="Class" value={request.class} />
-      <Detail label="Hiring Source" value={request.hiringSource} />
-      <Detail label="Roster" value={request.roster} />
-      <Detail label="EE Id / SAP" value={request.eeIdSap} />
-      <Detail label="PAF" value={request.pafNumber} />
-      <Detail label="Sort Number" value={request.sortNumber} />
-      <Detail label="Total Hours" value={request.totalHours} />
-      <Detail label="Start Bi-Week" value={formatDisplayDate(request.startBiWeek)} />
-      <Detail label="LWP" value={formatDisplayDate(request.lwp)} />
-      <Detail label="Submitted" value={formatTimestamp(request.submittedAt)} />
-      {request.reviewedAt && <Detail label="Reviewed" value={formatTimestamp(request.reviewedAt)} />}
+      <ChangedFieldDetail label="PAF" value={request.pafNumber} />
+      <ChangedFieldDetail
+        label="Functional Group"
+        value={request.functionalGroup}
+        changed={changed('functionalGroup')}
+      />
+      <ChangedFieldDetail label="DSG" value={request.dsg} changed={changed('dsg')} />
+      <ChangedFieldDetail label="Position" value={request.position} changed={changed('position')} />
+      <ChangedFieldDetail
+        label="Approved Position"
+        value={request.approvedPositionLabel}
+        changed={changed('approvedPositionLabel')}
+      />
+      <ChangedFieldDetail
+        label="Candidate"
+        value={request.candidateName}
+        changed={changed('candidateName')}
+      />
+      <ChangedFieldDetail label="Country" value={request.country} changed={changed('country')} />
+      <ChangedFieldDetail label="Class" value={request.class} changed={changed('class')} />
+      <ChangedFieldDetail
+        label="Hiring Source"
+        value={request.hiringSource}
+        changed={changed('hiringSource')}
+      />
+      <ChangedFieldDetail label="Roster" value={request.roster} changed={changed('roster')} />
+      <ChangedFieldDetail label="EE Id / SAP" value={request.eeIdSap} changed={changed('eeIdSap')} />
+      <ChangedFieldDetail
+        label="Sort Number"
+        value={request.sortNumber}
+        changed={changed('sortNumber')}
+      />
+      <ChangedFieldDetail
+        label="Total Hours"
+        value={request.totalHours}
+        changed={changed('totalHours')}
+      />
+      <ChangedFieldDetail
+        label="Start Bi-Week"
+        value={formatDisplayDate(request.startBiWeek)}
+        changed={changed('startBiWeek')}
+      />
+      <ChangedFieldDetail
+        label="LWP"
+        value={formatDisplayDate(request.lwp)}
+        changed={changed('lwp')}
+      />
+      <ChangedFieldDetail label="Submitted" value={formatTimestamp(request.submittedAt)} />
+      {request.reviewedAt && (
+        <ChangedFieldDetail label="Reviewed" value={formatTimestamp(request.reviewedAt)} />
+      )}
     </Box>
   )
 }
@@ -166,6 +208,12 @@ export default function ProjectAuthorizationManagerPage() {
                 const history = getHistory(request.revisionGroupId)
                 const hasHistory = history.length > 1
                 const historyOpen = expandedGroups[request.revisionGroupId] ?? false
+                const previousRevision = getPreviousRevision(history, request)
+                const changedFields = getChangedFieldKeys(
+                  request,
+                  previousRevision,
+                  PAF_APPROVAL_COMPARE_FIELDS,
+                )
 
                 return (
                   <Card key={request.id} variant="outlined" sx={{ boxShadow: 'none' }}>
@@ -204,7 +252,8 @@ export default function ProjectAuthorizationManagerPage() {
 
                       <Divider sx={{ my: 2 }} />
 
-                      <RequestDetails request={request} />
+                      <RevisionChangesLegend visible={request.revision > 1} />
+                      <RequestDetails request={request} changedFields={changedFields} />
 
                       {request.status === 'rejected' && request.rejectionComment && (
                         <Box
@@ -237,7 +286,15 @@ export default function ProjectAuthorizationManagerPage() {
                             <Stack spacing={1.5} sx={{ mt: 1.5 }}>
                               {history
                                 .filter((entry) => entry.id !== request.id)
-                                .map((entry) => (
+                                .map((entry) => {
+                                  const entryPrevious = getPreviousRevision(history, entry)
+                                  const entryChangedFields = getChangedFieldKeys(
+                                    entry,
+                                    entryPrevious,
+                                    PAF_APPROVAL_COMPARE_FIELDS,
+                                  )
+
+                                  return (
                                   <Box
                                     key={entry.id}
                                     sx={{
@@ -265,9 +322,11 @@ export default function ProjectAuthorizationManagerPage() {
                                         Submitted {formatTimestamp(entry.submittedAt)}
                                       </Typography>
                                     </Box>
-                                    <RequestDetails request={entry} />
+                                    <RevisionChangesLegend visible={entry.revision > 1} />
+                                    <RequestDetails request={entry} changedFields={entryChangedFields} />
                                   </Box>
-                                ))}
+                                  )
+                                })}
                             </Stack>
                           </Collapse>
                         </Box>
