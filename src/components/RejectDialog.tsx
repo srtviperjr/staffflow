@@ -16,7 +16,7 @@ interface RejectDialogProps {
   fieldLabel?: string
   emptyError?: string
   onClose: () => void
-  onConfirm: (comment: string) => void
+  onConfirm: (reason: string) => void
 }
 
 export default function RejectDialog({
@@ -27,22 +27,22 @@ export default function RejectDialog({
   onClose,
   onConfirm,
 }: RejectDialogProps) {
-  const [comment, setComment] = useState('')
+  const [reason, setReason] = useState('')
   const [error, setError] = useState('')
 
   const handleClose = () => {
-    setComment('')
+    setReason('')
     setError('')
     onClose()
   }
 
   const handleConfirm = () => {
-    if (!comment.trim()) {
+    if (!reason.trim()) {
       setError(emptyError)
       return
     }
-    onConfirm(comment.trim())
-    setComment('')
+    onConfirm(reason.trim())
+    setReason('')
     setError('')
   }
 
@@ -58,9 +58,9 @@ export default function RejectDialog({
         </Typography>
         <TextField
           label={fieldLabel}
-          value={comment}
+          value={reason}
           onChange={(e) => {
-            setComment(e.target.value)
+            setReason(e.target.value)
             setError('')
           }}
           error={Boolean(error)}
