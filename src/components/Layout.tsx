@@ -13,6 +13,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment'
 import VerifiedIcon from '@mui/icons-material/Verified'
 import TableChartIcon from '@mui/icons-material/TableChart'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
+import AccountTreeIcon from '@mui/icons-material/AccountTree'
 
 function navButtonSx(active: boolean) {
   return {
@@ -29,6 +30,9 @@ export default function Layout() {
   const isStaffing = path.startsWith('/staffing-plan')
   const isAuthorization = path.startsWith('/project-authorization')
   const isRoles = path.startsWith('/roles')
+  const isWorkflows = path.startsWith('/workflows')
+  const wideLayout =
+    path.startsWith('/staffing-plan/matrix') || path.startsWith('/workflows')
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -112,9 +116,18 @@ export default function Layout() {
             to="/roles"
             color="inherit"
             startIcon={<AdminPanelSettingsIcon />}
-            sx={{ ...navButtonSx(isRoles), ml: 'auto' }}
+            sx={navButtonSx(isRoles)}
           >
             Roles
+          </Button>
+          <Button
+            component={RouterLink}
+            to="/workflows"
+            color="inherit"
+            startIcon={<AccountTreeIcon />}
+            sx={{ ...navButtonSx(isWorkflows), ml: 'auto' }}
+          >
+            Workflows
           </Button>
         </Toolbar>
       </AppBar>
@@ -128,7 +141,7 @@ export default function Layout() {
             'radial-gradient(circle at top right, rgba(211,84,0,0.07), transparent 40%), radial-gradient(circle at bottom left, rgba(122,52,0,0.06), transparent 40%)',
         }}
       >
-        <Container maxWidth={path.startsWith('/staffing-plan/matrix') ? false : 'lg'}>
+        <Container maxWidth={wideLayout ? false : 'lg'}>
           <Outlet />
         </Container>
       </Box>

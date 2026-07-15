@@ -13,14 +13,17 @@ import VerifiedIcon from '@mui/icons-material/Verified'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import ScienceIcon from '@mui/icons-material/Science'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
+import AccountTreeIcon from '@mui/icons-material/AccountTree'
 import { seedSampleData } from '../data/sampleData'
 import { DEFAULT_ROLES, SAMPLE_USERS } from '../data/sampleUsers'
+import { SAMPLE_WORKFLOW } from '../data/sampleWorkflow'
 
 export default function HomePage() {
   const handleLoadSampleData = () => {
     seedSampleData()
     localStorage.setItem('app-users', JSON.stringify(SAMPLE_USERS))
     localStorage.setItem('app-roles', JSON.stringify(DEFAULT_ROLES))
+    localStorage.setItem('workflow-definitions', JSON.stringify([SAMPLE_WORKFLOW]))
     window.location.reload()
   }
 
@@ -133,6 +136,32 @@ export default function HomePage() {
                 endIcon={<ArrowForwardIcon />}
               >
                 Manage Roles
+              </Button>
+            </CardActions>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                <AccountTreeIcon color="primary" sx={{ fontSize: 40 }} />
+                <Typography variant="h5" color="primary">
+                  Workflows
+                </Typography>
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Design flowchart steps, decision branches, assigned roles, and item states.
+              </Typography>
+            </CardContent>
+            <CardActions sx={{ px: 3, pb: 3, gap: 1, flexWrap: 'wrap' }}>
+              <Button
+                component={RouterLink}
+                to="/workflows"
+                variant="contained"
+                endIcon={<ArrowForwardIcon />}
+              >
+                Open Workflow Editor
               </Button>
             </CardActions>
           </Card>
