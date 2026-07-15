@@ -12,6 +12,7 @@ import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import AssignmentIcon from '@mui/icons-material/Assignment'
 import VerifiedIcon from '@mui/icons-material/Verified'
 import TableChartIcon from '@mui/icons-material/TableChart'
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 
 function navButtonSx(active: boolean) {
   return {
@@ -27,6 +28,7 @@ export default function Layout() {
   const isHome = path === '/'
   const isStaffing = path.startsWith('/staffing-plan')
   const isAuthorization = path.startsWith('/project-authorization')
+  const isRoles = path.startsWith('/roles')
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -101,9 +103,18 @@ export default function Layout() {
             to="/staffing-plan/matrix"
             color="inherit"
             startIcon={<TableChartIcon />}
-            sx={{ ...navButtonSx(isStaffing && path === '/staffing-plan/matrix'), ml: 'auto' }}
+            sx={navButtonSx(isStaffing && path === '/staffing-plan/matrix')}
           >
             Staffing Plan
+          </Button>
+          <Button
+            component={RouterLink}
+            to="/roles"
+            color="inherit"
+            startIcon={<AdminPanelSettingsIcon />}
+            sx={{ ...navButtonSx(isRoles), ml: 'auto' }}
+          >
+            Roles
           </Button>
         </Toolbar>
       </AppBar>
