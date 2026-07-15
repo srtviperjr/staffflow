@@ -1,3 +1,5 @@
+import type { WorkflowProgress } from './workflow'
+
 export type ProjectAuthorizationStatus = 'pending' | 'approved' | 'rejected'
 
 export interface ProjectAuthorizationRequest {
@@ -26,6 +28,8 @@ export interface ProjectAuthorizationRequest {
   submittedAt: string
   rejectionComment?: string
   reviewedAt?: string
+  /** Progress through the PAF workflow definition, when attached */
+  workflow?: WorkflowProgress
 }
 
 export interface ProjectAuthorizationFormData {

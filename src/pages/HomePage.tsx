@@ -17,14 +17,14 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree'
 import GroupIcon from '@mui/icons-material/Group'
 import { seedSampleData } from '../data/sampleData'
 import { DEFAULT_ROLES, SAMPLE_USERS } from '../data/sampleUsers'
-import { SAMPLE_WORKFLOW } from '../data/sampleWorkflow'
+import { SAMPLE_WORKFLOWS } from '../data/sampleWorkflow'
 
 export default function HomePage() {
   const handleLoadSampleData = () => {
     seedSampleData()
     localStorage.setItem('app-users', JSON.stringify(SAMPLE_USERS))
     localStorage.setItem('app-roles', JSON.stringify(DEFAULT_ROLES))
-    localStorage.setItem('workflow-definitions', JSON.stringify([SAMPLE_WORKFLOW]))
+    localStorage.setItem('workflow-definitions', JSON.stringify(SAMPLE_WORKFLOWS))
     window.location.reload()
   }
 

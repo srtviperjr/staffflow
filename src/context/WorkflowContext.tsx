@@ -8,16 +8,19 @@ import {
 } from 'react'
 import type {
   WorkflowDefinition,
+  WorkflowFormType,
   WorkflowNodeUpdate,
   WorkflowState,
 } from '../types/workflow'
-import { SAMPLE_WORKFLOW } from '../data/sampleWorkflow'
+import { SAMPLE_WORKFLOWS } from '../data/sampleWorkflow'
+import { getWorkflowForForm, normalizeWorkflowDefinition } from '../utils/workflowEngine'
 
 const STORAGE_KEY = 'workflow-definitions'
 
 interface WorkflowContextValue {
   workflows: WorkflowDefinition[]
   getWorkflow: (id: string) => WorkflowDefinition | undefined
+  getWorkflowByForm: (formType: WorkflowFormType) => WorkflowDefinition | undefined
   saveWorkflow: (workflow: WorkflowDefinition) => void
   createWorkflow: (name: string, description?: string) => WorkflowDefinition
   updateNodeData: (workflowId: string, nodeId: string, update: WorkflowNodeUpdate) => void
@@ -27,17 +30,44 @@ interface WorkflowContextValue {
 
 const WorkflowContext = createContext<WorkflowContextValue | null>(null)
 
+function migrateAndSeed(raw: WorkflowDefinition[]): WorkflowDefinition[] {
+  const normalized = raw.map(normalizeWorkflowDefinition)
+  const byId = new Map(normalized.map((workflow) => [workflow.id, workflow]))
+
+  // Ensure both canonical form workflows exist (upgrade from older single-sample storage)
+  for (const sample of SAMPLE_WORKFLOWS) {
+    const existing = byId.get(sample.id)
+    if (!existing) {
+      byId.set(sample.id, sample)
+      continue
+    }
+    // Upgrade legacy copies that lack formType
+    if (existing.formType == null && sample.formType) {
+      byId.set(sample.id, {
+        ...existing,
+        formType: sample.formType,
+        description: existing.description || sample.description,
+      })
+    }
+  }
+
+  return Array.from(byId.values())
+}
+
 function loadWorkflows(): WorkflowDefinition[] {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
-      return JSON.parse(stored) as WorkflowDefinition[]
+      const parsed = JSON.parse(stored) as WorkflowDefinition[]
+      const migrated = migrateAndSeed(parsed)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated))
+      return migrated
     }
-    const seeded = [SAMPLE_WORKFLOW]
+    const seeded = SAMPLE_WORKFLOWS.map(normalizeWorkflowDefinition)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded))
     return seeded
   } catch {
-    return [SAMPLE_WORKFLOW]
+    return SAMPLE_WORKFLOWS.map(normalizeWorkflowDefinition)
   }
 }
 
@@ -58,14 +88,36 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
     [workflows],
   )
 
+  const getWorkflowByForm = useCallback(
+    (formType: WorkflowFormType) => getWorkflowForForm(workflows, formType),
+    [workflows],
+  )
+
   const saveWorkflow = useCallback(
     (workflow: WorkflowDefinition) => {
-      const withTimestamp = { ...workflow, updatedAt: new Date().toISOString() }
-      persist(
-        workflows.some((item) => item.id === workflow.id)
-          ? workflows.map((item) => (item.id === workflow.id ? withTimestamp : item))
-          : [...workflows, withTimestamp],
-      )
+      const withTimestamp = normalizeWorkflowDefinition({
+        ...workflow,
+        updatedAt: new Date().toISOString(),
+      })
+
+      // Enforce one workflow per form type: clear formType on others when claimed
+      let next = workflows.map((item) => {
+        if (item.id === withTimestamp.id) return withTimestamp
+        if (
+          withTimestamp.formType &&
+          item.formType === withTimestamp.formType &&
+          item.id !== withTimestamp.id
+        ) {
+          return { ...item, formType: null }
+        }
+        return item
+      })
+
+      if (!workflows.some((item) => item.id === withTimestamp.id)) {
+        next = [...next, withTimestamp]
+      }
+
+      persist(next)
     },
     [persist, workflows],
   )
@@ -76,6 +128,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
         id: crypto.randomUUID(),
         name: name.trim(),
         description: description.trim(),
+        formType: null,
         states: [
           { id: crypto.randomUUID(), name: 'Draft', color: '#757575' },
           { id: crypto.randomUUID(), name: 'In Progress', color: '#1976d2' },
@@ -92,13 +145,13 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
               label: 'Start',
               roleId: '',
               stateId: '',
+              waitForAction: false,
             },
           },
         ],
         edges: [],
         updatedAt: new Date().toISOString(),
       }
-      // Wire default start state to first state if present
       if (created.states[0]) {
         created.nodes[0].data.stateId = created.states[0].id
       }
@@ -159,13 +212,14 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
   )
 
   const resetSampleData = useCallback(() => {
-    persist([SAMPLE_WORKFLOW])
+    persist(SAMPLE_WORKFLOWS.map(normalizeWorkflowDefinition))
   }, [persist])
 
   const value = useMemo(
     () => ({
       workflows,
       getWorkflow,
+      getWorkflowByForm,
       saveWorkflow,
       createWorkflow,
       updateNodeData,
@@ -175,6 +229,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
     [
       workflows,
       getWorkflow,
+      getWorkflowByForm,
       saveWorkflow,
       createWorkflow,
       updateNodeData,
