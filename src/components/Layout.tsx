@@ -13,22 +13,22 @@ import AssignmentIcon from '@mui/icons-material/Assignment'
 import VerifiedIcon from '@mui/icons-material/Verified'
 import TableChartIcon from '@mui/icons-material/TableChart'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
-
-function navButtonSx(active: boolean) {
-  return {
-    opacity: active ? 1 : 0.75,
-    bgcolor: active ? 'rgba(255,255,255,0.15)' : 'transparent',
-  }
-}
+import AccountTreeIcon from '@mui/icons-material/AccountTree'
+import GroupIcon from '@mui/icons-material/Group'
+import ActingAsUserSwitcher from './ActingAsUserSwitcher'
+import NavMenuGroup, { navButtonSx } from './NavMenuGroup'
 
 export default function Layout() {
   const location = useLocation()
   const path = location.pathname
 
   const isHome = path === '/'
-  const isStaffing = path.startsWith('/staffing-plan')
-  const isAuthorization = path.startsWith('/project-authorization')
-  const isRoles = path.startsWith('/roles')
+  const isStaffManagement = path.startsWith('/staffing-plan')
+  const isPafManagement = path.startsWith('/project-authorization')
+  const isApplicationAdmin =
+    path.startsWith('/roles') || path.startsWith('/users') || path.startsWith('/workflows')
+  const wideLayout =
+    path.startsWith('/staffing-plan/matrix') || path.startsWith('/workflows')
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -40,82 +40,120 @@ export default function Layout() {
           borderBottom: '1px solid rgba(255,255,255,0.12)',
         }}
       >
-        <Toolbar sx={{ gap: 1, flexWrap: 'wrap' }}>
+        <Toolbar
+          sx={{
+            gap: 1,
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            py: { xs: 1, md: 0.5 },
+          }}
+        >
           <HomeIcon sx={{ fontSize: 28 }} />
           <Typography
             variant="h6"
             component={RouterLink}
             to="/"
-            sx={{ flexGrow: 1, fontWeight: 700, color: 'inherit', textDecoration: 'none' }}
+            sx={{ fontWeight: 700, color: 'inherit', textDecoration: 'none', mr: 1 }}
           >
             Jansen StaffFlow
           </Typography>
 
-          <Button
-            component={RouterLink}
-            to="/"
-            color="inherit"
-            startIcon={<HomeIcon />}
-            sx={navButtonSx(isHome)}
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: 0.5,
+              flex: 1,
+              minWidth: 0,
+            }}
           >
-            Home
-          </Button>
+            <Button
+              component={RouterLink}
+              to="/"
+              color="inherit"
+              startIcon={<HomeIcon />}
+              sx={navButtonSx(isHome)}
+            >
+              Home
+            </Button>
 
-          <Button
-            component={RouterLink}
-            to="/staffing-plan"
-            color="inherit"
-            startIcon={<AssignmentIcon />}
-            sx={navButtonSx(isStaffing && path === '/staffing-plan')}
-          >
-            Position Request
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/staffing-plan/manager"
-            color="inherit"
-            startIcon={<ManageAccountsIcon />}
-            sx={navButtonSx(isStaffing && path === '/staffing-plan/manager')}
-          >
-            Position Requests Review
-          </Button>
+            <NavMenuGroup
+              label="Staff Management"
+              icon={<AssignmentIcon fontSize="small" />}
+              active={isStaffManagement}
+              items={[
+                {
+                  label: 'Position Request',
+                  to: '/staffing-plan',
+                  icon: <AssignmentIcon fontSize="small" />,
+                  active: path === '/staffing-plan' || path.startsWith('/staffing-plan/revise'),
+                },
+                {
+                  label: 'Position Requests Review',
+                  to: '/staffing-plan/manager',
+                  icon: <ManageAccountsIcon fontSize="small" />,
+                  active: path === '/staffing-plan/manager',
+                },
+                {
+                  label: 'Staffing Plan',
+                  to: '/staffing-plan/matrix',
+                  icon: <TableChartIcon fontSize="small" />,
+                  active: path === '/staffing-plan/matrix',
+                },
+              ]}
+            />
 
-          <Button
-            component={RouterLink}
-            to="/project-authorization"
-            color="inherit"
-            startIcon={<VerifiedIcon />}
-            sx={navButtonSx(isAuthorization && path === '/project-authorization')}
-          >
-            PAF Approval
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/project-authorization/manager"
-            color="inherit"
-            startIcon={<ManageAccountsIcon />}
-            sx={navButtonSx(isAuthorization && path === '/project-authorization/manager')}
-          >
-            PAF Approvals Review
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/staffing-plan/matrix"
-            color="inherit"
-            startIcon={<TableChartIcon />}
-            sx={navButtonSx(isStaffing && path === '/staffing-plan/matrix')}
-          >
-            Staffing Plan
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/roles"
-            color="inherit"
-            startIcon={<AdminPanelSettingsIcon />}
-            sx={{ ...navButtonSx(isRoles), ml: 'auto' }}
-          >
-            Roles
-          </Button>
+            <NavMenuGroup
+              label="PAF Management"
+              icon={<VerifiedIcon fontSize="small" />}
+              active={isPafManagement}
+              items={[
+                {
+                  label: 'PAF Approval',
+                  to: '/project-authorization',
+                  icon: <VerifiedIcon fontSize="small" />,
+                  active:
+                    path === '/project-authorization' ||
+                    path.startsWith('/project-authorization/revise'),
+                },
+                {
+                  label: 'PAF Approvals Review',
+                  to: '/project-authorization/manager',
+                  icon: <ManageAccountsIcon fontSize="small" />,
+                  active: path === '/project-authorization/manager',
+                },
+              ]}
+            />
+
+            <NavMenuGroup
+              label="Application Admin"
+              icon={<AdminPanelSettingsIcon fontSize="small" />}
+              active={isApplicationAdmin}
+              items={[
+                {
+                  label: 'Roles',
+                  to: '/roles',
+                  icon: <AdminPanelSettingsIcon fontSize="small" />,
+                  active: path.startsWith('/roles'),
+                },
+                {
+                  label: 'Users',
+                  to: '/users',
+                  icon: <GroupIcon fontSize="small" />,
+                  active: path.startsWith('/users'),
+                },
+                {
+                  label: 'Workflows',
+                  to: '/workflows',
+                  icon: <AccountTreeIcon fontSize="small" />,
+                  active: path.startsWith('/workflows'),
+                },
+              ]}
+            />
+          </Box>
+
+          <ActingAsUserSwitcher />
         </Toolbar>
       </AppBar>
 
@@ -128,7 +166,7 @@ export default function Layout() {
             'radial-gradient(circle at top right, rgba(211,84,0,0.07), transparent 40%), radial-gradient(circle at bottom left, rgba(122,52,0,0.06), transparent 40%)',
         }}
       >
-        <Container maxWidth={path.startsWith('/staffing-plan/matrix') ? false : 'lg'}>
+        <Container maxWidth={wideLayout ? false : 'lg'}>
           <Outlet />
         </Container>
       </Box>

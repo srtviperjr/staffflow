@@ -17,3 +17,9 @@ export interface CreateRoleInput {
   name: string
   description: string
 }
+
+export interface CreateUserInput {
+  name: string
+  email: string
+  title: string
+}
