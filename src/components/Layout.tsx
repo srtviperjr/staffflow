@@ -14,6 +14,7 @@ import VerifiedIcon from '@mui/icons-material/Verified'
 import TableChartIcon from '@mui/icons-material/TableChart'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import AccountTreeIcon from '@mui/icons-material/AccountTree'
+import GroupIcon from '@mui/icons-material/Group'
 import ActingAsUserSwitcher from './ActingAsUserSwitcher'
 
 function navButtonSx(active: boolean) {
@@ -31,6 +32,7 @@ export default function Layout() {
   const isStaffing = path.startsWith('/staffing-plan')
   const isAuthorization = path.startsWith('/project-authorization')
   const isRoles = path.startsWith('/roles')
+  const isUsers = path.startsWith('/users')
   const isWorkflows = path.startsWith('/workflows')
   const wideLayout =
     path.startsWith('/staffing-plan/matrix') || path.startsWith('/workflows')
@@ -137,6 +139,15 @@ export default function Layout() {
               sx={navButtonSx(isRoles)}
             >
               Roles
+            </Button>
+            <Button
+              component={RouterLink}
+              to="/users"
+              color="inherit"
+              startIcon={<GroupIcon />}
+              sx={navButtonSx(isUsers)}
+            >
+              Users
             </Button>
             <Button
               component={RouterLink}

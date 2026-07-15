@@ -10,6 +10,7 @@ import { RolesProvider } from './context/RolesContext'
 import { WorkflowProvider } from './context/WorkflowContext'
 import HomePage from './pages/HomePage'
 import RolesManagementPage from './pages/roles/RolesManagementPage'
+import UsersManagementPage from './pages/users/UsersManagementPage'
 import WorkflowEditorPage from './pages/workflow/WorkflowEditorPage'
 import OnboardingRequestFormPage from './pages/onboarding/OnboardingRequestFormPage'
 import OnboardingManagerPage from './pages/onboarding/OnboardingManagerPage'
@@ -53,6 +54,7 @@ function App() {
                           element={<ProjectAuthorizationManagerPage />}
                         />
                         <Route path="roles" element={<RolesManagementPage />} />
+                        <Route path="users" element={<UsersManagementPage />} />
                         <Route path="workflows" element={<WorkflowEditorPage />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
                       </Route>

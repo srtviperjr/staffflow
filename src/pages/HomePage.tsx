@@ -14,6 +14,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import ScienceIcon from '@mui/icons-material/Science'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import AccountTreeIcon from '@mui/icons-material/AccountTree'
+import GroupIcon from '@mui/icons-material/Group'
 import { seedSampleData } from '../data/sampleData'
 import { DEFAULT_ROLES, SAMPLE_USERS } from '../data/sampleUsers'
 import { SAMPLE_WORKFLOW } from '../data/sampleWorkflow'
@@ -125,7 +126,7 @@ export default function HomePage() {
                 </Typography>
               </Box>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Create roles and assign the five test users using a left/right selector.
+                Create roles and users, then assign people with left/right selectors.
               </Typography>
             </CardContent>
             <CardActions sx={{ px: 3, pb: 3, gap: 1, flexWrap: 'wrap' }}>
@@ -136,6 +137,14 @@ export default function HomePage() {
                 endIcon={<ArrowForwardIcon />}
               >
                 Manage Roles
+              </Button>
+              <Button
+                component={RouterLink}
+                to="/users"
+                variant="outlined"
+                startIcon={<GroupIcon />}
+              >
+                Manage Users
               </Button>
             </CardActions>
           </Card>

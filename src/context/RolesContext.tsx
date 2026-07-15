@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type { AppRole, AppUser, CreateRoleInput } from '../types/roles'
+import type { AppRole, AppUser, CreateRoleInput, CreateUserInput } from '../types/roles'
 import { DEFAULT_ROLES, SAMPLE_USERS } from '../data/sampleUsers'
 
 const USERS_STORAGE_KEY = 'app-users'
@@ -19,6 +19,10 @@ interface RolesContextValue {
   currentUser: AppUser | null
   currentUserRoles: AppRole[]
   setCurrentUserId: (userId: string) => void
+  createUser: (input: CreateUserInput) => AppUser
+  updateUser: (userId: string, input: CreateUserInput) => void
+  deleteUser: (userId: string) => void
+  setRolesForUser: (userId: string, roleIds: string[]) => void
   createRole: (input: CreateRoleInput) => AppRole
   assignUsersToRole: (roleId: string, userIds: string[]) => void
   getRoleById: (roleId: string) => AppRole | undefined
@@ -107,6 +111,90 @@ export function RolesProvider({ children }: { children: ReactNode }) {
     [currentUser, getRolesForUser],
   )
 
+  const createUser = useCallback(
+    (input: CreateUserInput) => {
+      const newUser: AppUser = {
+        id: crypto.randomUUID(),
+        name: input.name.trim(),
+        email: input.email.trim(),
+        title: input.title.trim(),
+      }
+
+      setUsers((prev) => {
+        const updated = [...prev, newUser]
+        saveUsers(updated)
+        return updated
+      })
+
+      return newUser
+    },
+    [],
+  )
+
+  const updateUser = useCallback((userId: string, input: CreateUserInput) => {
+    setUsers((prev) => {
+      const updated = prev.map((user) =>
+        user.id === userId
+          ? {
+              ...user,
+              name: input.name.trim(),
+              email: input.email.trim(),
+              title: input.title.trim(),
+            }
+          : user,
+      )
+      saveUsers(updated)
+      return updated
+    })
+  }, [])
+
+  const deleteUser = useCallback(
+    (userId: string) => {
+      setUsers((prev) => {
+        const updated = prev.filter((user) => user.id !== userId)
+        saveUsers(updated)
+
+        if (currentUserId === userId) {
+          const fallbackId = updated[0]?.id ?? ''
+          setCurrentUserIdState(fallbackId)
+          if (fallbackId) saveCurrentUserId(fallbackId)
+          else localStorage.removeItem(CURRENT_USER_STORAGE_KEY)
+        }
+
+        return updated
+      })
+
+      setRoles((prev) => {
+        const updated = prev.map((role) => ({
+          ...role,
+          userIds: role.userIds.filter((id) => id !== userId),
+        }))
+        saveRoles(updated)
+        return updated
+      })
+    },
+    [currentUserId],
+  )
+
+  const setRolesForUser = useCallback((userId: string, roleIds: string[]) => {
+    const selected = new Set(roleIds)
+    setRoles((prev) => {
+      const updated = prev.map((role) => {
+        const hasUser = role.userIds.includes(userId)
+        const shouldHave = selected.has(role.id)
+        if (hasUser === shouldHave) return role
+        return {
+          ...role,
+          userIds: shouldHave
+            ? [...role.userIds, userId]
+            : role.userIds.filter((id) => id !== userId),
+        }
+      })
+      saveRoles(updated)
+      return updated
+    })
+  }, [])
+
   const createRole = useCallback((input: CreateRoleInput) => {
     const name = input.name.trim()
     const newRole: AppRole = {
@@ -158,6 +246,10 @@ export function RolesProvider({ children }: { children: ReactNode }) {
       currentUser,
       currentUserRoles,
       setCurrentUserId,
+      createUser,
+      updateUser,
+      deleteUser,
+      setRolesForUser,
       createRole,
       assignUsersToRole,
       getRoleById,
@@ -170,6 +262,10 @@ export function RolesProvider({ children }: { children: ReactNode }) {
       currentUser,
       currentUserRoles,
       setCurrentUserId,
+      createUser,
+      updateUser,
+      deleteUser,
+      setRolesForUser,
       createRole,
       assignUsersToRole,
       getRoleById,
