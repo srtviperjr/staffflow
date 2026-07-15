@@ -12,11 +12,15 @@ import AssignmentIcon from '@mui/icons-material/Assignment'
 import VerifiedIcon from '@mui/icons-material/Verified'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import ScienceIcon from '@mui/icons-material/Science'
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import { seedSampleData } from '../data/sampleData'
+import { DEFAULT_ROLES, SAMPLE_USERS } from '../data/sampleUsers'
 
 export default function HomePage() {
   const handleLoadSampleData = () => {
     seedSampleData()
+    localStorage.setItem('app-users', JSON.stringify(SAMPLE_USERS))
+    localStorage.setItem('app-roles', JSON.stringify(DEFAULT_ROLES))
     window.location.reload()
   }
 
@@ -103,6 +107,32 @@ export default function HomePage() {
                 color="secondary"
               >
                 Manager Review
+              </Button>
+            </CardActions>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                <AdminPanelSettingsIcon color="primary" sx={{ fontSize: 40 }} />
+                <Typography variant="h5" color="primary">
+                  Roles &amp; Users
+                </Typography>
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Create roles and assign the five test users using a left/right selector.
+              </Typography>
+            </CardContent>
+            <CardActions sx={{ px: 3, pb: 3, gap: 1, flexWrap: 'wrap' }}>
+              <Button
+                component={RouterLink}
+                to="/roles"
+                variant="contained"
+                endIcon={<ArrowForwardIcon />}
+              >
+                Manage Roles
               </Button>
             </CardActions>
           </Card>
