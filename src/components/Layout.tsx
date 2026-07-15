@@ -16,24 +16,17 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import AccountTreeIcon from '@mui/icons-material/AccountTree'
 import GroupIcon from '@mui/icons-material/Group'
 import ActingAsUserSwitcher from './ActingAsUserSwitcher'
-
-function navButtonSx(active: boolean) {
-  return {
-    opacity: active ? 1 : 0.75,
-    bgcolor: active ? 'rgba(255,255,255,0.15)' : 'transparent',
-  }
-}
+import NavMenuGroup, { navButtonSx } from './NavMenuGroup'
 
 export default function Layout() {
   const location = useLocation()
   const path = location.pathname
 
   const isHome = path === '/'
-  const isStaffing = path.startsWith('/staffing-plan')
-  const isAuthorization = path.startsWith('/project-authorization')
-  const isRoles = path.startsWith('/roles')
-  const isUsers = path.startsWith('/users')
-  const isWorkflows = path.startsWith('/workflows')
+  const isStaffManagement = path.startsWith('/staffing-plan')
+  const isPafManagement = path.startsWith('/project-authorization')
+  const isApplicationAdmin =
+    path.startsWith('/roles') || path.startsWith('/users') || path.startsWith('/workflows')
   const wideLayout =
     path.startsWith('/staffing-plan/matrix') || path.startsWith('/workflows')
 
@@ -85,79 +78,79 @@ export default function Layout() {
               Home
             </Button>
 
-            <Button
-              component={RouterLink}
-              to="/staffing-plan"
-              color="inherit"
-              startIcon={<AssignmentIcon />}
-              sx={navButtonSx(isStaffing && path === '/staffing-plan')}
-            >
-              Position Request
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/staffing-plan/manager"
-              color="inherit"
-              startIcon={<ManageAccountsIcon />}
-              sx={navButtonSx(isStaffing && path === '/staffing-plan/manager')}
-            >
-              Position Requests Review
-            </Button>
+            <NavMenuGroup
+              label="Staff Management"
+              icon={<AssignmentIcon fontSize="small" />}
+              active={isStaffManagement}
+              items={[
+                {
+                  label: 'Position Request',
+                  to: '/staffing-plan',
+                  icon: <AssignmentIcon fontSize="small" />,
+                  active: path === '/staffing-plan' || path.startsWith('/staffing-plan/revise'),
+                },
+                {
+                  label: 'Position Requests Review',
+                  to: '/staffing-plan/manager',
+                  icon: <ManageAccountsIcon fontSize="small" />,
+                  active: path === '/staffing-plan/manager',
+                },
+                {
+                  label: 'Staffing Plan',
+                  to: '/staffing-plan/matrix',
+                  icon: <TableChartIcon fontSize="small" />,
+                  active: path === '/staffing-plan/matrix',
+                },
+              ]}
+            />
 
-            <Button
-              component={RouterLink}
-              to="/project-authorization"
-              color="inherit"
-              startIcon={<VerifiedIcon />}
-              sx={navButtonSx(isAuthorization && path === '/project-authorization')}
-            >
-              PAF Approval
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/project-authorization/manager"
-              color="inherit"
-              startIcon={<ManageAccountsIcon />}
-              sx={navButtonSx(isAuthorization && path === '/project-authorization/manager')}
-            >
-              PAF Approvals Review
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/staffing-plan/matrix"
-              color="inherit"
-              startIcon={<TableChartIcon />}
-              sx={navButtonSx(isStaffing && path === '/staffing-plan/matrix')}
-            >
-              Staffing Plan
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/roles"
-              color="inherit"
-              startIcon={<AdminPanelSettingsIcon />}
-              sx={navButtonSx(isRoles)}
-            >
-              Roles
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/users"
-              color="inherit"
-              startIcon={<GroupIcon />}
-              sx={navButtonSx(isUsers)}
-            >
-              Users
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/workflows"
-              color="inherit"
-              startIcon={<AccountTreeIcon />}
-              sx={navButtonSx(isWorkflows)}
-            >
-              Workflows
-            </Button>
+            <NavMenuGroup
+              label="PAF Management"
+              icon={<VerifiedIcon fontSize="small" />}
+              active={isPafManagement}
+              items={[
+                {
+                  label: 'PAF Approval',
+                  to: '/project-authorization',
+                  icon: <VerifiedIcon fontSize="small" />,
+                  active:
+                    path === '/project-authorization' ||
+                    path.startsWith('/project-authorization/revise'),
+                },
+                {
+                  label: 'PAF Approvals Review',
+                  to: '/project-authorization/manager',
+                  icon: <ManageAccountsIcon fontSize="small" />,
+                  active: path === '/project-authorization/manager',
+                },
+              ]}
+            />
+
+            <NavMenuGroup
+              label="Application Admin"
+              icon={<AdminPanelSettingsIcon fontSize="small" />}
+              active={isApplicationAdmin}
+              items={[
+                {
+                  label: 'Roles',
+                  to: '/roles',
+                  icon: <AdminPanelSettingsIcon fontSize="small" />,
+                  active: path.startsWith('/roles'),
+                },
+                {
+                  label: 'Users',
+                  to: '/users',
+                  icon: <GroupIcon fontSize="small" />,
+                  active: path.startsWith('/users'),
+                },
+                {
+                  label: 'Workflows',
+                  to: '/workflows',
+                  icon: <AccountTreeIcon fontSize="small" />,
+                  active: path.startsWith('/workflows'),
+                },
+              ]}
+            />
           </Box>
 
           <ActingAsUserSwitcher />
