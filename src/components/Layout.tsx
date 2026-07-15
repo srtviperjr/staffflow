@@ -14,6 +14,7 @@ import VerifiedIcon from '@mui/icons-material/Verified'
 import TableChartIcon from '@mui/icons-material/TableChart'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import AccountTreeIcon from '@mui/icons-material/AccountTree'
+import ActingAsUserSwitcher from './ActingAsUserSwitcher'
 
 function navButtonSx(active: boolean) {
   return {
@@ -44,91 +45,111 @@ export default function Layout() {
           borderBottom: '1px solid rgba(255,255,255,0.12)',
         }}
       >
-        <Toolbar sx={{ gap: 1, flexWrap: 'wrap' }}>
+        <Toolbar
+          sx={{
+            gap: 1,
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            py: { xs: 1, md: 0.5 },
+          }}
+        >
           <HomeIcon sx={{ fontSize: 28 }} />
           <Typography
             variant="h6"
             component={RouterLink}
             to="/"
-            sx={{ flexGrow: 1, fontWeight: 700, color: 'inherit', textDecoration: 'none' }}
+            sx={{ fontWeight: 700, color: 'inherit', textDecoration: 'none', mr: 1 }}
           >
             Jansen StaffFlow
           </Typography>
 
-          <Button
-            component={RouterLink}
-            to="/"
-            color="inherit"
-            startIcon={<HomeIcon />}
-            sx={navButtonSx(isHome)}
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: 0.5,
+              flex: 1,
+              minWidth: 0,
+            }}
           >
-            Home
-          </Button>
+            <Button
+              component={RouterLink}
+              to="/"
+              color="inherit"
+              startIcon={<HomeIcon />}
+              sx={navButtonSx(isHome)}
+            >
+              Home
+            </Button>
 
-          <Button
-            component={RouterLink}
-            to="/staffing-plan"
-            color="inherit"
-            startIcon={<AssignmentIcon />}
-            sx={navButtonSx(isStaffing && path === '/staffing-plan')}
-          >
-            Position Request
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/staffing-plan/manager"
-            color="inherit"
-            startIcon={<ManageAccountsIcon />}
-            sx={navButtonSx(isStaffing && path === '/staffing-plan/manager')}
-          >
-            Position Requests Review
-          </Button>
+            <Button
+              component={RouterLink}
+              to="/staffing-plan"
+              color="inherit"
+              startIcon={<AssignmentIcon />}
+              sx={navButtonSx(isStaffing && path === '/staffing-plan')}
+            >
+              Position Request
+            </Button>
+            <Button
+              component={RouterLink}
+              to="/staffing-plan/manager"
+              color="inherit"
+              startIcon={<ManageAccountsIcon />}
+              sx={navButtonSx(isStaffing && path === '/staffing-plan/manager')}
+            >
+              Position Requests Review
+            </Button>
 
-          <Button
-            component={RouterLink}
-            to="/project-authorization"
-            color="inherit"
-            startIcon={<VerifiedIcon />}
-            sx={navButtonSx(isAuthorization && path === '/project-authorization')}
-          >
-            PAF Approval
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/project-authorization/manager"
-            color="inherit"
-            startIcon={<ManageAccountsIcon />}
-            sx={navButtonSx(isAuthorization && path === '/project-authorization/manager')}
-          >
-            PAF Approvals Review
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/staffing-plan/matrix"
-            color="inherit"
-            startIcon={<TableChartIcon />}
-            sx={navButtonSx(isStaffing && path === '/staffing-plan/matrix')}
-          >
-            Staffing Plan
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/roles"
-            color="inherit"
-            startIcon={<AdminPanelSettingsIcon />}
-            sx={navButtonSx(isRoles)}
-          >
-            Roles
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/workflows"
-            color="inherit"
-            startIcon={<AccountTreeIcon />}
-            sx={{ ...navButtonSx(isWorkflows), ml: 'auto' }}
-          >
-            Workflows
-          </Button>
+            <Button
+              component={RouterLink}
+              to="/project-authorization"
+              color="inherit"
+              startIcon={<VerifiedIcon />}
+              sx={navButtonSx(isAuthorization && path === '/project-authorization')}
+            >
+              PAF Approval
+            </Button>
+            <Button
+              component={RouterLink}
+              to="/project-authorization/manager"
+              color="inherit"
+              startIcon={<ManageAccountsIcon />}
+              sx={navButtonSx(isAuthorization && path === '/project-authorization/manager')}
+            >
+              PAF Approvals Review
+            </Button>
+            <Button
+              component={RouterLink}
+              to="/staffing-plan/matrix"
+              color="inherit"
+              startIcon={<TableChartIcon />}
+              sx={navButtonSx(isStaffing && path === '/staffing-plan/matrix')}
+            >
+              Staffing Plan
+            </Button>
+            <Button
+              component={RouterLink}
+              to="/roles"
+              color="inherit"
+              startIcon={<AdminPanelSettingsIcon />}
+              sx={navButtonSx(isRoles)}
+            >
+              Roles
+            </Button>
+            <Button
+              component={RouterLink}
+              to="/workflows"
+              color="inherit"
+              startIcon={<AccountTreeIcon />}
+              sx={navButtonSx(isWorkflows)}
+            >
+              Workflows
+            </Button>
+          </Box>
+
+          <ActingAsUserSwitcher />
         </Toolbar>
       </AppBar>
 
