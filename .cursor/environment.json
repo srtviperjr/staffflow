@@ -1,0 +1,21 @@
+{
+  "name": "jansen-staffflow",
+  "install": "npm install",
+  "ports": [
+    {
+      "name": "Vite Preview",
+      "port": 4173
+    },
+    {
+      "name": "Vite Dev Server",
+      "port": 5173
+    }
+  ],
+  "terminals": [
+    {
+      "name": "Preview",
+      "command": "npm run build && npm run preview -- --host 0.0.0.0 --port 4173",
+      "description": "Production preview on port 4173 for local port forwarding"
+    }
+  ]
+}
