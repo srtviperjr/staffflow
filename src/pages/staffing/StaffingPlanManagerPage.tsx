@@ -22,6 +22,7 @@ import EditIcon from '@mui/icons-material/Edit'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
+import { useWorkflows } from '../../context/WorkflowContext'
 import RejectDialog from '../../components/RejectDialog'
 import { ChangedFieldDetail, RevisionChangesLegend } from '../../components/ChangedFieldDetail'
 import type { StaffingPlanRequest } from '../../types/staffingPlan'
@@ -135,6 +136,7 @@ function RequestDetails({
 
 export default function StaffingPlanManagerPage() {
   const { currentRequests, rejectRequest, approveRequest, getHistory } = useStaffingPlanRequests()
+  const { getWorkflow } = useWorkflows()
   const [filter, setFilter] = useState<FilterTab>('all')
   const [rejectTarget, setRejectTarget] = useState<StaffingPlanRequest | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
@@ -252,6 +254,17 @@ export default function StaffingPlanManagerPage() {
                           <Typography variant="body2" color="text.secondary">
                             {request.phase} · {request.area} / {request.subArea}
                           </Typography>
+                          {request.workflow && (() => {
+                            const workflow = getWorkflow(request.workflow.workflowId)
+                            const node = workflow?.nodes.find(
+                              (item) => item.id === request.workflow?.currentNodeId,
+                            )
+                            return node ? (
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                                Workflow: {workflow?.name} · {node.data.label}
+                              </Typography>
+                            ) : null
+                          })()}
                         </Box>
                         <StatusChip status={request.status} />
                       </Box>

@@ -22,6 +22,7 @@ import EditIcon from '@mui/icons-material/Edit'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import { useProjectAuthorizationRequests } from '../../context/ProjectAuthorizationContext'
+import { useWorkflows } from '../../context/WorkflowContext'
 import RejectDialog from '../../components/RejectDialog'
 import { ChangedFieldDetail, RevisionChangesLegend } from '../../components/ChangedFieldDetail'
 import type { ProjectAuthorizationRequest } from '../../types/projectAuthorization'
@@ -129,6 +130,7 @@ function RequestDetails({
 export default function ProjectAuthorizationManagerPage() {
   const { currentRequests, rejectRequest, approveRequest, getHistory } =
     useProjectAuthorizationRequests()
+  const { getWorkflow } = useWorkflows()
   const [filter, setFilter] = useState<FilterTab>('all')
   const [rejectTarget, setRejectTarget] = useState<ProjectAuthorizationRequest | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
@@ -246,6 +248,17 @@ export default function ProjectAuthorizationManagerPage() {
                           <Typography variant="body2" color="text.secondary">
                             {request.approvedPositionLabel}
                           </Typography>
+                          {request.workflow && (() => {
+                            const workflow = getWorkflow(request.workflow.workflowId)
+                            const node = workflow?.nodes.find(
+                              (item) => item.id === request.workflow?.currentNodeId,
+                            )
+                            return node ? (
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                                Workflow: {workflow?.name} · {node.data.label}
+                              </Typography>
+                            ) : null
+                          })()}
                         </Box>
                         <StatusChip status={request.status} />
                       </Box>

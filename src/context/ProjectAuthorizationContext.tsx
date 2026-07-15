@@ -17,6 +17,8 @@ import {
   normalizeAuthorizationRequests,
 } from '../utils/projectAuthorizationRevisions'
 import { SAMPLE_PROJECT_AUTHORIZATION_REQUESTS } from '../data/sampleData'
+import { useWorkflows } from './WorkflowContext'
+import { advanceWorkflow, startWorkflow } from '../utils/workflowEngine'
 
 const STORAGE_KEY = 'project-authorization-requests'
 
@@ -92,10 +94,16 @@ function buildRequestFromForm(
     submittedAt: overrides.submittedAt ?? new Date().toISOString(),
     rejectionComment: overrides.rejectionComment,
     reviewedAt: overrides.reviewedAt,
+    workflow: overrides.workflow,
   }
 }
 
+function requestAsFormRecord(request: ProjectAuthorizationRequest): Record<string, unknown> {
+  return { ...request }
+}
+
 export function ProjectAuthorizationProvider({ children }: { children: ReactNode }) {
+  const { getWorkflowByForm, getWorkflow } = useWorkflows()
   const [requests, setRequests] = useState<ProjectAuthorizationRequest[]>(loadRequests)
 
   const persist = useCallback((updated: ProjectAuthorizationRequest[]) => {
@@ -107,17 +115,33 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
   const addRequest = useCallback(
     (data: ProjectAuthorizationFormData, positionLabel: string, position: string) => {
       const id = crypto.randomUUID()
+      const workflow = getWorkflowByForm('project-authorization')
+      let status: ProjectAuthorizationRequest['status'] = 'pending'
+      let workflowProgress: ProjectAuthorizationRequest['workflow']
+
+      if (workflow) {
+        const result = startWorkflow(workflow, {
+          ...data,
+          position,
+          approvedPositionLabel: positionLabel,
+        })
+        status = result.status
+        workflowProgress = result.progress
+      }
+
       const newRequest = buildRequestFromForm(data, positionLabel, position, {
         id,
         revisionGroupId: id,
         revision: 1,
         isCurrentRevision: true,
         pafNumber: generatePafNumber(id),
+        status,
+        workflow: workflowProgress,
       })
       persist([newRequest, ...requests])
       return newRequest
     },
-    [persist, requests],
+    [persist, requests, getWorkflowByForm],
   )
 
   const reviseRequest = useCallback(
@@ -130,12 +154,28 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
       const source = requests.find((request) => request.id === sourceId)
       if (!source) return
 
+      const workflow = getWorkflowByForm('project-authorization')
+      let status: ProjectAuthorizationRequest['status'] = 'pending'
+      let workflowProgress: ProjectAuthorizationRequest['workflow']
+
+      if (workflow) {
+        const result = startWorkflow(workflow, {
+          ...data,
+          position,
+          approvedPositionLabel: positionLabel,
+        })
+        status = result.status
+        workflowProgress = result.progress
+      }
+
       const newRequest = buildRequestFromForm(data, positionLabel, position, {
         revisionGroupId: source.revisionGroupId,
         revision: source.revision + 1,
         supersedesId: source.id,
         isCurrentRevision: true,
         pafNumber: source.pafNumber,
+        status,
+        workflow: workflowProgress,
       })
 
       const updatedRequests = requests.map((request) =>
@@ -146,42 +186,80 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
 
       persist([newRequest, ...updatedRequests])
     },
-    [persist, requests],
+    [persist, requests, getWorkflowByForm],
   )
 
   const rejectRequest = useCallback(
     (id: string, comment: string) => {
       persist(
-        requests.map((request) =>
-          request.id === id
-            ? {
+        requests.map((request) => {
+          if (request.id !== id) return request
+
+          if (request.workflow) {
+            const workflow = getWorkflow(request.workflow.workflowId)
+            if (workflow) {
+              const result = advanceWorkflow(
+                workflow,
+                request.workflow,
+                requestAsFormRecord(request),
+                'reject',
+              )
+              return {
                 ...request,
-                status: 'rejected' as const,
+                status: result.status === 'pending' ? 'rejected' : result.status,
                 rejectionComment: comment.trim(),
                 reviewedAt: new Date().toISOString(),
+                workflow: result.progress,
               }
-            : request,
-        ),
+            }
+          }
+
+          return {
+            ...request,
+            status: 'rejected' as const,
+            rejectionComment: comment.trim(),
+            reviewedAt: new Date().toISOString(),
+          }
+        }),
       )
     },
-    [persist, requests],
+    [persist, requests, getWorkflow],
   )
 
   const approveRequest = useCallback(
     (id: string) => {
       persist(
-        requests.map((request) =>
-          request.id === id
-            ? {
+        requests.map((request) => {
+          if (request.id !== id) return request
+
+          if (request.workflow) {
+            const workflow = getWorkflow(request.workflow.workflowId)
+            if (workflow) {
+              const result = advanceWorkflow(
+                workflow,
+                request.workflow,
+                requestAsFormRecord(request),
+                'approve',
+              )
+              return {
                 ...request,
-                status: 'approved' as const,
+                status: result.status === 'pending' && result.completed ? 'approved' : result.status,
                 reviewedAt: new Date().toISOString(),
+                rejectionComment: undefined,
+                workflow: result.progress,
               }
-            : request,
-        ),
+            }
+          }
+
+          return {
+            ...request,
+            status: 'approved' as const,
+            reviewedAt: new Date().toISOString(),
+          }
+        }),
       )
     },
-    [persist, requests],
+    [persist, requests, getWorkflow],
   )
 
   const currentRequests = useMemo(() => getCurrentAuthorizationRequests(requests), [requests])

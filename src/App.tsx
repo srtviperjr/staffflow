@@ -26,12 +26,12 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <OnboardingProvider>
-        <LabourChangeProvider>
-          <StaffingPlanProvider>
-            <ProjectAuthorizationProvider>
-              <RolesProvider>
-                <WorkflowProvider>
+      <WorkflowProvider>
+        <OnboardingProvider>
+          <LabourChangeProvider>
+            <StaffingPlanProvider>
+              <ProjectAuthorizationProvider>
+                <RolesProvider>
                   <BrowserRouter>
                     <Routes>
                       <Route element={<Layout />}>
@@ -60,12 +60,12 @@ function App() {
                       </Route>
                     </Routes>
                   </BrowserRouter>
-                </WorkflowProvider>
-              </RolesProvider>
-            </ProjectAuthorizationProvider>
-          </StaffingPlanProvider>
-        </LabourChangeProvider>
-      </OnboardingProvider>
+                </RolesProvider>
+              </ProjectAuthorizationProvider>
+            </StaffingPlanProvider>
+          </LabourChangeProvider>
+        </OnboardingProvider>
+      </WorkflowProvider>
     </ThemeProvider>
   )
 }

@@ -2,15 +2,21 @@ import { memo } from 'react'
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
 import { Box, Typography } from '@mui/material'
 
+import type { DecisionMode, FieldCondition } from '../../types/workflow'
+
 export type FlowNodeData = {
   label: string
   kind: 'start' | 'step' | 'decision' | 'end'
   roleId: string
   stateId: string
   decisionQuestion?: string
+  waitForAction?: boolean
+  decisionMode?: DecisionMode
+  fieldCondition?: FieldCondition
   roleName?: string
   stateName?: string
   stateColor?: string
+  conditionSummary?: string
   [key: string]: unknown
 }
 
@@ -31,10 +37,12 @@ function MetaLine({
   roleName,
   stateName,
   stateColor,
+  waitForAction,
 }: {
   roleName?: string
   stateName?: string
   stateColor?: string
+  waitForAction?: boolean
 }) {
   return (
     <Box sx={{ mt: 0.75 }}>
@@ -61,6 +69,11 @@ function MetaLine({
           {stateName || 'No state'}
         </Typography>
       </Box>
+      {waitForAction ? (
+        <Typography variant="caption" sx={{ display: 'block', mt: 0.25, color: '#ed6c02' }}>
+          Waits for approve/reject
+        </Typography>
+      ) : null}
     </Box>
   )
 }
@@ -100,13 +113,19 @@ function StepNode({ data, selected }: NodeProps<FlowNode>) {
       <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.25 }}>
         {data.label}
       </Typography>
-      <MetaLine roleName={data.roleName} stateName={data.stateName} stateColor={data.stateColor} />
+      <MetaLine
+        roleName={data.roleName}
+        stateName={data.stateName}
+        stateColor={data.stateColor}
+        waitForAction={data.waitForAction}
+      />
       <Handle type="source" position={Position.Bottom} />
     </Box>
   )
 }
 
 function DecisionNode({ data, selected }: NodeProps<FlowNode>) {
+  const isField = data.decisionMode === 'field'
   return (
     <Box sx={{ width: 190, height: 190, position: 'relative' }}>
       <Handle type="target" position={Position.Top} style={{ top: 8 }} />
@@ -117,7 +136,7 @@ function DecisionNode({ data, selected }: NodeProps<FlowNode>) {
           transform: 'rotate(45deg)',
           border: '2px solid',
           borderColor: selected ? 'primary.main' : '#ed6c02',
-          bgcolor: '#fff8f0',
+          bgcolor: isField ? '#e8f5e9' : '#fff8f0',
           boxShadow: '0 4px 14px rgba(122,52,0,0.12)',
           display: 'flex',
           alignItems: 'center',
@@ -126,18 +145,18 @@ function DecisionNode({ data, selected }: NodeProps<FlowNode>) {
       >
         <Box sx={{ transform: 'rotate(-45deg)', textAlign: 'center', px: 1, maxWidth: 110 }}>
           <Typography variant="caption" sx={{ color: '#ed6c02', fontWeight: 700 }}>
-            DECISION
+            {isField ? 'FIELD' : 'DECISION'}
           </Typography>
           <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
             {data.label}
           </Typography>
-          {data.decisionQuestion ? (
+          {data.conditionSummary || data.decisionQuestion ? (
             <Typography
               variant="caption"
               color="text.secondary"
               sx={{ display: 'block', mt: 0.5 }}
             >
-              {data.decisionQuestion}
+              {data.conditionSummary || data.decisionQuestion}
             </Typography>
           ) : null}
           <MetaLine roleName={data.roleName} stateName={data.stateName} stateColor={data.stateColor} />

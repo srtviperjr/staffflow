@@ -13,6 +13,7 @@ import {
   SUB_AREAS,
   sortAlpha,
 } from '../constants/staffingPlanOptions'
+import type { WorkflowProgress } from './workflow'
 
 export type Phase = (typeof PHASES)[number]
 export type LocationType = (typeof LOCATION_TYPES)[number]
@@ -55,6 +56,8 @@ export interface StaffingPlanRequest {
   submittedAt: string
   rejectionComment?: string
   reviewedAt?: string
+  /** Progress through the staffing-plan workflow definition, when attached */
+  workflow?: WorkflowProgress
 }
 
 export interface StaffingPlanFormData {
