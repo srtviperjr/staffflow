@@ -281,9 +281,13 @@ function buildStaffingPosition(
     revision: overrides.revision,
     supersedesId: overrides.supersedesId,
     isCurrentRevision: overrides.isCurrentRevision,
-    positionNumber:
-      overrides.positionNumber ?? `${company}-${String(index + 1).padStart(3, '0')}`,
     phase: overrides.phase ?? defaultPhaseForCompany(company),
+    positionNumber:
+      overrides.positionNumber ??
+      formatPositionNumber(
+        overrides.phase ?? defaultPhaseForCompany(company),
+        index + 1,
+      ),
     locationType: overrides.locationType ?? pick(LOCATION_TYPES, seed),
     functionalGroup: overrides.functionalGroup ?? pick(FUNCTIONAL_GROUPS, seed),
     dsg: overrides.dsg ?? pick(DSG_OPTIONS, seed + 2),
@@ -415,11 +419,11 @@ function distributeCount(total: number, buckets: number): number[] {
   return Array.from({ length: buckets }, (_, index) => base + (index < remainder ? 1 : 0))
 }
 
-function nextPositionIndexByCompany(
-  company: Company,
+function nextPositionIndexForPhase(
+  phase: 'JS1' | 'JS2',
   existing: StaffingPlanRequest[],
 ): number {
-  return maxPositionSequence(company, existing)
+  return maxPositionSequence(phase, existing)
 }
 
 function latestApprovedForGroup(
@@ -478,11 +482,16 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
   const allocatePafNumber = () => formatPafNumber(pafCounter++)
 
   const positionsPerCompany = distributeCount(positionGroups, COMPANIES.length)
-  const companyPositionIndexes: Record<Company, number> = {
-    BHP: nextPositionIndexByCompany('BHP', existingStaffing),
-    Hatch: nextPositionIndexByCompany('Hatch', existingStaffing),
-    Bantrel: nextPositionIndexByCompany('Bantrel', existingStaffing),
-    Fluor: nextPositionIndexByCompany('Fluor', existingStaffing),
+  const phasePositionIndexes: Record<'JS1' | 'JS2', number> = {
+    JS1: nextPositionIndexForPhase('JS1', existingStaffing),
+    JS2: nextPositionIndexForPhase('JS2', existingStaffing),
+  }
+  /** Per-company counters only for stable sample IDs (not position numbers). */
+  const companyIdIndexes: Record<Company, number> = {
+    BHP: 0,
+    Hatch: 0,
+    Bantrel: 0,
+    Fluor: 0,
   }
 
   const approvedPositionsByCompany: Record<Company, StaffingPlanRequest[]> = {
@@ -506,9 +515,12 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
   COMPANIES.forEach((company, companyIndex) => {
     const count = positionsPerCompany[companyIndex] ?? 0
     for (let i = 0; i < count; i += 1) {
-      companyPositionIndexes[company] += 1
-      const index = companyPositionIndexes[company]
-      const groupId = `${idPrefix}-sp-${company.toLowerCase()}-${String(index).padStart(3, '0')}`
+      companyIdIndexes[company] += 1
+      const idIndex = companyIdIndexes[company]
+      const phase = defaultPhaseForCompany(company)
+      phasePositionIndexes[phase] += 1
+      const sequence = phasePositionIndexes[phase]
+      const groupId = `${idPrefix}-sp-${company.toLowerCase()}-${String(idIndex).padStart(3, '0')}`
       const statusRoll = (companyIndex + i) % 10
       // Bias toward approved so PAFs have hosts; keep some pending/rejected for demos.
       const status: StaffingPlanRequest['status'] =
@@ -518,7 +530,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
       const lwp = addBiWeeks(startBiWeek, POSITION_WINDOW_BIWEEKS)
       const approvedThenApproved = status === 'approved' && (companyIndex + i) % 9 === 0
       const approvedThenPending = status === 'approved' && (companyIndex + i) % 9 === 3
-      const positionNumber = formatPositionNumber(company, index)
+      const positionNumber = formatPositionNumber(phase, sequence)
 
       if (approvedThenApproved || approvedThenPending) {
         const revisionTwoStatus: StaffingPlanRequest['status'] = approvedThenPending
@@ -527,34 +539,36 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
         const revisionTwoLwp = approvedThenApproved ? addBiWeeks(lwp, 2) : lwp
 
         staffing.push(
-          buildStaffingPosition(company, index, {
+          buildStaffingPosition(company, idIndex, {
             id: `${groupId}-r1`,
             revisionGroupId: groupId,
             revision: 1,
             isCurrentRevision: false,
             status: 'approved',
+            phase,
             positionNumber,
             startBiWeek,
             lwp,
-            submittedAt: submittedAt(index),
-            reviewedAt: reviewedAt(index + 1),
+            submittedAt: submittedAt(idIndex),
+            reviewedAt: reviewedAt(idIndex + 1),
             workflow: staffingApprovedWorkflow(company),
             totalHours: '1200',
           }),
         )
         staffing.push(
-          buildStaffingPosition(company, index, {
+          buildStaffingPosition(company, idIndex, {
             id: `${groupId}-r2`,
             revisionGroupId: groupId,
             revision: 2,
             supersedesId: `${groupId}-r1`,
             isCurrentRevision: true,
             status: revisionTwoStatus,
+            phase,
             positionNumber,
             startBiWeek,
             lwp: revisionTwoLwp,
-            submittedAt: submittedAt(index + 2),
-            reviewedAt: revisionTwoStatus === 'approved' ? reviewedAt(index + 3) : undefined,
+            submittedAt: submittedAt(idIndex + 2),
+            reviewedAt: revisionTwoStatus === 'approved' ? reviewedAt(idIndex + 3) : undefined,
             workflow:
               revisionTwoStatus === 'approved'
                 ? staffingApprovedWorkflow(company)
@@ -565,17 +579,18 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
         )
       } else {
         staffing.push(
-          buildStaffingPosition(company, index, {
+          buildStaffingPosition(company, idIndex, {
             id: groupId,
             revisionGroupId: groupId,
             revision: 1,
             isCurrentRevision: true,
             status,
+            phase,
             positionNumber,
             startBiWeek,
             lwp,
-            submittedAt: submittedAt(index),
-            reviewedAt: status === 'pending' ? undefined : reviewedAt(index + 1),
+            submittedAt: submittedAt(idIndex),
+            reviewedAt: status === 'pending' ? undefined : reviewedAt(idIndex + 1),
             rejectionComment:
               status === 'rejected' ? 'Position budget not approved for this phase.' : undefined,
             workflow:
@@ -607,23 +622,27 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
     if (withRoom) return withRoom
 
     // Create an extra approved host position when the quota still needs PAF slots.
-    companyPositionIndexes[company] += 1
-    const index = companyPositionIndexes[company]
-    const groupId = `${idPrefix}-sp-extra-${company.toLowerCase()}-${String(index).padStart(3, '0')}`
-    const startBiWeek = addBiWeeks(POSITION_WINDOW_START, index % 3)
+    companyIdIndexes[company] += 1
+    const idIndex = companyIdIndexes[company]
+    const phase = defaultPhaseForCompany(company)
+    phasePositionIndexes[phase] += 1
+    const sequence = phasePositionIndexes[phase]
+    const groupId = `${idPrefix}-sp-extra-${company.toLowerCase()}-${String(idIndex).padStart(3, '0')}`
+    const startBiWeek = addBiWeeks(POSITION_WINDOW_START, idIndex % 3)
     const lwp = addBiWeeks(startBiWeek, POSITION_WINDOW_BIWEEKS)
-    const positionNumber = formatPositionNumber(company, index)
-    const host = buildStaffingPosition(company, index, {
+    const positionNumber = formatPositionNumber(phase, sequence)
+    const host = buildStaffingPosition(company, idIndex, {
       id: groupId,
       revisionGroupId: groupId,
       revision: 1,
       isCurrentRevision: true,
       status: 'approved',
+      phase,
       positionNumber,
       startBiWeek,
       lwp,
-      submittedAt: submittedAt(index),
-      reviewedAt: reviewedAt(index + 1),
+      submittedAt: submittedAt(idIndex),
+      reviewedAt: reviewedAt(idIndex + 1),
       workflow: staffingApprovedWorkflow(company),
     })
     staffing.push(host)

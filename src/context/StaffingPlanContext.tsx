@@ -69,9 +69,10 @@ function buildRequestFromForm(
     revision: overrides.revision ?? 1,
     supersedesId: overrides.supersedesId,
     isCurrentRevision: overrides.isCurrentRevision ?? true,
-    positionNumber:
-      overrides.positionNumber ?? nextPositionNumber(company, existing),
     phase: data.phase as StaffingPlanRequest['phase'],
+    positionNumber:
+      overrides.positionNumber ??
+      nextPositionNumber(data.phase as StaffingPlanRequest['phase'], existing),
     locationType: data.locationType as StaffingPlanRequest['locationType'],
     functionalGroup: data.functionalGroup as StaffingPlanRequest['functionalGroup'],
     dsg: data.dsg.trim(),
@@ -131,7 +132,7 @@ export function StaffingPlanProvider({ children }: { children: ReactNode }) {
           revisionGroupId: id,
           revision: 1,
           isCurrentRevision: true,
-          positionNumber: nextPositionNumber(data.company, requests),
+          positionNumber: nextPositionNumber(data.phase, requests),
           status,
           workflow: workflowProgress,
         },
