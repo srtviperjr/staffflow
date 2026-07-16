@@ -169,7 +169,7 @@ export default function PafRegisterPage() {
   const [columnOrder, setColumnOrder] = useState<PafRegisterColumnId[]>(loadColumnOrder)
   const [visibleColumns, setVisibleColumns] = useState<PafRegisterColumnId[]>(loadVisibleColumns)
   const [stickyColumns, setStickyColumns] = useState<PafRegisterColumnId[]>(loadStickyColumns)
-  const [filters, setFilters] = useState<Partial<Record<PafRegisterColumnId, string>>>({})
+  const [filters, setFilters] = useState<Partial<Record<PafRegisterColumnId, string[]>>>({})
   const [columnsAnchor, setColumnsAnchor] = useState<HTMLElement | null>(null)
 
   useEffect(() => {
@@ -218,18 +218,18 @@ export default function PafRegisterPage() {
   }, [rows, visibleRequests])
 
   const activeFilterCount = useMemo(
-    () => Object.values(filters).filter(Boolean).length,
+    () => Object.values(filters).filter((values) => Array.isArray(values) && values.length > 0).length,
     [filters],
   )
 
-  const setFilterValue = (columnId: PafRegisterColumnId, value: string) => {
+  const setFilterValue = (columnId: PafRegisterColumnId, values: string[]) => {
     setFilters((prev) => {
-      if (!value) {
+      if (values.length === 0) {
         const next = { ...prev }
         delete next[columnId]
         return next
       }
-      return { ...prev, [columnId]: value }
+      return { ...prev, [columnId]: values }
     })
   }
 
@@ -590,23 +590,42 @@ export default function PafRegisterPage() {
                         >
                           <FormControl size="small" fullWidth>
                             <Select
+                              multiple
                               displayEmpty
-                              value={filters[column.id] ?? ''}
-                              onChange={(event) => setFilterValue(column.id, event.target.value)}
+                              value={filters[column.id] ?? []}
+                              onChange={(event) => {
+                                const value = event.target.value
+                                setFilterValue(
+                                  column.id,
+                                  typeof value === 'string' ? value.split(',') : value,
+                                )
+                              }}
+                              renderValue={(selected) => {
+                                if (selected.length === 0) return <em>All</em>
+                                if (selected.length === 1) return selected[0]
+                                return `${selected.length} selected`
+                              }}
                               sx={{
                                 fontSize: '0.7rem',
                                 bgcolor: 'background.paper',
                                 '& .MuiSelect-select': { py: 0.5, px: 1 },
                               }}
+                              MenuProps={{
+                                slotProps: { paper: { sx: { maxHeight: 320 } } },
+                              }}
                             >
-                              <MenuItem value="">
-                                <em>All</em>
-                              </MenuItem>
-                              {options.map((option) => (
-                                <MenuItem key={option} value={option} sx={{ fontSize: '0.75rem' }}>
-                                  {option}
-                                </MenuItem>
-                              ))}
+                              {options.map((option) => {
+                                const checked = (filters[column.id] ?? []).includes(option)
+                                return (
+                                  <MenuItem key={option} value={option} dense>
+                                    <Checkbox size="small" checked={checked} sx={{ py: 0, pl: 0 }} />
+                                    <ListItemText
+                                      primary={option}
+                                      slotProps={{ primary: { sx: { fontSize: '0.75rem' } } }}
+                                    />
+                                  </MenuItem>
+                                )
+                              })}
                             </Select>
                           </FormControl>
                         </TableCell>

@@ -144,17 +144,17 @@ export function getUniquePafColumnValues(
 
 export function filterPafRegisterRows(
   rows: PafRegisterRow[],
-  filters: Partial<Record<PafRegisterColumnId, string>>,
+  filters: Partial<Record<PafRegisterColumnId, string[]>>,
 ): PafRegisterRow[] {
-  const active = Object.entries(filters).filter(([, value]) => Boolean(value)) as Array<
-    [PafRegisterColumnId, string]
-  >
+  const active = Object.entries(filters).filter(
+    ([, values]) => Array.isArray(values) && values.length > 0,
+  ) as Array<[PafRegisterColumnId, string[]]>
   if (active.length === 0) return rows
   return rows.filter((row) =>
-    active.every(([columnId, filterValue]) => {
+    active.every(([columnId, filterValues]) => {
       const column = COLUMN_BY_ID.get(columnId)
       if (!column) return true
-      return column.getValue(row) === filterValue
+      return filterValues.includes(column.getValue(row))
     }),
   )
 }

@@ -192,18 +192,18 @@ export function getUniqueColumnValues(rows: StaffingMatrixRow[], columnId: Matri
 
 export function filterMatrixRows(
   rows: StaffingMatrixRow[],
-  filters: Partial<Record<MatrixColumnId, string>>,
+  filters: Partial<Record<MatrixColumnId, string[]>>,
 ): StaffingMatrixRow[] {
-  const active = Object.entries(filters).filter(([, value]) => Boolean(value)) as Array<
-    [MatrixColumnId, string]
-  >
+  const active = Object.entries(filters).filter(
+    ([, values]) => Array.isArray(values) && values.length > 0,
+  ) as Array<[MatrixColumnId, string[]]>
   if (active.length === 0) return rows
 
   return rows.filter((row) =>
-    active.every(([columnId, filterValue]) => {
+    active.every(([columnId, filterValues]) => {
       const column = COLUMN_BY_ID.get(columnId)
       if (!column) return true
-      return column.getValue(row) === filterValue
+      return filterValues.includes(column.getValue(row))
     }),
   )
 }
