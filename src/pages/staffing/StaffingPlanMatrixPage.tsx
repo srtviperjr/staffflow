@@ -160,8 +160,15 @@ function renderMetadataCell(
     return value
   }
 
-  // Only offer create when the position has no active (pending/approved) PAF.
+  // One PAF = one person. Multiple people can fill a position if dates do not overlap.
   if (!row.authorization) {
+    if (!row.canAddPaf) {
+      return (
+        <Typography component="span" sx={{ fontSize: '0.75rem', color: 'text.disabled' }}>
+          None
+        </Typography>
+      )
+    }
     return (
       <Button
         variant="text"
@@ -184,21 +191,47 @@ function renderMetadataCell(
   }
 
   return (
-    <Button
-      variant="text"
-      size="small"
-      onClick={() => onOpenPaf(row.authorization!)}
-      sx={{
-        textTransform: 'none',
-        p: 0,
-        minWidth: 0,
-        fontWeight: 600,
-        fontSize: '0.75rem',
-        verticalAlign: 'baseline',
-      }}
+    <Stack
+      direction="row"
+      spacing={0.75}
+      useFlexGap
+      sx={{ alignItems: 'baseline', flexWrap: 'wrap' }}
     >
-      {value}
-    </Button>
+      <Button
+        variant="text"
+        size="small"
+        onClick={() => onOpenPaf(row.authorization!)}
+        sx={{
+          textTransform: 'none',
+          p: 0,
+          minWidth: 0,
+          fontWeight: 600,
+          fontSize: '0.75rem',
+          verticalAlign: 'baseline',
+        }}
+      >
+        {value}
+      </Button>
+      {row.canAddPaf && (
+        <Button
+          variant="text"
+          size="small"
+          onClick={() => onCreatePaf(row.id)}
+          sx={{
+            textTransform: 'none',
+            p: 0,
+            minWidth: 0,
+            fontWeight: 500,
+            fontSize: '0.7rem',
+            color: 'text.secondary',
+            verticalAlign: 'baseline',
+            '&:hover': { color: 'primary.main' },
+          }}
+        >
+          Add
+        </Button>
+      )}
+    </Stack>
   )
 }
 

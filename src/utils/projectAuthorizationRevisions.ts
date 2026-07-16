@@ -81,6 +81,7 @@ export {
   getDisplayAuthorizationForPosition as getActiveAuthorizationForPosition,
   getActivePafsForPosition,
   findOverlappingActivePaf,
+  findNextAvailablePafRange,
   validatePafSchedule,
   positionWindowFullyCovered,
 } from './pafDateRules'

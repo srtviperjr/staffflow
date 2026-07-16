@@ -1,7 +1,11 @@
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import type { StaffingPlanRequest } from '../types/staffingPlan'
 import { getApprovedStaffingRequests } from './approvedPositions'
-import { getActiveAuthorizationForPosition } from './projectAuthorizationRevisions'
+import {
+  findNextAvailablePafRange,
+  getActiveAuthorizationForPosition,
+  getActivePafsForPosition,
+} from './projectAuthorizationRevisions'
 import { generateBiWeeklyPeriods, parseDateInput } from './staffingPlanDates'
 
 export type LocationCategory = 'Site - Comm' | 'Site - Const' | 'Office'
@@ -10,6 +14,8 @@ export interface StaffingMatrixRow {
   id: string
   revisionGroupId: string
   authorization?: ProjectAuthorizationRequest
+  /** True when another person can still be assigned without date overlap. */
+  canAddPaf: boolean
   phase: string
   projectOffice: string
   functionalDsg: string
@@ -192,28 +198,30 @@ function formatMatrixDate(value: string): string {
 function buildRow(
   position: StaffingPlanRequest,
   authorization: ProjectAuthorizationRequest | undefined,
+  approvedAssignments: ProjectAuthorizationRequest[],
+  canAddPaf: boolean,
   periods: string[],
 ): StaffingMatrixRow {
-  const isApproved = authorization?.status === 'approved'
-
   const loads = Object.fromEntries(
-    periods.map((period) => [
-      period,
-      isApproved
-        ? generateDemoLoad(
-            authorization.id,
-            period,
-            authorization.startBiWeek,
-            authorization.lwp,
-          )
-        : null,
-    ]),
+    periods.map((period) => {
+      for (const assignment of approvedAssignments) {
+        const load = generateDemoLoad(
+          assignment.id,
+          period,
+          assignment.startBiWeek,
+          assignment.lwp,
+        )
+        if (load != null) return [period, load]
+      }
+      return [period, null]
+    }),
   ) as Record<string, number | null>
 
   return {
     id: position.id,
     revisionGroupId: position.revisionGroupId,
     authorization,
+    canAddPaf,
     phase: position.phase,
     projectOffice: position.locationType,
     functionalDsg: position.dsg,
@@ -246,13 +254,16 @@ export function buildStaffingMatrixRows(
   const approvedPositions = getApprovedStaffingRequests(staffingRequests)
 
   return approvedPositions
-    .map((position) =>
-      buildRow(
+    .map((position) => {
+      const active = getActivePafsForPosition(position, authorizations, staffingRequests)
+      return buildRow(
         position,
         getActiveAuthorizationForPosition(position, authorizations, staffingRequests),
+        active.filter((request) => request.status === 'approved'),
+        Boolean(findNextAvailablePafRange(position, authorizations, staffingRequests)),
         periods,
-      ),
-    )
+      )
+    })
     .sort((a, b) => a.sortNumber.localeCompare(b.sortNumber, undefined, { numeric: true }))
 }
 

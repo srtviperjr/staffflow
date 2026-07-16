@@ -90,7 +90,8 @@ export default function HomePage() {
       ? {
           key: 'paf',
           title: 'PAF Request',
-          description: 'Submit a PAF request for a candidate against an approved staffing position.',
+          description:
+            'Assign one person per PAF to an approved position. Multiple people can fill a position if their dates do not overlap.',
           icon: <VerifiedIcon color="secondary" sx={{ fontSize: 40 }} />,
           color: 'secondary' as const,
           primary: { label: 'Start request', to: '/project-authorization' },

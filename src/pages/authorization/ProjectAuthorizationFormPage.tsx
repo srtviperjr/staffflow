@@ -36,6 +36,7 @@ import {
   getApprovedStaffingRequests,
 } from '../../utils/approvedPositions'
 import {
+  findNextAvailablePafRange,
   requestToFormData,
   staffingPlanToFormData,
   validatePafSchedule,
@@ -137,17 +138,17 @@ export default function ProjectAuthorizationFormPage() {
     }
 
     if (prefillPosition) {
-      const scheduleErrors = validatePafSchedule({
-        range: {
-          startBiWeek: prefillPosition.startBiWeek,
-          lwp: prefillPosition.lwp,
-        },
-        position: prefillPosition,
-        authorizations: allPafRequests,
+      const nextRange = findNextAvailablePafRange(
+        prefillPosition,
+        allPafRequests,
         staffingRequests,
-      })
-      if (Object.keys(scheduleErrors).length === 0) {
-        setForm(staffingPlanToFormData(prefillPosition))
+      )
+      if (nextRange) {
+        setForm({
+          ...staffingPlanToFormData(prefillPosition),
+          startBiWeek: nextRange.startBiWeek,
+          lwp: nextRange.lwp,
+        })
         setErrors({})
         return
       }
@@ -188,17 +189,7 @@ export default function ProjectAuthorizationFormPage() {
   const prefillBlocked = Boolean(
     prefillPosition &&
       !isRevisionMode &&
-      Object.keys(
-        validatePafSchedule({
-          range: {
-            startBiWeek: prefillPosition.startBiWeek,
-            lwp: prefillPosition.lwp,
-          },
-          position: prefillPosition,
-          authorizations: allPafRequests,
-          staffingRequests,
-        }),
-      ).length > 0,
+      !findNextAvailablePafRange(prefillPosition, allPafRequests, staffingRequests),
   )
 
   const updateField = <K extends keyof ProjectAuthorizationFormData>(
@@ -226,6 +217,35 @@ export default function ProjectAuthorizationFormPage() {
       staffingPlanRequestId: '',
     }))
     setErrors((prev) => ({ ...prev, dsg: undefined, staffingPlanRequestId: undefined }))
+  }
+
+  const handlePositionChange = (positionRequestId: string) => {
+    const position = approvedRequests.find((request) => request.id === positionRequestId)
+    if (!position) {
+      updateField('staffingPlanRequestId', positionRequestId)
+      return
+    }
+
+    const nextRange = findNextAvailablePafRange(position, allPafRequests, staffingRequests)
+    setForm((prev) => ({
+      ...prev,
+      staffingPlanRequestId: positionRequestId,
+      country: prev.country || position.country,
+      class: prev.class || position.class,
+      company: prev.company || position.company,
+      eeIdSap: prev.eeIdSap || position.eeIdSap,
+      sortNumber: prev.sortNumber || position.sortNumber,
+      totalHours: prev.totalHours || position.totalHours,
+      roster: prev.roster || position.roster,
+      startBiWeek: nextRange?.startBiWeek ?? position.startBiWeek,
+      lwp: nextRange?.lwp ?? position.lwp,
+    }))
+    setErrors((prev) => ({
+      ...prev,
+      staffingPlanRequestId: undefined,
+      startBiWeek: undefined,
+      lwp: undefined,
+    }))
   }
 
   const validate = () => {
@@ -305,7 +325,7 @@ export default function ProjectAuthorizationFormPage() {
               <Typography variant="body2" color="text.secondary">
                 {isRevisionMode
                   ? `Creating revision ${revisionSource!.revision + 1} from revision ${revisionSource!.revision}. Each update is saved as a new revision for review.`
-                  : 'Submit a PAF request for a candidate against an approved staffing plan position'}
+                  : 'Assign one person to an approved position. Multiple people can fill it if dates do not overlap.'}
               </Typography>
             </Box>
           </Box>
@@ -330,17 +350,17 @@ export default function ProjectAuthorizationFormPage() {
 
           {prefillPosition && !isRevisionMode && !prefillBlocked && (
             <Alert severity="info" sx={{ mb: 2 }}>
-              Creating a PAF request for approved position{' '}
-              <strong>{formatApprovedPositionLabel(prefillPosition)}</strong>. Position details
-              have been prefilled from the staffing plan.
+              Creating a PAF for one person on approved position{' '}
+              <strong>{formatApprovedPositionLabel(prefillPosition)}</strong>. Dates are prefilled
+              to the next open window so they do not overlap anyone already assigned.
             </Alert>
           )}
 
           {prefillBlocked && (
             <Alert severity="warning" sx={{ mb: 2 }}>
-              Position <strong>{formatApprovedPositionLabel(prefillPosition!)}</strong> already has
-              an active PAF covering its full available dates. Choose non-overlapping start/LWP
-              dates, revise the existing PAF, or pick another position.
+              Position <strong>{formatApprovedPositionLabel(prefillPosition!)}</strong> has no open
+              date window left. Multiple people can fill a position, but their PAFs cannot overlap —
+              revise an existing PAF or pick another position.
             </Alert>
           )}
 
@@ -393,13 +413,13 @@ export default function ProjectAuthorizationFormPage() {
                   label="Approved Position"
                   options={approvedPositionOptions}
                   value={form.staffingPlanRequestId}
-                  onChange={(value) => updateField('staffingPlanRequestId', value)}
+                  onChange={handlePositionChange}
                   required
                   error={errors.staffingPlanRequestId}
                   disabled={!form.functionalGroup || !form.dsg}
                   helperText={
                     form.functionalGroup && form.dsg
-                      ? 'PAF dates must stay within the position window and not overlap another PAF'
+                      ? 'One person per PAF; dates must stay in the position window and not overlap another person'
                       : 'Select functional group and DSG first'
                   }
                 />

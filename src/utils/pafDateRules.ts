@@ -1,6 +1,11 @@
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import type { StaffingPlanRequest } from '../types/staffingPlan'
-import { parseDateInput } from './staffingPlanDates'
+import {
+  formatDateInput,
+  isBiWeeklySunday,
+  isSunday,
+  parseDateInput,
+} from './staffingPlanDates'
 
 export type PafDateRange = {
   startBiWeek: string
@@ -127,14 +132,99 @@ export function validatePafSchedule(args: {
       { exceptRevisionGroupId },
     )
     if (overlap) {
-      errors.lwp = `Dates overlap active PAF ${overlap.pafNumber} (${overlap.candidateName}: ${overlap.startBiWeek} – ${overlap.lwp})`
+      errors.lwp = `Dates overlap ${overlap.candidateName}'s PAF ${overlap.pafNumber} (${overlap.startBiWeek} – ${overlap.lwp}). People on the same position cannot overlap.`
     }
   }
 
   return errors
 }
 
-/** Prefer the active PAF covering asOf, else the next upcoming, else latest by start. */
+function addDays(value: string, days: number): string | null {
+  const date = parseDateInput(value)
+  if (!date) return null
+  date.setDate(date.getDate() + days)
+  return formatDateInput(date)
+}
+
+function nextBiWeeklySundayOnOrAfter(value: string): string | null {
+  const date = parseDateInput(value)
+  if (!date) return null
+  for (let step = 0; step < 28; step += 1) {
+    if (isBiWeeklySunday(date)) return formatDateInput(date)
+    date.setDate(date.getDate() + 1)
+  }
+  return null
+}
+
+function previousSundayOnOrBefore(value: string): string | null {
+  const date = parseDateInput(value)
+  if (!date) return null
+  for (let step = 0; step < 14; step += 1) {
+    if (isSunday(date)) return formatDateInput(date)
+    date.setDate(date.getDate() - 1)
+  }
+  return null
+}
+
+function isRangeValid(range: PafDateRange): boolean {
+  const start = parseDateInput(range.startBiWeek)
+  const end = parseDateInput(range.lwp)
+  return Boolean(start && end && start.getTime() <= end.getTime())
+}
+
+/**
+ * First open date window on a position where another person can be assigned
+ * without overlapping existing pending/approved PAFs.
+ */
+export function findNextAvailablePafRange(
+  position: StaffingPlanRequest,
+  authorizations: ProjectAuthorizationRequest[],
+  staffingRequests: StaffingPlanRequest[],
+): PafDateRange | undefined {
+  const occupied = getActivePafsForPosition(position, authorizations, staffingRequests)
+    .slice()
+    .sort((a, b) => a.startBiWeek.localeCompare(b.startBiWeek))
+
+  let cursor = position.startBiWeek
+
+  for (const request of occupied) {
+    const dayBeforeStart = addDays(request.startBiWeek, -1)
+    if (dayBeforeStart) {
+      const gapStart = nextBiWeeklySundayOnOrAfter(cursor)
+      const gapEnd = previousSundayOnOrBefore(dayBeforeStart)
+      if (gapStart && gapEnd) {
+        const range = { startBiWeek: gapStart, lwp: gapEnd }
+        if (
+          isRangeValid(range) &&
+          isDateOnOrAfter(range.startBiWeek, position.startBiWeek) &&
+          isDateOnOrBefore(range.lwp, position.lwp)
+        ) {
+          return range
+        }
+      }
+    }
+
+    const dayAfterEnd = addDays(request.lwp, 1)
+    if (!dayAfterEnd) return undefined
+    cursor = dayAfterEnd
+  }
+
+  const gapStart = nextBiWeeklySundayOnOrAfter(cursor)
+  const gapEnd = previousSundayOnOrBefore(position.lwp)
+  if (!gapStart || !gapEnd) return undefined
+
+  const range = { startBiWeek: gapStart, lwp: gapEnd }
+  if (
+    !isRangeValid(range) ||
+    !isDateOnOrAfter(range.startBiWeek, position.startBiWeek) ||
+    !isDateOnOrBefore(range.lwp, position.lwp)
+  ) {
+    return undefined
+  }
+  return range
+}
+
+/** Prefer the person covering asOf, else the next upcoming assignment. */
 export function getDisplayAuthorizationForPosition(
   position: StaffingPlanRequest,
   authorizations: ProjectAuthorizationRequest[],
@@ -154,32 +244,19 @@ export function getDisplayAuthorizationForPosition(
   })
   if (covering) return covering
 
-  const upcoming = active
+  return active
     .filter((request) => {
       const start = parseDateInput(request.startBiWeek)
       return start && start.getTime() > asOfTime
     })
     .sort((a, b) => a.startBiWeek.localeCompare(b.startBiWeek))[0]
-  if (upcoming) return upcoming
-
-  return [...active].sort((a, b) => b.startBiWeek.localeCompare(a.startBiWeek))[0]
 }
 
-/**
- * True when another active PAF already occupies any part of the position window
- * (used to hide matrix "None" create when the full window is covered).
- */
+/** True when no remaining non-overlapping date window exists for another person. */
 export function positionWindowFullyCovered(
   position: StaffingPlanRequest,
   authorizations: ProjectAuthorizationRequest[],
   staffingRequests: StaffingPlanRequest[],
 ): boolean {
-  const active = getActivePafsForPosition(position, authorizations, staffingRequests)
-  if (active.length === 0) return false
-  return active.some((request) =>
-    dateRangesOverlap(
-      { startBiWeek: position.startBiWeek, lwp: position.lwp },
-      { startBiWeek: request.startBiWeek, lwp: request.lwp },
-    ),
-  )
+  return !findNextAvailablePafRange(position, authorizations, staffingRequests)
 }
