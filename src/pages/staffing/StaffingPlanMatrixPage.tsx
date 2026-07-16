@@ -91,6 +91,9 @@ const COLUMN_STICKY_KEY = 'staffing-matrix-sticky-columns-v3'
 const EXPAND_COL_WIDTH = 100
 const ACTIONS_COL_WIDTH = 118
 const META_WIDTH_FALLBACK = 110
+/** Matches rotated period-label header row height. Filters stick below this. */
+const HEADER_ROW_HEIGHT = 96
+const FILTER_ROW_TOP = HEADER_ROW_HEIGHT
 
 const cellSx = {
   border: '1px solid #bdbdbd',
@@ -111,11 +114,13 @@ const stickyMetaSx = {
 
 const periodHeaderSx = {
   ...cellSx,
+  position: 'sticky' as const,
+  top: 0,
   minWidth: 58,
   maxWidth: 58,
   textAlign: 'center' as const,
   verticalAlign: 'bottom' as const,
-  height: 96,
+  height: HEADER_ROW_HEIGHT,
   p: 0.5,
 }
 
@@ -773,7 +778,16 @@ export default function StaffingPlanMatrixPage() {
             </Box>
           ) : (
             <TableContainer sx={{ maxHeight: '75vh', overflow: 'auto', border: '1px solid #bdbdbd' }}>
-              <Table size="small" stickyHeader sx={{ borderCollapse: 'collapse' }}>
+              <Table
+                size="small"
+                stickyHeader
+                sx={{
+                  borderCollapse: 'separate',
+                  borderSpacing: 0,
+                  // Keep label + filter rows stacked; summary rows above scroll away.
+                  '& .MuiTableCell-stickyHeader': { backgroundClip: 'padding-box' },
+                }}
+              >
                 <TableHead>
                   {summaryRows.map((summary) => (
                     <TableRow key={summary.label}>
@@ -781,8 +795,11 @@ export default function StaffingPlanMatrixPage() {
                         colSpan={Math.max(metadataColSpan, 1)}
                         sx={{
                           ...stickyMetaSx,
+                          // Summary rows scroll with content so headers/filters stay locked.
+                          position: 'relative',
+                          top: 'auto',
                           left: 0,
-                          zIndex: 5,
+                          zIndex: 1,
                           bgcolor: '#e53935',
                           color: 'white',
                           fontWeight: 700,
@@ -796,11 +813,13 @@ export default function StaffingPlanMatrixPage() {
                           align="center"
                           sx={{
                             ...cellSx,
+                            position: 'relative',
+                            top: 'auto',
                             bgcolor: '#e53935',
                             color: 'white',
                             fontWeight: 700,
                             minWidth: 58,
-                            zIndex: 4,
+                            zIndex: 1,
                           }}
                         >
                           {summary.values[period]}
@@ -816,12 +835,13 @@ export default function StaffingPlanMatrixPage() {
                         position: 'sticky',
                         top: 0,
                         left: 0,
-                        zIndex: 6,
+                        zIndex: 8,
                         bgcolor: '#9e9e9e',
                         color: 'white',
                         fontWeight: 700,
                         minWidth: EXPAND_COL_WIDTH,
                         width: EXPAND_COL_WIDTH,
+                        height: HEADER_ROW_HEIGHT,
                       }}
                     />
                     <TableCell
@@ -830,12 +850,13 @@ export default function StaffingPlanMatrixPage() {
                         position: 'sticky',
                         top: 0,
                         left: EXPAND_COL_WIDTH,
-                        zIndex: 6,
+                        zIndex: 8,
                         bgcolor: '#9e9e9e',
                         color: 'white',
                         fontWeight: 700,
                         minWidth: ACTIONS_COL_WIDTH,
                         width: ACTIONS_COL_WIDTH,
+                        height: HEADER_ROW_HEIGHT,
                         boxShadow: stickyLayout.actionsHaveEdgeShadow
                           ? stickyEdgeShadow
                           : undefined,
@@ -854,12 +875,13 @@ export default function StaffingPlanMatrixPage() {
                             position: 'sticky',
                             top: 0,
                             left: sticky ? stickyLayout.leftFor(column.id) : undefined,
-                            zIndex: sticky ? 5 : 4,
+                            zIndex: sticky ? 7 : 6,
                             bgcolor: '#9e9e9e',
                             color: 'white',
                             fontWeight: 700,
                             minWidth: width,
                             width: sticky ? width : undefined,
+                            height: HEADER_ROW_HEIGHT,
                             boxShadow:
                               sticky && stickyLayout.lastStickyId === column.id
                                 ? stickyEdgeShadow
@@ -873,7 +895,12 @@ export default function StaffingPlanMatrixPage() {
                     {periods.map((period) => (
                       <TableCell
                         key={period}
-                        sx={{ ...periodHeaderSx, bgcolor: '#9e9e9e', color: 'white', zIndex: 4 }}
+                        sx={{
+                          ...periodHeaderSx,
+                          bgcolor: '#9e9e9e',
+                          color: 'white',
+                          zIndex: 6,
+                        }}
                       >
                         <Box sx={rotatedLabelSx}>{formatPeriodLabel(period)}</Box>
                       </TableCell>
@@ -885,27 +912,28 @@ export default function StaffingPlanMatrixPage() {
                       sx={{
                         ...cellSx,
                         position: 'sticky',
-                        top: 40,
+                        top: FILTER_ROW_TOP,
                         left: 0,
-                        zIndex: 6,
+                        zIndex: 8,
                         bgcolor: '#eceff1',
                         minWidth: EXPAND_COL_WIDTH,
                         width: EXPAND_COL_WIDTH,
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
                       }}
                     />
                     <TableCell
                       sx={{
                         ...cellSx,
                         position: 'sticky',
-                        top: 40,
+                        top: FILTER_ROW_TOP,
                         left: EXPAND_COL_WIDTH,
-                        zIndex: 6,
+                        zIndex: 8,
                         bgcolor: '#eceff1',
                         minWidth: ACTIONS_COL_WIDTH,
                         width: ACTIONS_COL_WIDTH,
                         boxShadow: stickyLayout.actionsHaveEdgeShadow
-                          ? stickyEdgeShadow
-                          : undefined,
+                          ? `${stickyEdgeShadow}, 0 2px 4px rgba(0,0,0,0.08)`
+                          : '0 2px 4px rgba(0,0,0,0.08)',
                       }}
                     />
                     {visibleColumnDefs.map((column) => {
@@ -918,17 +946,17 @@ export default function StaffingPlanMatrixPage() {
                           sx={{
                             ...cellSx,
                             position: 'sticky',
-                            top: 40,
+                            top: FILTER_ROW_TOP,
                             left: sticky ? stickyLayout.leftFor(column.id) : undefined,
-                            zIndex: sticky ? 5 : 4,
+                            zIndex: sticky ? 7 : 6,
                             bgcolor: '#eceff1',
                             minWidth: width,
                             width: sticky ? width : undefined,
                             p: 0.5,
                             boxShadow:
                               sticky && stickyLayout.lastStickyId === column.id
-                                ? stickyEdgeShadow
-                                : undefined,
+                                ? `${stickyEdgeShadow}, 0 2px 4px rgba(0,0,0,0.08)`
+                                : '0 2px 4px rgba(0,0,0,0.08)',
                           }}
                         >
                           <FormControl size="small" fullWidth>
@@ -965,10 +993,11 @@ export default function StaffingPlanMatrixPage() {
                         sx={{
                           ...cellSx,
                           position: 'sticky',
-                          top: 40,
-                          zIndex: 4,
+                          top: FILTER_ROW_TOP,
+                          zIndex: 6,
                           bgcolor: '#eceff1',
                           minWidth: 58,
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
                         }}
                       />
                     ))}

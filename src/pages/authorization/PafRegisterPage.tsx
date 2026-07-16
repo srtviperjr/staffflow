@@ -83,6 +83,9 @@ const COLUMN_STICKY_KEY = 'paf-register-sticky-columns-v4'
 const EXPAND_COL_WIDTH = 100
 const ACTIONS_COL_WIDTH = 118
 const META_WIDTH_FALLBACK = 110
+/** Matches rotated period-label header row height. Filters stick below this. */
+const HEADER_ROW_HEIGHT = 96
+const FILTER_ROW_TOP = HEADER_ROW_HEIGHT
 
 const cellSx = {
   border: '1px solid #bdbdbd',
@@ -94,11 +97,13 @@ const cellSx = {
 
 const periodHeaderSx = {
   ...cellSx,
+  position: 'sticky' as const,
+  top: 0,
   minWidth: 28,
   maxWidth: 28,
   textAlign: 'center' as const,
   verticalAlign: 'bottom' as const,
-  height: 96,
+  height: HEADER_ROW_HEIGHT,
   p: 0.25,
 }
 
@@ -442,7 +447,15 @@ export default function PafRegisterPage() {
             </Box>
           ) : (
             <TableContainer sx={{ maxHeight: '75vh', overflow: 'auto', border: '1px solid #bdbdbd' }}>
-              <Table size="small" stickyHeader sx={{ borderCollapse: 'collapse' }}>
+              <Table
+                size="small"
+                stickyHeader
+                sx={{
+                  borderCollapse: 'separate',
+                  borderSpacing: 0,
+                  '& .MuiTableCell-stickyHeader': { backgroundClip: 'padding-box' },
+                }}
+              >
                 <TableHead>
                   <TableRow>
                     <TableCell
@@ -451,12 +464,13 @@ export default function PafRegisterPage() {
                         position: 'sticky',
                         top: 0,
                         left: 0,
-                        zIndex: 6,
+                        zIndex: 8,
                         bgcolor: '#6a1b9a',
                         color: 'white',
                         fontWeight: 700,
                         minWidth: EXPAND_COL_WIDTH,
                         width: EXPAND_COL_WIDTH,
+                        height: HEADER_ROW_HEIGHT,
                       }}
                     />
                     <TableCell
@@ -465,12 +479,13 @@ export default function PafRegisterPage() {
                         position: 'sticky',
                         top: 0,
                         left: EXPAND_COL_WIDTH,
-                        zIndex: 6,
+                        zIndex: 8,
                         bgcolor: '#6a1b9a',
                         color: 'white',
                         fontWeight: 700,
                         minWidth: ACTIONS_COL_WIDTH,
                         width: ACTIONS_COL_WIDTH,
+                        height: HEADER_ROW_HEIGHT,
                         boxShadow: stickyLayout.actionsHaveEdgeShadow
                           ? stickyEdgeShadow
                           : undefined,
@@ -489,12 +504,13 @@ export default function PafRegisterPage() {
                             position: 'sticky',
                             top: 0,
                             left: sticky ? stickyLayout.leftFor(column.id) : undefined,
-                            zIndex: sticky ? 5 : 4,
+                            zIndex: sticky ? 7 : 6,
                             bgcolor: '#6a1b9a',
                             color: 'white',
                             fontWeight: 700,
                             minWidth: width,
                             width: sticky ? width : undefined,
+                            height: HEADER_ROW_HEIGHT,
                             boxShadow:
                               sticky && stickyLayout.lastStickyId === column.id
                                 ? stickyEdgeShadow
@@ -508,7 +524,12 @@ export default function PafRegisterPage() {
                     {periods.map((period) => (
                       <TableCell
                         key={period}
-                        sx={{ ...periodHeaderSx, bgcolor: '#6a1b9a', color: 'white', zIndex: 4 }}
+                        sx={{
+                          ...periodHeaderSx,
+                          bgcolor: '#6a1b9a',
+                          color: 'white',
+                          zIndex: 6,
+                        }}
                       >
                         <Box sx={rotatedLabelSx}>{formatDisplayDate(period)}</Box>
                       </TableCell>
@@ -520,27 +541,28 @@ export default function PafRegisterPage() {
                       sx={{
                         ...cellSx,
                         position: 'sticky',
-                        top: 40,
+                        top: FILTER_ROW_TOP,
                         left: 0,
-                        zIndex: 6,
+                        zIndex: 8,
                         bgcolor: '#f3e5f5',
                         minWidth: EXPAND_COL_WIDTH,
                         width: EXPAND_COL_WIDTH,
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
                       }}
                     />
                     <TableCell
                       sx={{
                         ...cellSx,
                         position: 'sticky',
-                        top: 40,
+                        top: FILTER_ROW_TOP,
                         left: EXPAND_COL_WIDTH,
-                        zIndex: 6,
+                        zIndex: 8,
                         bgcolor: '#f3e5f5',
                         minWidth: ACTIONS_COL_WIDTH,
                         width: ACTIONS_COL_WIDTH,
                         boxShadow: stickyLayout.actionsHaveEdgeShadow
-                          ? stickyEdgeShadow
-                          : undefined,
+                          ? `${stickyEdgeShadow}, 0 2px 4px rgba(0,0,0,0.08)`
+                          : '0 2px 4px rgba(0,0,0,0.08)',
                       }}
                     />
                     {visibleColumnDefs.map((column) => {
@@ -553,17 +575,17 @@ export default function PafRegisterPage() {
                           sx={{
                             ...cellSx,
                             position: 'sticky',
-                            top: 40,
+                            top: FILTER_ROW_TOP,
                             left: sticky ? stickyLayout.leftFor(column.id) : undefined,
-                            zIndex: sticky ? 5 : 4,
+                            zIndex: sticky ? 7 : 6,
                             bgcolor: '#f3e5f5',
                             minWidth: width,
                             width: sticky ? width : undefined,
                             p: 0.5,
                             boxShadow:
                               sticky && stickyLayout.lastStickyId === column.id
-                                ? stickyEdgeShadow
-                                : undefined,
+                                ? `${stickyEdgeShadow}, 0 2px 4px rgba(0,0,0,0.08)`
+                                : '0 2px 4px rgba(0,0,0,0.08)',
                           }}
                         >
                           <FormControl size="small" fullWidth>
@@ -595,12 +617,13 @@ export default function PafRegisterPage() {
                       sx={{
                         ...cellSx,
                         position: 'sticky',
-                        top: 40,
-                        zIndex: 4,
+                        top: FILTER_ROW_TOP,
+                        zIndex: 6,
                         bgcolor: '#f3e5f5',
                         fontSize: '0.7rem',
                         color: 'text.secondary',
                         textAlign: 'center',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
                       }}
                     >
                       Duration calendar — each person has a unique highlight colour from start through
