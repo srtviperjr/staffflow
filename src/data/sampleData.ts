@@ -1145,6 +1145,11 @@ function yieldToUi(ms = 0): Promise<void> {
   })
 }
 
+/** Keep each progress phase on screen long enough to read. */
+async function holdPhase(ms = 350): Promise<void> {
+  await yieldToUi(ms)
+}
+
 /**
  * Persist generated sample data. Replace clears position/PAF stores first;
  * append merges with existing request data.
@@ -1164,24 +1169,24 @@ export async function applySampleDataLoad(
   }
 
   // Let React paint the busy/progress state before heavy work.
-  await yieldToUi(30)
+  await holdPhase(80)
 
   let existingStaffing: StaffingPlanRequest[] = []
   let existingAuthorizations: ProjectAuthorizationRequest[] = []
 
   if (options.mode === 'replace') {
     report('clearing', 'Clearing existing position and PAF data…', 8)
-    await yieldToUi(40)
+    await holdPhase()
     localStorage.removeItem(STAFFING_STORAGE_KEY)
     localStorage.removeItem(PAF_STORAGE_KEY)
-    await yieldToUi(40)
+    await holdPhase(200)
   } else {
     existingStaffing = readStoredStaffing()
     existingAuthorizations = readStoredAuthorizations()
   }
 
   report('generating', 'Generating sample requests…', 20)
-  await yieldToUi(40)
+  await holdPhase()
 
   const generated = generateSampleData({
     recordCount: options.recordCount,
@@ -1205,20 +1210,20 @@ export async function applySampleDataLoad(
     `Validating ${staffing.length} position rows and ${authorizations.length} PAFs…`,
     70,
   )
-  await yieldToUi(40)
+  await holdPhase()
 
   assertPafNumberOwnsOnePerson(authorizations)
   assertNoActivePafOverlaps(staffing, authorizations)
 
   report('saving', 'Saving sample data…', 88)
-  await yieldToUi(40)
+  await holdPhase()
 
   localStorage.setItem(STAFFING_STORAGE_KEY, JSON.stringify(staffing))
   localStorage.setItem(PAF_STORAGE_KEY, JSON.stringify(authorizations))
   markSeedCurrent()
 
   report('reloading', 'Reloading the app with the new dataset…', 96)
-  await yieldToUi(80)
+  await holdPhase(450)
 
   return generated.summary
 }
