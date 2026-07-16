@@ -139,3 +139,52 @@ export function getRelatedItemsForPafRequest(
       return b.revision - a.revision
     })
 }
+
+/** PAF register: expand only when there are revisions beyond the main row. */
+export function pafRowCanExpand(related: RelatedRegisterItem[]): boolean {
+  return related.length > 0
+}
+
+/**
+ * Staffing matrix: expand when the position has more than one revision, or any
+ * associated PAF number has more than one revision.
+ */
+export function staffingRowCanExpand(groups: StaffingPositionRelatedGroups): boolean {
+  if (groups.positionRevisions.length > 1) return true
+
+  const pafRevisionCounts = new Map<string, number>()
+  for (const item of groups.relatedPafs) {
+    const groupId = item.pafRequest?.revisionGroupId ?? item.id
+    pafRevisionCounts.set(groupId, (pafRevisionCounts.get(groupId) ?? 0) + 1)
+  }
+  return [...pafRevisionCounts.values()].some((count) => count > 1)
+}
+
+/**
+ * Related items shown under a staffing main row.
+ * Excludes the main approved position revision and any PAF already shown on the
+ * main row (approved display), so expand lists additional revisions only.
+ */
+export function getStaffingExpandContent(
+  positionId: string,
+  groups: StaffingPositionRelatedGroups,
+  mainPafIds: ReadonlySet<string> = new Set(),
+): StaffingPositionRelatedGroups {
+  return {
+    positionRevisions: groups.positionRevisions.filter((item) => item.id !== positionId),
+    relatedPafs: groups.relatedPafs.filter((item) => !mainPafIds.has(item.id)),
+  }
+}
+
+export function hasPendingRelatedUpdates(items: RelatedRegisterItem[]): boolean {
+  return items.some((item) => item.status === 'pending')
+}
+
+export function staffingHasPendingRelatedUpdates(
+  positionId: string,
+  groups: StaffingPositionRelatedGroups,
+  mainPafIds: ReadonlySet<string> = new Set(),
+): boolean {
+  const content = getStaffingExpandContent(positionId, groups, mainPafIds)
+  return hasPendingRelatedUpdates([...content.positionRevisions, ...content.relatedPafs])
+}

@@ -23,6 +23,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import VerifiedIcon from '@mui/icons-material/Verified'
@@ -38,6 +39,7 @@ import RemoveIcon from '@mui/icons-material/Remove'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 import VisibilityIcon from '@mui/icons-material/Visibility'
+import PendingActionsIcon from '@mui/icons-material/PendingActions'
 import GanttBarCell from '../../components/GanttBarCell'
 import PafDetailDialog from '../../components/PafDetailDialog'
 import RejectDialog from '../../components/RejectDialog'
@@ -49,6 +51,8 @@ import { canReviewRequests, canSubmitRequests } from '../../utils/permissions'
 import {
   formatRelatedItemCaption,
   getRelatedItemsForPafRequest,
+  hasPendingRelatedUpdates,
+  pafRowCanExpand,
   type RelatedRegisterItem,
 } from '../../utils/relatedRegisterItems'
 import { formatDisplayDate } from '../../utils/staffingPlanDates'
@@ -76,7 +80,7 @@ import {
 const COLUMN_ORDER_KEY = 'paf-register-column-order-v3'
 const COLUMN_VISIBLE_KEY = 'paf-register-visible-columns-v3'
 const COLUMN_STICKY_KEY = 'paf-register-sticky-columns-v3'
-const EXPAND_COL_WIDTH = 48
+const EXPAND_COL_WIDTH = 72
 const ACTIONS_COL_WIDTH = 118
 const META_WIDTH_FALLBACK = 110
 
@@ -303,9 +307,9 @@ export default function PafRegisterPage() {
               PAF Register
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Main rows show the latest approved PAF for each person. Expand to review pending or
-              rejected revisions; Expand/Actions stay fixed, and expand details stay visible while
-              scrolling the calendar.
+              Main rows show the latest approved PAF for each person. Expand (+) appears only when
+              there are additional revisions; a pending icon marks updates below. Expand/Actions stay
+              fixed while the calendar scrolls.
             </Typography>
           </Box>
         </Box>
@@ -608,7 +612,9 @@ export default function PafRegisterPage() {
                 <TableBody>
                   {filteredRows.map((row) => {
                     const related = relatedByRowId.get(row.id) ?? []
-                    const expanded = Boolean(expandedRows[row.id])
+                    const canExpand = pafRowCanExpand(related)
+                    const hasPendingBelow = hasPendingRelatedUpdates(related)
+                    const expanded = Boolean(expandedRows[row.id]) && canExpand
                     return (
                       <Fragment key={row.id}>
                         <TableRow hover>
@@ -624,16 +630,37 @@ export default function PafRegisterPage() {
                               p: 0.25,
                             }}
                           >
-                            <IconButton
-                              size="small"
-                              aria-label={expanded ? 'Collapse revisions' : 'Expand revisions'}
-                              onClick={() =>
-                                setExpandedRows((prev) => ({ ...prev, [row.id]: !prev[row.id] }))
-                              }
-                              disabled={related.length === 0}
-                            >
-                              {expanded ? <RemoveIcon fontSize="small" /> : <AddIcon fontSize="small" />}
-                            </IconButton>
+                            <Stack direction="row" spacing={0} sx={{ alignItems: 'center' }}>
+                              {canExpand ? (
+                                <IconButton
+                                  size="small"
+                                  aria-label={expanded ? 'Collapse revisions' : 'Expand revisions'}
+                                  onClick={() =>
+                                    setExpandedRows((prev) => ({ ...prev, [row.id]: !prev[row.id] }))
+                                  }
+                                >
+                                  {expanded ? (
+                                    <RemoveIcon fontSize="small" />
+                                  ) : (
+                                    <AddIcon fontSize="small" />
+                                  )}
+                                </IconButton>
+                              ) : null}
+                              {hasPendingBelow ? (
+                                <Tooltip title="Pending updates below — click to expand">
+                                  <IconButton
+                                    size="small"
+                                    color="warning"
+                                    aria-label="Pending updates below"
+                                    onClick={() =>
+                                      setExpandedRows((prev) => ({ ...prev, [row.id]: true }))
+                                    }
+                                  >
+                                    <PendingActionsIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              ) : null}
+                            </Stack>
                           </TableCell>
                           <TableCell
                             sx={{

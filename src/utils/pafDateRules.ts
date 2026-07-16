@@ -226,6 +226,63 @@ export function findNextAvailablePafRange(
   return range
 }
 
+/**
+ * Linked PAFs for a position group (all revisions, not only current).
+ * Used so the main plan can keep showing the approved revision when a newer
+ * pending revision exists.
+ */
+export function getLinkedPafsForPosition(
+  position: StaffingPlanRequest,
+  authorizations: ProjectAuthorizationRequest[],
+  staffingRequests: StaffingPlanRequest[],
+): ProjectAuthorizationRequest[] {
+  const staffingById = new Map(staffingRequests.map((request) => [request.id, request]))
+
+  return authorizations.filter((request) => {
+    if (request.staffingPlanRequestId === position.id) return true
+    const linked = staffingById.get(request.staffingPlanRequestId)
+    return linked?.revisionGroupId === position.revisionGroupId
+  })
+}
+
+/**
+ * Main staffing-plan display PAFs: latest approved per person/PAF group.
+ * Pending-only groups (no approved revision yet) still appear so new assignments
+ * are visible; when both approved and newer pending exist, approved wins.
+ */
+export function getApprovedDisplayPafsForPosition(
+  position: StaffingPlanRequest,
+  authorizations: ProjectAuthorizationRequest[],
+  staffingRequests: StaffingPlanRequest[],
+): ProjectAuthorizationRequest[] {
+  const linked = getLinkedPafsForPosition(position, authorizations, staffingRequests)
+  const byGroup = new Map<string, ProjectAuthorizationRequest[]>()
+
+  for (const request of linked) {
+    const list = byGroup.get(request.revisionGroupId) ?? []
+    list.push(request)
+    byGroup.set(request.revisionGroupId, list)
+  }
+
+  const display: ProjectAuthorizationRequest[] = []
+  for (const revisions of byGroup.values()) {
+    const approved = revisions
+      .filter((request) => request.status === 'approved')
+      .sort((a, b) => b.revision - a.revision || b.submittedAt.localeCompare(a.submittedAt))
+    if (approved.length > 0) {
+      display.push(approved[0])
+      continue
+    }
+
+    const pendingCurrent = revisions
+      .filter((request) => request.status === 'pending' && request.isCurrentRevision)
+      .sort((a, b) => b.revision - a.revision || b.submittedAt.localeCompare(a.submittedAt))
+    if (pendingCurrent[0]) display.push(pendingCurrent[0])
+  }
+
+  return display.sort((a, b) => a.startBiWeek.localeCompare(b.startBiWeek))
+}
+
 /** Prefer the person covering asOf, else the next upcoming assignment. */
 export function getDisplayAuthorizationForPosition(
   position: StaffingPlanRequest,
@@ -233,7 +290,9 @@ export function getDisplayAuthorizationForPosition(
   staffingRequests: StaffingPlanRequest[],
   asOf: Date = new Date(),
 ): ProjectAuthorizationRequest | undefined {
-  const active = getActivePafsForPosition(position, authorizations, staffingRequests)
+  // Prefer approved display PAFs so a newer pending revision does not replace
+  // the approved person on the main staffing plan row.
+  const active = getApprovedDisplayPafsForPosition(position, authorizations, staffingRequests)
   if (active.length === 0) return undefined
 
   const asOfTime = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate()).getTime()

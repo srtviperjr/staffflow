@@ -5,7 +5,7 @@ import { personBarColor } from './ganttPeriods'
 import {
   findNextAvailablePafRange,
   getActiveAuthorizationForPosition,
-  getActivePafsForPosition,
+  getApprovedDisplayPafsForPosition,
 } from './projectAuthorizationRevisions'
 import {
   formatDisplayDate,
@@ -349,11 +349,16 @@ export function buildStaffingMatrixRows(
 
   return approvedPositions
     .map((position) => {
-      const active = getActivePafsForPosition(position, authorizations, staffingRequests)
+      // Main row shows approved PAFs when revisions exist; pending stay under expand.
+      const displayPafs = getApprovedDisplayPafsForPosition(
+        position,
+        authorizations,
+        staffingRequests,
+      )
       return buildRow(
         position,
         getActiveAuthorizationForPosition(position, authorizations, staffingRequests),
-        active,
+        displayPafs,
         Boolean(findNextAvailablePafRange(position, authorizations, staffingRequests)),
         periods,
       )

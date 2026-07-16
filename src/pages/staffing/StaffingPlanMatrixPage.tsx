@@ -24,6 +24,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import TableChartIcon from '@mui/icons-material/TableChart'
@@ -39,6 +40,7 @@ import RemoveIcon from '@mui/icons-material/Remove'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 import VisibilityIcon from '@mui/icons-material/Visibility'
+import PendingActionsIcon from '@mui/icons-material/PendingActions'
 import GanttBarCell, { MultiPersonGanttCell } from '../../components/GanttBarCell'
 import PafDetailDialog from '../../components/PafDetailDialog'
 import StaffingDetailDialog from '../../components/StaffingDetailDialog'
@@ -52,6 +54,9 @@ import { canReviewRequests, canSubmitRequests } from '../../utils/permissions'
 import {
   formatRelatedItemCaption,
   getGroupedRelatedItemsForStaffingPosition,
+  getStaffingExpandContent,
+  staffingHasPendingRelatedUpdates,
+  staffingRowCanExpand,
   type RelatedRegisterItem,
   type StaffingPositionRelatedGroups,
 } from '../../utils/relatedRegisterItems'
@@ -83,7 +88,7 @@ import {
 const COLUMN_ORDER_KEY = 'staffing-matrix-column-order-v2'
 const COLUMN_VISIBLE_KEY = 'staffing-matrix-visible-columns-v2'
 const COLUMN_STICKY_KEY = 'staffing-matrix-sticky-columns-v2'
-const EXPAND_COL_WIDTH = 48
+const EXPAND_COL_WIDTH = 72
 const ACTIONS_COL_WIDTH = 118
 const META_WIDTH_FALLBACK = 110
 
@@ -627,8 +632,8 @@ export default function StaffingPlanMatrixPage() {
               Staffing Plan
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Main rows are the latest approved position revision. Expand to see position revisions and
-              related PAFs (each person) with their own durations.
+              Main rows show the latest approved position and approved PAFs. Expand (+) appears when
+              there are additional position or PAF revisions; a pending icon marks updates below.
             </Typography>
           </Box>
         </Box>
@@ -971,9 +976,16 @@ export default function StaffingPlanMatrixPage() {
                       positionRevisions: [],
                       relatedPafs: [],
                     }
-                    const relatedCount =
-                      related.positionRevisions.length + related.relatedPafs.length
-                    const expanded = Boolean(expandedRows[row.id])
+                    const mainPafIds = new Set(row.calendarPeople.map((person) => person.id))
+                    if (row.authorization) mainPafIds.add(row.authorization.id)
+                    const canExpand = staffingRowCanExpand(related)
+                    const expandContent = getStaffingExpandContent(row.id, related, mainPafIds)
+                    const hasPendingBelow = staffingHasPendingRelatedUpdates(
+                      row.id,
+                      related,
+                      mainPafIds,
+                    )
+                    const expanded = Boolean(expandedRows[row.id]) && canExpand
                     return (
                       <Fragment key={row.id}>
                         <TableRow hover>
@@ -989,14 +1001,37 @@ export default function StaffingPlanMatrixPage() {
                               p: 0.25,
                             }}
                           >
-                            <IconButton
-                              size="small"
-                              aria-label={expanded ? 'Collapse related items' : 'Expand related items'}
-                              onClick={() => toggleExpanded(row.id)}
-                              disabled={relatedCount === 0}
-                            >
-                              {expanded ? <RemoveIcon fontSize="small" /> : <AddIcon fontSize="small" />}
-                            </IconButton>
+                            <Stack direction="row" spacing={0} sx={{ alignItems: 'center' }}>
+                              {canExpand ? (
+                                <IconButton
+                                  size="small"
+                                  aria-label={
+                                    expanded ? 'Collapse related items' : 'Expand related items'
+                                  }
+                                  onClick={() => toggleExpanded(row.id)}
+                                >
+                                  {expanded ? (
+                                    <RemoveIcon fontSize="small" />
+                                  ) : (
+                                    <AddIcon fontSize="small" />
+                                  )}
+                                </IconButton>
+                              ) : null}
+                              {hasPendingBelow ? (
+                                <Tooltip title="Pending updates below — click to expand">
+                                  <IconButton
+                                    size="small"
+                                    color="warning"
+                                    aria-label="Pending updates below"
+                                    onClick={() =>
+                                      setExpandedRows((prev) => ({ ...prev, [row.id]: true }))
+                                    }
+                                  >
+                                    <PendingActionsIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              ) : null}
+                            </Stack>
                           </TableCell>
                           <TableCell
                             sx={{
@@ -1018,7 +1053,11 @@ export default function StaffingPlanMatrixPage() {
                                 variant="outlined"
                                 startIcon={<EditIcon />}
                                 onClick={() => handleRevise(row.revisionGroupId)}
-                                sx={{ textTransform: 'none', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                                sx={{
+                                  textTransform: 'none',
+                                  fontSize: '0.75rem',
+                                  whiteSpace: 'nowrap',
+                                }}
                               >
                                 Revise
                               </Button>
@@ -1071,7 +1110,7 @@ export default function StaffingPlanMatrixPage() {
 
                         {expanded ? (
                           <>
-                            {related.positionRevisions.length > 0 ? (
+                            {expandContent.positionRevisions.length > 0 ? (
                               <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.03)' }}>
                                 <TableCell
                                   colSpan={2}
@@ -1122,7 +1161,7 @@ export default function StaffingPlanMatrixPage() {
                                 ))}
                               </TableRow>
                             ) : null}
-                            {related.positionRevisions.map((item) => (
+                            {expandContent.positionRevisions.map((item) => (
                               <RelatedExpandRow
                                 key={`${row.id}-position-${item.id}`}
                                 rowId={row.id}
@@ -1139,7 +1178,7 @@ export default function StaffingPlanMatrixPage() {
                                 sectionBg="rgba(245,245,245,0.9)"
                               />
                             ))}
-                            {related.relatedPafs.length > 0 ? (
+                            {expandContent.relatedPafs.length > 0 ? (
                               <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.03)' }}>
                                 <TableCell
                                   colSpan={2}
@@ -1190,7 +1229,7 @@ export default function StaffingPlanMatrixPage() {
                                 ))}
                               </TableRow>
                             ) : null}
-                            {related.relatedPafs.map((item) => (
+                            {expandContent.relatedPafs.map((item) => (
                               <RelatedExpandRow
                                 key={`${row.id}-paf-${item.id}`}
                                 rowId={row.id}

@@ -172,6 +172,8 @@ export {
   isActivePafStatus,
   getDisplayAuthorizationForPosition as getActiveAuthorizationForPosition,
   getActivePafsForPosition,
+  getApprovedDisplayPafsForPosition,
+  getLinkedPafsForPosition,
   findOverlappingActivePaf,
   findNextAvailablePafRange,
   validatePafSchedule,
