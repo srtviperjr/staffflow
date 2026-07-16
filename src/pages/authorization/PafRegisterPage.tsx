@@ -736,6 +736,19 @@ export default function PafRegisterPage() {
                             }}
                           >
                             <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<VisibilityIcon />}
+                                onClick={() => setSelectedPaf(row.request)}
+                                sx={{
+                                  textTransform: 'none',
+                                  fontSize: '0.7rem',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                View
+                              </Button>
                               {canReview && row.status === 'pending' ? (
                                 <>
                                   <Button

@@ -1090,48 +1090,63 @@ export default function StaffingPlanMatrixPage() {
                                 : undefined,
                             }}
                           >
-                            {canReview &&
-                            row.status === 'pending' &&
-                            canActOnWorkflowRequest(
-                              row.positionRequest,
-                              currentUserRoles,
-                              getWorkflow,
-                              { userProject: currentUser?.project },
-                            ) ? (
-                              <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
-                                <Button
-                                  size="small"
-                                  variant="contained"
-                                  color="success"
-                                  startIcon={<CheckCircleIcon />}
-                                  onClick={() => approveStaffing(row.id)}
-                                  sx={{ textTransform: 'none', fontSize: '0.7rem' }}
-                                >
-                                  Approve
-                                </Button>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  color="error"
-                                  startIcon={<CancelIcon />}
-                                  onClick={() =>
-                                    setRejectTarget({
-                                      id: row.id,
-                                      kind: 'staffing-plan',
-                                      title: row.position,
-                                      subtitle: `Position ${row.positionNumber}`,
-                                      status: 'pending',
-                                      revision: row.positionRequest.revision,
-                                      submittedAt: row.positionRequest.submittedAt,
-                                      staffingRequest: row.positionRequest,
-                                    })
-                                  }
-                                  sx={{ textTransform: 'none', fontSize: '0.7rem' }}
-                                >
-                                  Reject
-                                </Button>
-                              </Stack>
-                            ) : null}
+                            <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<VisibilityIcon />}
+                                onClick={() => setSelectedStaffing(row.positionRequest)}
+                                sx={{
+                                  textTransform: 'none',
+                                  fontSize: '0.7rem',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                View
+                              </Button>
+                              {canReview &&
+                              row.status === 'pending' &&
+                              canActOnWorkflowRequest(
+                                row.positionRequest,
+                                currentUserRoles,
+                                getWorkflow,
+                                { userProject: currentUser?.project },
+                              ) ? (
+                                <>
+                                  <Button
+                                    size="small"
+                                    variant="contained"
+                                    color="success"
+                                    startIcon={<CheckCircleIcon />}
+                                    onClick={() => approveStaffing(row.id)}
+                                    sx={{ textTransform: 'none', fontSize: '0.7rem' }}
+                                  >
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    color="error"
+                                    startIcon={<CancelIcon />}
+                                    onClick={() =>
+                                      setRejectTarget({
+                                        id: row.id,
+                                        kind: 'staffing-plan',
+                                        title: row.position,
+                                        subtitle: `Position ${row.positionNumber}`,
+                                        status: 'pending',
+                                        revision: row.positionRequest.revision,
+                                        submittedAt: row.positionRequest.submittedAt,
+                                        staffingRequest: row.positionRequest,
+                                      })
+                                    }
+                                    sx={{ textTransform: 'none', fontSize: '0.7rem' }}
+                                  >
+                                    Reject
+                                  </Button>
+                                </>
+                              ) : null}
+                            </Stack>
                           </TableCell>
                           {visibleColumnDefs.map((column) => {
                             const value = column.getValue(row)
