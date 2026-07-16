@@ -124,7 +124,7 @@ function RequestDetails({
         changed={changed('startBiWeek')}
       />
       <ChangedFieldDetail
-        label="LWP"
+        label="Last Working Day"
         value={formatDisplayDate(request.lwp)}
         changed={changed('lwp')}
       />

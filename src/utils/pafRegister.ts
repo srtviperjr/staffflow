@@ -1,4 +1,5 @@
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
+import { personBarColor } from './ganttPeriods'
 import { getCurrentAuthorizationRequests } from './projectAuthorizationRevisions'
 import { formatDisplayDate, generateBiWeeklyPeriods } from './staffingPlanDates'
 
@@ -44,6 +45,7 @@ export interface PafRegisterRow {
   lwp: string
   startBiWeekRaw: string
   lwpRaw: string
+  barColor: string
 }
 
 export const PAF_REGISTER_COLUMN_DEFS: PafRegisterColumnDef[] = [
@@ -59,8 +61,8 @@ export const PAF_REGISTER_COLUMN_DEFS: PafRegisterColumnDef[] = [
   { id: 'revision', label: 'Revision', getValue: (row) => row.revision },
   { id: 'roster', label: 'Roster', getValue: (row) => row.roster },
   { id: 'totalHours', label: 'Total Hours', getValue: (row) => row.totalHours },
-  { id: 'startBiWeek', label: 'Start Bi-Week', getValue: (row) => row.startBiWeek },
-  { id: 'lwp', label: 'LWP', getValue: (row) => row.lwp },
+  { id: 'startBiWeek', label: 'Start Bi-Week', getValue: (row) => row.startBiWeek, minWidth: 120 },
+  { id: 'lwp', label: 'Last Working Day', getValue: (row) => row.lwp, minWidth: 140 },
 ]
 
 export const DEFAULT_PAF_COLUMN_ORDER: PafRegisterColumnId[] =
@@ -143,6 +145,7 @@ export function buildPafRegisterRows(
       lwp: formatDisplayDate(request.lwp),
       startBiWeekRaw: request.startBiWeek,
       lwpRaw: request.lwp,
+      barColor: personBarColor(`${request.candidateName}:${request.revisionGroupId}`),
     }))
     .sort((a, b) => a.pafNumber.localeCompare(b.pafNumber, undefined, { numeric: true }))
 }

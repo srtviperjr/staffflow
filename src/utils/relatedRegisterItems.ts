@@ -1,5 +1,7 @@
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import type { StaffingPlanRequest } from '../types/staffingPlan'
+import { formatDisplayDate } from './staffingPlanDates'
+import { personBarColor } from './ganttPeriods'
 
 export type RelatedRegisterKind = 'staffing-plan' | 'project-authorization'
 
@@ -11,8 +13,30 @@ export interface RelatedRegisterItem {
   status: 'pending' | 'approved' | 'rejected'
   revision: number
   submittedAt: string
+  startBiWeek?: string
+  lwp?: string
+  startBiWeekRaw?: string
+  lwpRaw?: string
+  barColor?: string
   staffingRequest?: StaffingPlanRequest
   pafRequest?: ProjectAuthorizationRequest
+}
+
+function formatPersonDatesCaption(startBiWeek?: string, lwp?: string, submittedAt?: string) {
+  const parts: string[] = []
+  if (startBiWeek) parts.push(`Start ${formatDisplayDate(startBiWeek)}`)
+  if (lwp) parts.push(`Last working day ${formatDisplayDate(lwp)}`)
+  if (submittedAt) parts.push(`Submitted ${new Date(submittedAt).toLocaleString()}`)
+  return parts.join(' · ')
+}
+
+export function formatRelatedItemCaption(item: RelatedRegisterItem) {
+  const dateCaption = formatPersonDatesCaption(
+    item.startBiWeekRaw,
+    item.lwpRaw,
+    item.submittedAt,
+  )
+  return dateCaption ? `${item.subtitle} · ${dateCaption}` : item.subtitle
 }
 
 /** Staffing revisions + linked PAF requests for a position group, latest first. */
@@ -32,6 +56,10 @@ export function getRelatedItemsForStaffingPosition(
         status: request.status,
         revision: request.revision,
         submittedAt: request.submittedAt,
+        startBiWeek: formatDisplayDate(request.startBiWeek),
+        lwp: formatDisplayDate(request.lwp),
+        startBiWeekRaw: request.startBiWeek,
+        lwpRaw: request.lwp,
         staffingRequest: request,
       }),
     )
@@ -52,6 +80,11 @@ export function getRelatedItemsForStaffingPosition(
         status: request.status,
         revision: request.revision,
         submittedAt: request.submittedAt,
+        startBiWeek: formatDisplayDate(request.startBiWeek),
+        lwp: formatDisplayDate(request.lwp),
+        startBiWeekRaw: request.startBiWeek,
+        lwpRaw: request.lwp,
+        barColor: personBarColor(`${request.candidateName}:${request.revisionGroupId}`),
         pafRequest: request,
       }),
     )
@@ -77,6 +110,11 @@ export function getRelatedItemsForPafRequest(
         status: item.status,
         revision: item.revision,
         submittedAt: item.submittedAt,
+        startBiWeek: formatDisplayDate(item.startBiWeek),
+        lwp: formatDisplayDate(item.lwp),
+        startBiWeekRaw: item.startBiWeek,
+        lwpRaw: item.lwp,
+        barColor: personBarColor(`${item.candidateName}:${item.revisionGroupId}`),
         pafRequest: item,
       }),
     )

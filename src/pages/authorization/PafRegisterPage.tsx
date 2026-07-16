@@ -38,6 +38,7 @@ import RemoveIcon from '@mui/icons-material/Remove'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 import VisibilityIcon from '@mui/icons-material/Visibility'
+import GanttBarCell from '../../components/GanttBarCell'
 import PafDetailDialog from '../../components/PafDetailDialog'
 import RejectDialog from '../../components/RejectDialog'
 import { filterByCompanyVisibility } from '../../constants/companies'
@@ -45,10 +46,10 @@ import { useProjectAuthorizationRequests } from '../../context/ProjectAuthorizat
 import { useRoles } from '../../context/RolesContext'
 import { canReviewRequests, canSubmitRequests } from '../../utils/permissions'
 import {
+  formatRelatedItemCaption,
   getRelatedItemsForPafRequest,
   type RelatedRegisterItem,
 } from '../../utils/relatedRegisterItems'
-import { ganttBarRole, statusBarColor } from '../../utils/ganttPeriods'
 import type { ProjectAuthorizationRequest } from '../../types/projectAuthorization'
 import {
   DEFAULT_PAF_COLUMN_ORDER,
@@ -59,11 +60,12 @@ import {
   getPafRegisterPeriods,
   getUniquePafColumnValues,
   type PafRegisterColumnId,
-  type PafRegisterRow,
 } from '../../utils/pafRegister'
 
 const COLUMN_ORDER_KEY = 'paf-register-column-order'
 const COLUMN_VISIBLE_KEY = 'paf-register-visible-columns'
+const EXPAND_COL_WIDTH = 48
+const ACTIONS_COL_WIDTH = 96
 
 const cellSx = {
   border: '1px solid #bdbdbd',
@@ -125,64 +127,6 @@ function loadVisibleColumns(): PafRegisterColumnId[] {
   } catch {
     return [...DEFAULT_PAF_COLUMN_ORDER]
   }
-}
-
-function GanttCell({
-  period,
-  periods,
-  row,
-}: {
-  period: string
-  periods: string[]
-  row: PafRegisterRow
-}) {
-  const role = ganttBarRole(period, periods, row.startBiWeekRaw, row.lwpRaw)
-  if (role === 'none') {
-    return (
-      <TableCell
-        sx={{
-          ...cellSx,
-          minWidth: 28,
-          maxWidth: 28,
-          p: 0,
-          bgcolor: 'rgba(0,0,0,0.02)',
-        }}
-      />
-    )
-  }
-
-  const color = statusBarColor(row.status)
-  const radius =
-    role === 'single'
-      ? 6
-      : role === 'start'
-        ? '6px 0 0 6px'
-        : role === 'end'
-          ? '0 6px 6px 0'
-          : 0
-
-  return (
-    <TableCell
-      sx={{
-        ...cellSx,
-        minWidth: 28,
-        maxWidth: 28,
-        p: 0.25,
-        borderLeft: role === 'middle' || role === 'end' ? 'none' : undefined,
-        borderRight: role === 'middle' || role === 'start' ? 'none' : undefined,
-      }}
-    >
-      <Box
-        sx={{
-          height: 18,
-          bgcolor: color,
-          borderRadius: radius,
-          opacity: 0.9,
-        }}
-        title={`${row.candidate}: ${row.startBiWeek} → ${row.lwp}`}
-      />
-    </TableCell>
-  )
 }
 
 export default function PafRegisterPage() {
@@ -440,9 +384,28 @@ export default function PafRegisterPage() {
                         bgcolor: '#6a1b9a',
                         color: 'white',
                         fontWeight: 700,
-                        minWidth: 48,
+                        minWidth: EXPAND_COL_WIDTH,
+                        width: EXPAND_COL_WIDTH,
                       }}
                     />
+                    {canRevise ? (
+                      <TableCell
+                        sx={{
+                          ...cellSx,
+                          position: 'sticky',
+                          top: 0,
+                          left: EXPAND_COL_WIDTH,
+                          zIndex: 6,
+                          bgcolor: '#6a1b9a',
+                          color: 'white',
+                          fontWeight: 700,
+                          minWidth: ACTIONS_COL_WIDTH,
+                          width: ACTIONS_COL_WIDTH,
+                        }}
+                      >
+                        Actions
+                      </TableCell>
+                    ) : null}
                     {visibleColumnDefs.map((column) => (
                       <TableCell
                         key={column.id}
@@ -460,22 +423,6 @@ export default function PafRegisterPage() {
                         {column.label}
                       </TableCell>
                     ))}
-                    {canRevise ? (
-                      <TableCell
-                        sx={{
-                          ...cellSx,
-                          position: 'sticky',
-                          top: 0,
-                          zIndex: 5,
-                          bgcolor: '#6a1b9a',
-                          color: 'white',
-                          fontWeight: 700,
-                          minWidth: 96,
-                        }}
-                      >
-                        Actions
-                      </TableCell>
-                    ) : null}
                     {periods.map((period) => (
                       <TableCell
                         key={period}
@@ -495,9 +442,24 @@ export default function PafRegisterPage() {
                         left: 0,
                         zIndex: 6,
                         bgcolor: '#f3e5f5',
-                        minWidth: 48,
+                        minWidth: EXPAND_COL_WIDTH,
+                        width: EXPAND_COL_WIDTH,
                       }}
                     />
+                    {canRevise ? (
+                      <TableCell
+                        sx={{
+                          ...cellSx,
+                          position: 'sticky',
+                          top: 40,
+                          left: EXPAND_COL_WIDTH,
+                          zIndex: 6,
+                          bgcolor: '#f3e5f5',
+                          minWidth: ACTIONS_COL_WIDTH,
+                          width: ACTIONS_COL_WIDTH,
+                        }}
+                      />
+                    ) : null}
                     {visibleColumnDefs.map((column) => {
                       const options = getUniquePafColumnValues(rows, column.id)
                       return (
@@ -537,18 +499,6 @@ export default function PafRegisterPage() {
                         </TableCell>
                       )
                     })}
-                    {canRevise ? (
-                      <TableCell
-                        sx={{
-                          ...cellSx,
-                          position: 'sticky',
-                          top: 40,
-                          zIndex: 5,
-                          bgcolor: '#f3e5f5',
-                          minWidth: 96,
-                        }}
-                      />
-                    ) : null}
                     <TableCell
                       colSpan={periods.length}
                       sx={{
@@ -562,7 +512,8 @@ export default function PafRegisterPage() {
                         textAlign: 'center',
                       }}
                     >
-                      Duration calendar (no values — bar shows start bi-week through LWP)
+                      Duration calendar — each person has a unique highlight colour from start through
+                      last working day
                     </TableCell>
                   </TableRow>
                 </TableHead>
@@ -579,9 +530,10 @@ export default function PafRegisterPage() {
                               ...cellSx,
                               position: 'sticky',
                               left: 0,
-                              zIndex: 1,
+                              zIndex: 2,
                               bgcolor: 'background.paper',
-                              minWidth: 48,
+                              minWidth: EXPAND_COL_WIDTH,
+                              width: EXPAND_COL_WIDTH,
                               p: 0.25,
                             }}
                           >
@@ -596,38 +548,18 @@ export default function PafRegisterPage() {
                               {expanded ? <RemoveIcon fontSize="small" /> : <AddIcon fontSize="small" />}
                             </IconButton>
                           </TableCell>
-                          {visibleColumnDefs.map((column) => {
-                            const value = column.getValue(row)
-                            return (
-                              <TableCell
-                                key={`${row.id}-${column.id}`}
-                                sx={{ ...cellSx, minWidth: column.minWidth ?? 110 }}
-                              >
-                                {column.id === 'status' ? (
-                                  <Chip size="small" label={value} color={statusChipColor(value)} />
-                                ) : column.id === 'candidate' ? (
-                                  <Button
-                                    variant="text"
-                                    size="small"
-                                    onClick={() => setSelectedPaf(row.request)}
-                                    sx={{
-                                      textTransform: 'none',
-                                      p: 0,
-                                      minWidth: 0,
-                                      fontWeight: 600,
-                                      fontSize: '0.75rem',
-                                    }}
-                                  >
-                                    {value}
-                                  </Button>
-                                ) : (
-                                  value
-                                )}
-                              </TableCell>
-                            )
-                          })}
                           {canRevise ? (
-                            <TableCell sx={{ ...cellSx, minWidth: 96 }}>
+                            <TableCell
+                              sx={{
+                                ...cellSx,
+                                position: 'sticky',
+                                left: EXPAND_COL_WIDTH,
+                                zIndex: 2,
+                                bgcolor: 'background.paper',
+                                minWidth: ACTIONS_COL_WIDTH,
+                                width: ACTIONS_COL_WIDTH,
+                              }}
+                            >
                               <Button
                                 size="small"
                                 variant="outlined"
@@ -640,12 +572,56 @@ export default function PafRegisterPage() {
                               </Button>
                             </TableCell>
                           ) : null}
+                          {visibleColumnDefs.map((column) => {
+                            const value = column.getValue(row)
+                            return (
+                              <TableCell
+                                key={`${row.id}-${column.id}`}
+                                sx={{ ...cellSx, minWidth: column.minWidth ?? 110 }}
+                              >
+                                {column.id === 'status' ? (
+                                  <Chip size="small" label={value} color={statusChipColor(value)} />
+                                ) : column.id === 'candidate' ? (
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                    <Box
+                                      sx={{
+                                        width: 10,
+                                        height: 10,
+                                        borderRadius: '2px',
+                                        bgcolor: row.barColor,
+                                        flexShrink: 0,
+                                      }}
+                                    />
+                                    <Button
+                                      variant="text"
+                                      size="small"
+                                      onClick={() => setSelectedPaf(row.request)}
+                                      sx={{
+                                        textTransform: 'none',
+                                        p: 0,
+                                        minWidth: 0,
+                                        fontWeight: 600,
+                                        fontSize: '0.75rem',
+                                      }}
+                                    >
+                                      {value}
+                                    </Button>
+                                  </Box>
+                                ) : (
+                                  value
+                                )}
+                              </TableCell>
+                            )
+                          })}
                           {periods.map((period) => (
-                            <GanttCell
+                            <GanttBarCell
                               key={`${row.id}-${period}`}
                               period={period}
                               periods={periods}
-                              row={row}
+                              startBiWeek={row.startBiWeekRaw}
+                              lwp={row.lwpRaw}
+                              color={row.barColor}
+                              title={`${row.candidate}: ${row.startBiWeek} → ${row.lwp}`}
                             />
                           ))}
                         </TableRow>
@@ -672,6 +648,17 @@ export default function PafRegisterPage() {
                                   >
                                     <Box>
                                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                        {item.barColor ? (
+                                          <Box
+                                            sx={{
+                                              width: 10,
+                                              height: 10,
+                                              borderRadius: '2px',
+                                              bgcolor: item.barColor,
+                                              flexShrink: 0,
+                                            }}
+                                          />
+                                        ) : null}
                                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
                                           {item.title}
                                         </Typography>
@@ -683,8 +670,7 @@ export default function PafRegisterPage() {
                                         />
                                       </Box>
                                       <Typography variant="caption" color="text.secondary">
-                                        {item.subtitle} · Submitted{' '}
-                                        {new Date(item.submittedAt).toLocaleString()}
+                                        {formatRelatedItemCaption(item)}
                                       </Typography>
                                     </Box>
                                     <Stack direction="row" spacing={1}>
@@ -721,12 +707,29 @@ export default function PafRegisterPage() {
                                     </Stack>
                                   </Box>
                                 </TableCell>
-                                {periods.map((period) => (
-                                  <TableCell
-                                    key={`${row.id}-${item.id}-${period}`}
-                                    sx={{ ...cellSx, bgcolor: 'rgba(243,229,245,0.65)', minWidth: 28 }}
-                                  />
-                                ))}
+                                {periods.map((period) =>
+                                  item.startBiWeekRaw && item.lwpRaw ? (
+                                    <GanttBarCell
+                                      key={`${row.id}-${item.id}-${period}`}
+                                      period={period}
+                                      periods={periods}
+                                      startBiWeek={item.startBiWeekRaw}
+                                      lwp={item.lwpRaw}
+                                      color={item.barColor}
+                                      title={`${item.title}: ${item.startBiWeek} → ${item.lwp}`}
+                                      emptyBgcolor="rgba(243,229,245,0.65)"
+                                    />
+                                  ) : (
+                                    <TableCell
+                                      key={`${row.id}-${item.id}-${period}`}
+                                      sx={{
+                                        ...cellSx,
+                                        bgcolor: 'rgba(243,229,245,0.65)',
+                                        minWidth: 28,
+                                      }}
+                                    />
+                                  ),
+                                )}
                               </TableRow>
                             ))
                           : null}
@@ -745,7 +748,7 @@ export default function PafRegisterPage() {
                 ? ` · ${activeFilterCount} filter${activeFilterCount === 1 ? '' : 's'} applied`
                 : ''}
               {' · '}
-              Calendar bars show duration from start bi-week to LWP
+              Calendar bars use a per-person colour from start bi-week to last working day
             </Typography>
           ) : null}
         </CardContent>

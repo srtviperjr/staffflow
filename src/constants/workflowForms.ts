@@ -49,7 +49,7 @@ export const WORKFLOW_FORMS: WorkflowFormMeta[] = [
       { key: 'hoursToGo', label: 'Hours To Go' },
       { key: 'roster', label: 'Roster', options: ROSTERS },
       { key: 'startBiWeek', label: 'Start Bi-Week' },
-      { key: 'lwp', label: 'LWP' },
+      { key: 'lwp', label: 'Last Working Day' },
     ],
   },
   {
@@ -68,7 +68,7 @@ export const WORKFLOW_FORMS: WorkflowFormMeta[] = [
       { key: 'totalHours', label: 'Total Hours' },
       { key: 'roster', label: 'Roster', options: ROSTERS },
       { key: 'startBiWeek', label: 'Start Bi-Week' },
-      { key: 'lwp', label: 'LWP' },
+      { key: 'lwp', label: 'Last Working Day' },
       { key: 'position', label: 'Position' },
       { key: 'approvedPositionLabel', label: 'Approved Position Label' },
     ],

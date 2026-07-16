@@ -112,7 +112,7 @@ export function validatePafSchedule(args: {
   const start = parseDateInput(range.startBiWeek)
   const end = parseDateInput(range.lwp)
   if (start && end && start.getTime() > end.getTime()) {
-    errors.lwp = 'LWP must be on or after the PAF start bi-week'
+    errors.lwp = 'Last working day must be on or after the PAF start bi-week'
   }
 
   if (range.startBiWeek && !isDateOnOrAfter(range.startBiWeek, position.startBiWeek)) {
@@ -120,7 +120,9 @@ export function validatePafSchedule(args: {
   }
 
   if (range.lwp && !isDateOnOrBefore(range.lwp, position.lwp)) {
-    errors.lwp = errors.lwp ?? `LWP cannot be later than the position available end date (${position.lwp})`
+    errors.lwp =
+      errors.lwp ??
+      `Last working day cannot be later than the position available end date (${position.lwp})`
   }
 
   if (range.startBiWeek && range.lwp && !errors.startBiWeek && !errors.lwp) {

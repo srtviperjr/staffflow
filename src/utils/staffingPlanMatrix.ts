@@ -1,6 +1,7 @@
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import type { StaffingPlanRequest } from '../types/staffingPlan'
 import { getApprovedStaffingRequests } from './approvedPositions'
+import { personBarColor } from './ganttPeriods'
 import {
   findNextAvailablePafRange,
   getActiveAuthorizationForPosition,
@@ -10,12 +11,23 @@ import { generateBiWeeklyPeriods, parseDateInput } from './staffingPlanDates'
 
 export type LocationCategory = 'Site - Comm' | 'Site - Const' | 'Office'
 
+export interface MatrixCalendarPerson {
+  id: string
+  candidateName: string
+  startBiWeek: string
+  lwp: string
+  color: string
+  status: ProjectAuthorizationRequest['status']
+}
+
 export interface StaffingMatrixRow {
   id: string
   revisionGroupId: string
   authorization?: ProjectAuthorizationRequest
   /** True when another person can still be assigned without date overlap. */
   canAddPaf: boolean
+  /** Active people on this position for calendar highlighting. */
+  calendarPeople: MatrixCalendarPerson[]
   phase: string
   projectOffice: string
   functionalDsg: string
@@ -90,8 +102,8 @@ export const MATRIX_COLUMN_DEFS: MatrixColumnDef[] = [
   { id: 'totalHours', label: 'Total Hours', getValue: (row) => row.totalHours },
   { id: 'hoursToGo', label: 'HoursToGo', getValue: (row) => row.hoursToGo },
   { id: 'roster', label: 'Roster', getValue: (row) => row.roster },
-  { id: 'startBiWeek', label: 'Start Bi-Week', getValue: (row) => row.startBiWeek },
-  { id: 'lwp', label: 'LWP', getValue: (row) => row.lwp },
+  { id: 'startBiWeek', label: 'Start Bi-Week', getValue: (row) => row.startBiWeek, minWidth: 120 },
+  { id: 'lwp', label: 'Last Working Day', getValue: (row) => row.lwp, minWidth: 140 },
 ]
 
 export const DEFAULT_COLUMN_ORDER: MatrixColumnId[] = MATRIX_COLUMN_DEFS.map((column) => column.id)
@@ -195,13 +207,30 @@ function formatMatrixDate(value: string): string {
   })
 }
 
+function toCalendarPeople(assignments: ProjectAuthorizationRequest[]): MatrixCalendarPerson[] {
+  return assignments
+    .slice()
+    .sort((a, b) => a.startBiWeek.localeCompare(b.startBiWeek))
+    .map((request) => ({
+      id: request.id,
+      candidateName: request.candidateName,
+      startBiWeek: request.startBiWeek,
+      lwp: request.lwp,
+      color: personBarColor(`${request.candidateName}:${request.revisionGroupId}`),
+      status: request.status,
+    }))
+}
+
 function buildRow(
   position: StaffingPlanRequest,
   authorization: ProjectAuthorizationRequest | undefined,
-  approvedAssignments: ProjectAuthorizationRequest[],
+  activeAssignments: ProjectAuthorizationRequest[],
   canAddPaf: boolean,
   periods: string[],
 ): StaffingMatrixRow {
+  const approvedAssignments = activeAssignments.filter((request) => request.status === 'approved')
+  const calendarPeople = toCalendarPeople(activeAssignments)
+
   const loads = Object.fromEntries(
     periods.map((period) => {
       for (const assignment of approvedAssignments) {
@@ -222,6 +251,7 @@ function buildRow(
     revisionGroupId: position.revisionGroupId,
     authorization,
     canAddPaf,
+    calendarPeople,
     phase: position.phase,
     projectOffice: position.locationType,
     functionalDsg: position.dsg,
@@ -259,7 +289,7 @@ export function buildStaffingMatrixRows(
       return buildRow(
         position,
         getActiveAuthorizationForPosition(position, authorizations, staffingRequests),
-        active.filter((request) => request.status === 'approved'),
+        active,
         Boolean(findNextAvailablePafRange(position, authorizations, staffingRequests)),
         periods,
       )

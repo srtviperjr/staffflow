@@ -87,7 +87,7 @@ export default function PafDetailDialog({
             <Detail label="Sort Number" value={authorization.sortNumber} />
             <Detail label="Total Hours" value={authorization.totalHours} />
             <Detail label="Start Bi-Week" value={formatDisplayDate(authorization.startBiWeek)} />
-            <Detail label="LWP" value={formatDisplayDate(authorization.lwp)} />
+            <Detail label="Last Working Day" value={formatDisplayDate(authorization.lwp)} />
           </Box>
         )}
         <Divider sx={{ my: 2 }} />

@@ -61,8 +61,8 @@ export function isBiWeeklySunday(date: Date): boolean {
 
 export function validateLwpDate(value: string): string | undefined {
   const date = parseDateInput(value)
-  if (!date) return 'LWP date is required'
-  if (!isSunday(date)) return 'LWP must fall on a Sunday'
+  if (!date) return 'Last working day is required'
+  if (!isSunday(date)) return 'Last working day must fall on a Sunday'
   return undefined
 }
 

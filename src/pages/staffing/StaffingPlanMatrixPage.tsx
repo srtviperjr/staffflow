@@ -39,6 +39,7 @@ import RemoveIcon from '@mui/icons-material/Remove'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 import VisibilityIcon from '@mui/icons-material/Visibility'
+import GanttBarCell, { MultiPersonGanttCell } from '../../components/GanttBarCell'
 import PafDetailDialog from '../../components/PafDetailDialog'
 import StaffingDetailDialog from '../../components/StaffingDetailDialog'
 import RejectDialog from '../../components/RejectDialog'
@@ -48,6 +49,7 @@ import { useRoles } from '../../context/RolesContext'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
 import { canReviewRequests, canSubmitRequests } from '../../utils/permissions'
 import {
+  formatRelatedItemCaption,
   getRelatedItemsForStaffingPosition,
   type RelatedRegisterItem,
 } from '../../utils/relatedRegisterItems'
@@ -68,6 +70,8 @@ import {
 
 const COLUMN_ORDER_KEY = 'staffing-matrix-column-order'
 const COLUMN_VISIBLE_KEY = 'staffing-matrix-visible-columns'
+const EXPAND_COL_WIDTH = 48
+const ACTIONS_COL_WIDTH = 96
 
 const cellSx = {
   border: '1px solid #bdbdbd',
@@ -106,11 +110,6 @@ const rotatedLabelSx = {
 
 function formatPeriodLabel(period: string) {
   return period
-}
-
-function formatLoad(value: number | null | undefined) {
-  if (value == null) return ''
-  return Number.isInteger(value) ? String(value) : value.toFixed(2)
 }
 
 function statusColor(status: string): 'default' | 'warning' | 'success' | 'error' {
@@ -190,6 +189,10 @@ function renderMetadataCell(
     )
   }
 
+  const personColor = row.calendarPeople.find(
+    (person) => person.id === row.authorization?.id,
+  )?.color
+
   return (
     <Stack
       direction="row"
@@ -197,6 +200,18 @@ function renderMetadataCell(
       useFlexGap
       sx={{ alignItems: 'baseline', flexWrap: 'wrap' }}
     >
+      {personColor ? (
+        <Box
+          sx={{
+            width: 10,
+            height: 10,
+            borderRadius: '2px',
+            bgcolor: personColor,
+            flexShrink: 0,
+            alignSelf: 'center',
+          }}
+        />
+      ) : null}
       <Button
         variant="text"
         size="small"
@@ -420,7 +435,8 @@ export default function StaffingPlanMatrixPage() {
               Staffing Plan
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Expand rows to view revisions and pending approvals. Date columns stay fixed.
+              Expand rows for revisions. Calendar bars use a per-person colour from start through last
+              working day.
             </Typography>
           </Box>
         </Box>
@@ -585,10 +601,28 @@ export default function StaffingPlanMatrixPage() {
                         bgcolor: '#9e9e9e',
                         color: 'white',
                         fontWeight: 700,
-                        minWidth: 48,
-                        width: 48,
+                        minWidth: EXPAND_COL_WIDTH,
+                        width: EXPAND_COL_WIDTH,
                       }}
                     />
+                    {canRevise ? (
+                      <TableCell
+                        sx={{
+                          ...cellSx,
+                          position: 'sticky',
+                          top: 0,
+                          left: EXPAND_COL_WIDTH,
+                          zIndex: 6,
+                          bgcolor: '#9e9e9e',
+                          color: 'white',
+                          fontWeight: 700,
+                          minWidth: ACTIONS_COL_WIDTH,
+                          width: ACTIONS_COL_WIDTH,
+                        }}
+                      >
+                        Actions
+                      </TableCell>
+                    ) : null}
                     {visibleColumnDefs.map((column) => (
                       <TableCell
                         key={column.id}
@@ -606,22 +640,6 @@ export default function StaffingPlanMatrixPage() {
                         {column.label}
                       </TableCell>
                     ))}
-                    {canRevise ? (
-                      <TableCell
-                        sx={{
-                          ...cellSx,
-                          position: 'sticky',
-                          top: 0,
-                          zIndex: 5,
-                          bgcolor: '#9e9e9e',
-                          color: 'white',
-                          fontWeight: 700,
-                          minWidth: 96,
-                        }}
-                      >
-                        Actions
-                      </TableCell>
-                    ) : null}
                     {periods.map((period) => (
                       <TableCell
                         key={period}
@@ -641,9 +659,24 @@ export default function StaffingPlanMatrixPage() {
                         left: 0,
                         zIndex: 6,
                         bgcolor: '#eceff1',
-                        minWidth: 48,
+                        minWidth: EXPAND_COL_WIDTH,
+                        width: EXPAND_COL_WIDTH,
                       }}
                     />
+                    {canRevise ? (
+                      <TableCell
+                        sx={{
+                          ...cellSx,
+                          position: 'sticky',
+                          top: 40,
+                          left: EXPAND_COL_WIDTH,
+                          zIndex: 6,
+                          bgcolor: '#eceff1',
+                          minWidth: ACTIONS_COL_WIDTH,
+                          width: ACTIONS_COL_WIDTH,
+                        }}
+                      />
+                    ) : null}
                     {visibleColumnDefs.map((column) => {
                       const options = getUniqueColumnValues(rows, column.id)
                       return (
@@ -687,18 +720,6 @@ export default function StaffingPlanMatrixPage() {
                         </TableCell>
                       )
                     })}
-                    {canRevise ? (
-                      <TableCell
-                        sx={{
-                          ...cellSx,
-                          position: 'sticky',
-                          top: 40,
-                          zIndex: 5,
-                          bgcolor: '#eceff1',
-                          minWidth: 96,
-                        }}
-                      />
-                    ) : null}
                     {periods.map((period) => (
                       <TableCell
                         key={`filter-period-${period}`}
@@ -727,10 +748,10 @@ export default function StaffingPlanMatrixPage() {
                               ...cellSx,
                               position: 'sticky',
                               left: 0,
-                              zIndex: 1,
+                              zIndex: 2,
                               bgcolor: 'background.paper',
-                              minWidth: 48,
-                              width: 48,
+                              minWidth: EXPAND_COL_WIDTH,
+                              width: EXPAND_COL_WIDTH,
                               p: 0.25,
                             }}
                           >
@@ -743,6 +764,29 @@ export default function StaffingPlanMatrixPage() {
                               {expanded ? <RemoveIcon fontSize="small" /> : <AddIcon fontSize="small" />}
                             </IconButton>
                           </TableCell>
+                          {canRevise ? (
+                            <TableCell
+                              sx={{
+                                ...cellSx,
+                                position: 'sticky',
+                                left: EXPAND_COL_WIDTH,
+                                zIndex: 2,
+                                bgcolor: 'background.paper',
+                                minWidth: ACTIONS_COL_WIDTH,
+                                width: ACTIONS_COL_WIDTH,
+                              }}
+                            >
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<EditIcon />}
+                                onClick={() => handleRevise(row.id)}
+                                sx={{ textTransform: 'none', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                              >
+                                Revise
+                              </Button>
+                            </TableCell>
+                          ) : null}
                           {visibleColumnDefs.map((column) => {
                             const value = column.getValue(row)
                             return (
@@ -763,32 +807,13 @@ export default function StaffingPlanMatrixPage() {
                               </TableCell>
                             )
                           })}
-                          {canRevise ? (
-                            <TableCell sx={{ ...cellSx, minWidth: 96 }}>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                startIcon={<EditIcon />}
-                                onClick={() => handleRevise(row.id)}
-                                sx={{ textTransform: 'none', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
-                              >
-                                Revise
-                              </Button>
-                            </TableCell>
-                          ) : null}
                           {periods.map((period) => (
-                            <TableCell
+                            <MultiPersonGanttCell
                               key={`${row.id}-${period}`}
-                              align="center"
-                              sx={{
-                                ...cellSx,
-                                bgcolor: row.loads[period] != null ? 'rgba(211, 84, 0, 0.06)' : undefined,
-                                fontWeight: row.loads[period] != null ? 600 : 400,
-                                color: row.loads[period] != null ? 'primary.main' : 'text.secondary',
-                              }}
-                            >
-                              {formatLoad(row.loads[period])}
-                            </TableCell>
+                              period={period}
+                              periods={periods}
+                              people={row.calendarPeople}
+                            />
                           ))}
                         </TableRow>
 
@@ -811,6 +836,17 @@ export default function StaffingPlanMatrixPage() {
                                   >
                                     <Box>
                                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                        {item.barColor ? (
+                                          <Box
+                                            sx={{
+                                              width: 10,
+                                              height: 10,
+                                              borderRadius: '2px',
+                                              bgcolor: item.barColor,
+                                              flexShrink: 0,
+                                            }}
+                                          />
+                                        ) : null}
                                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
                                           {item.title}
                                         </Typography>
@@ -828,8 +864,7 @@ export default function StaffingPlanMatrixPage() {
                                         />
                                       </Box>
                                       <Typography variant="caption" color="text.secondary">
-                                        {item.subtitle} · Submitted{' '}
-                                        {new Date(item.submittedAt).toLocaleString()}
+                                        {formatRelatedItemCaption(item)}
                                       </Typography>
                                     </Box>
                                     <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
@@ -866,12 +901,26 @@ export default function StaffingPlanMatrixPage() {
                                     </Stack>
                                   </Box>
                                 </TableCell>
-                                {periods.map((period) => (
-                                  <TableCell
-                                    key={`${row.id}-${item.id}-${period}`}
-                                    sx={{ ...cellSx, bgcolor: 'rgba(245,245,245,0.9)' }}
-                                  />
-                                ))}
+                                {periods.map((period) =>
+                                  item.startBiWeekRaw && item.lwpRaw ? (
+                                    <GanttBarCell
+                                      key={`${row.id}-${item.id}-${period}`}
+                                      period={period}
+                                      periods={periods}
+                                      startBiWeek={item.startBiWeekRaw}
+                                      lwp={item.lwpRaw}
+                                      color={item.barColor}
+                                      title={`${item.title}: ${item.startBiWeek} → ${item.lwp}`}
+                                      minWidth={58}
+                                      emptyBgcolor="rgba(245,245,245,0.9)"
+                                    />
+                                  ) : (
+                                    <TableCell
+                                      key={`${row.id}-${item.id}-${period}`}
+                                      sx={{ ...cellSx, bgcolor: 'rgba(245,245,245,0.9)' }}
+                                    />
+                                  ),
+                                )}
                               </TableRow>
                             ))
                           : null}
