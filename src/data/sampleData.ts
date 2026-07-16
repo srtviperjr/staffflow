@@ -23,6 +23,10 @@ import {
   isActivePafStatus,
 } from '../utils/pafDateRules'
 import { formatPafNumber, maxPafSequence } from '../utils/projectAuthorizationRevisions'
+import {
+  formatPositionNumber,
+  maxPositionSequence,
+} from '../utils/staffingPlanRevisions'
 import { formatDateInput, parseDateInput } from '../utils/staffingPlanDates'
 import { markSeedCurrent } from './seedVersion'
 
@@ -278,8 +282,7 @@ function buildStaffingPosition(
     supersedesId: overrides.supersedesId,
     isCurrentRevision: overrides.isCurrentRevision,
     positionNumber:
-      overrides.positionNumber ??
-      `${company.slice(0, 2).toUpperCase()}${String(index + 1).padStart(3, '0')}`,
+      overrides.positionNumber ?? `${company}-${String(index + 1).padStart(3, '0')}`,
     phase: overrides.phase ?? defaultPhaseForCompany(company),
     locationType: overrides.locationType ?? pick(LOCATION_TYPES, seed),
     functionalGroup: overrides.functionalGroup ?? pick(FUNCTIONAL_GROUPS, seed),
@@ -416,14 +419,7 @@ function nextPositionIndexByCompany(
   company: Company,
   existing: StaffingPlanRequest[],
 ): number {
-  const prefix = company.slice(0, 2).toUpperCase()
-  let max = 0
-  for (const request of existing) {
-    if (request.company !== company) continue
-    const match = new RegExp(`^${prefix}(\\d{3})$`).exec(request.positionNumber)
-    if (match) max = Math.max(max, Number(match[1]))
-  }
-  return max
+  return maxPositionSequence(company, existing)
 }
 
 function latestApprovedForGroup(
@@ -522,7 +518,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
       const lwp = addBiWeeks(startBiWeek, POSITION_WINDOW_BIWEEKS)
       const approvedThenApproved = status === 'approved' && (companyIndex + i) % 9 === 0
       const approvedThenPending = status === 'approved' && (companyIndex + i) % 9 === 3
-      const positionNumber = `${company.slice(0, 2).toUpperCase()}${String(index).padStart(3, '0')}`
+      const positionNumber = formatPositionNumber(company, index)
 
       if (approvedThenApproved || approvedThenPending) {
         const revisionTwoStatus: StaffingPlanRequest['status'] = approvedThenPending
@@ -616,7 +612,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
     const groupId = `${idPrefix}-sp-extra-${company.toLowerCase()}-${String(index).padStart(3, '0')}`
     const startBiWeek = addBiWeeks(POSITION_WINDOW_START, index % 3)
     const lwp = addBiWeeks(startBiWeek, POSITION_WINDOW_BIWEEKS)
-    const positionNumber = `${company.slice(0, 2).toUpperCase()}${String(index).padStart(3, '0')}`
+    const positionNumber = formatPositionNumber(company, index)
     const host = buildStaffingPosition(company, index, {
       id: groupId,
       revisionGroupId: groupId,

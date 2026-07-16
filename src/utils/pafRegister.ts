@@ -1,6 +1,6 @@
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import { personBarColor } from './ganttPeriods'
-import { getCurrentAuthorizationRequests } from './projectAuthorizationRevisions'
+import { getPafRegisterMainRequests } from './projectAuthorizationRevisions'
 import { formatDisplayDate, generateBiWeeklyPeriodsForRange } from './staffingPlanDates'
 
 export type PafRegisterColumnId =
@@ -65,19 +65,41 @@ export const PAF_REGISTER_COLUMN_DEFS: PafRegisterColumnDef[] = [
   { id: 'lwp', label: 'Last Working Day', getValue: (row) => row.lwp, minWidth: 140 },
 ]
 
-export const DEFAULT_PAF_COLUMN_ORDER: PafRegisterColumnId[] =
-  PAF_REGISTER_COLUMN_DEFS.map((column) => column.id)
+/** PAF #, Status, and Candidate lead by default. */
+export const DEFAULT_PAF_COLUMN_ORDER: PafRegisterColumnId[] = [
+  'pafNumber',
+  'status',
+  'candidate',
+  'position',
+  'functionalGroup',
+  'dsg',
+  'country',
+  'class',
+  'company',
+  'revision',
+  'roster',
+  'totalHours',
+  'startBiWeek',
+  'lwp',
+]
+
+/** Columns frozen while scrolling the Gantt (in addition to Expand + Actions). */
+export const DEFAULT_PAF_STICKY_COLUMNS: PafRegisterColumnId[] = [
+  'pafNumber',
+  'status',
+  'candidate',
+]
 
 const COLUMN_BY_ID = new Map(PAF_REGISTER_COLUMN_DEFS.map((column) => [column.id, column]))
 
-/** Calendar periods covering all current PAF durations. */
+/** Calendar periods covering main register rows (approved / pending-only). */
 export function getPafRegisterPeriods(
   requests: ProjectAuthorizationRequest[] = [],
 ): string[] {
   let minStart = ''
   let maxEnd = ''
 
-  for (const request of getCurrentAuthorizationRequests(requests)) {
+  for (const request of getPafRegisterMainRequests(requests)) {
     if (!request.startBiWeek || !request.lwp) continue
     if (!minStart || request.startBiWeek < minStart) minStart = request.startBiWeek
     if (!maxEnd || request.lwp > maxEnd) maxEnd = request.lwp
@@ -122,17 +144,17 @@ export function getUniquePafColumnValues(
 
 export function filterPafRegisterRows(
   rows: PafRegisterRow[],
-  filters: Partial<Record<PafRegisterColumnId, string>>,
+  filters: Partial<Record<PafRegisterColumnId, string[]>>,
 ): PafRegisterRow[] {
-  const active = Object.entries(filters).filter(([, value]) => Boolean(value)) as Array<
-    [PafRegisterColumnId, string]
-  >
+  const active = Object.entries(filters).filter(
+    ([, values]) => Array.isArray(values) && values.length > 0,
+  ) as Array<[PafRegisterColumnId, string[]]>
   if (active.length === 0) return rows
   return rows.filter((row) =>
-    active.every(([columnId, filterValue]) => {
+    active.every(([columnId, filterValues]) => {
       const column = COLUMN_BY_ID.get(columnId)
       if (!column) return true
-      return column.getValue(row) === filterValue
+      return filterValues.includes(column.getValue(row))
     }),
   )
 }
@@ -140,7 +162,7 @@ export function filterPafRegisterRows(
 export function buildPafRegisterRows(
   requests: ProjectAuthorizationRequest[],
 ): PafRegisterRow[] {
-  return getCurrentAuthorizationRequests(requests)
+  return getPafRegisterMainRequests(requests)
     .map((request) => ({
       id: request.id,
       request,
