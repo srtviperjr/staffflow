@@ -15,11 +15,13 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 import type { StaffingPlanRequest } from '../types/staffingPlan'
 import { formatDisplayDate } from '../utils/staffingPlanDates'
+import { computePositionCost, formatCostAmount } from '../utils/positionCost'
 
 interface StaffingDetailDialogProps {
   request: StaffingPlanRequest | null
   onClose: () => void
   canReview?: boolean
+  showCost?: boolean
   onApprove?: () => void
   onReject?: () => void
 }
@@ -42,10 +44,14 @@ export default function StaffingDetailDialog({
   request,
   onClose,
   canReview = false,
+  showCost = false,
   onApprove,
   onReject,
 }: StaffingDetailDialogProps) {
   const showActions = Boolean(request && request.status === 'pending' && canReview)
+  const positionCost = request
+    ? computePositionCost(request.hoursToGo, request.hourlyCost)
+    : null
 
   return (
     <Dialog open={Boolean(request)} onClose={onClose} maxWidth="md" fullWidth>
@@ -84,7 +90,14 @@ export default function StaffingDetailDialog({
             <Detail label="Sort Number" value={request.sortNumber} />
             <Detail label="Total Hours" value={request.totalHours} />
             <Detail label="Hours To Go" value={request.hoursToGo} />
-            <Detail label="Hourly Cost" value={request.hourlyCost} />
+            {showCost ? (
+              <>
+                <Detail label="Hourly Cost" value={request.hourlyCost} />
+                {positionCost != null ? (
+                  <Detail label="Position Cost" value={formatCostAmount(positionCost)} />
+                ) : null}
+              </>
+            ) : null}
             <Detail label="Start Bi-Week" value={formatDisplayDate(request.startBiWeek)} />
             <Detail label="Last Working Day" value={formatDisplayDate(request.lwp)} />
           </Box>

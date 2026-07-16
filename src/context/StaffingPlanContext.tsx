@@ -27,7 +27,7 @@ interface StaffingPlanContextValue {
   addRequest: (data: StaffingPlanFormData) => StaffingPlanRequest
   reviseRequest: (sourceId: string, data: StaffingPlanFormData) => void
   rejectRequest: (id: string, comment: string) => void
-  approveRequest: (id: string) => void
+  approveRequest: (id: string, options?: { hourlyCost?: string }) => void
   getHistory: (revisionGroupId: string) => StaffingPlanRequest[]
 }
 
@@ -232,22 +232,27 @@ export function StaffingPlanProvider({ children }: { children: ReactNode }) {
   )
 
   const approveRequest = useCallback(
-    (id: string) => {
+    (id: string, options?: { hourlyCost?: string }) => {
       persist(
         requests.map((request) => {
           if (request.id !== id) return request
 
-          if (request.workflow) {
-            const workflow = getWorkflow(request.workflow.workflowId)
+          const withCost =
+            options?.hourlyCost !== undefined
+              ? { ...request, hourlyCost: options.hourlyCost.trim() }
+              : request
+
+          if (withCost.workflow) {
+            const workflow = getWorkflow(withCost.workflow.workflowId)
             if (workflow) {
               const result = advanceWorkflow(
                 workflow,
-                request.workflow,
-                requestAsFormRecord(request),
+                withCost.workflow,
+                requestAsFormRecord(withCost),
                 'approve',
               )
               return {
-                ...request,
+                ...withCost,
                 status: result.status === 'pending' && result.completed ? 'approved' : result.status,
                 reviewedAt: new Date().toISOString(),
                 rejectionComment: undefined,
@@ -257,7 +262,7 @@ export function StaffingPlanProvider({ children }: { children: ReactNode }) {
           }
 
           return {
-            ...request,
+            ...withCost,
             status: 'approved' as const,
             reviewedAt: new Date().toISOString(),
           }

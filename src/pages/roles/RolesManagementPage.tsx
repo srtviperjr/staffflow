@@ -30,6 +30,7 @@ import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArro
 import AddIcon from '@mui/icons-material/Add'
 import { useRoles } from '../../context/RolesContext'
 import type { AppUser } from '../../types/roles'
+import { validateProjectDirectorRoleMembers } from '../../utils/projectDirector'
 
 function not(a: readonly string[], b: readonly string[]) {
   return a.filter((value) => !b.includes(value))
@@ -84,7 +85,7 @@ function UserTransferList({
                 <ListItemText
                   id={labelId}
                   primary={user.name}
-                  secondary={`${user.company} · ${user.title} · ${user.email}`}
+                  secondary={`${user.company}${user.project ? ` · ${user.project}` : ''} · ${user.title}`}
                 />
               </ListItemButton>
             )
@@ -98,6 +99,7 @@ function UserTransferList({
 export default function RolesManagementPage() {
   const { users, roles, createRole, assignUsersToRole } = useRoles()
   const [selectedRoleId, setSelectedRoleId] = useState('')
+  const [assignError, setAssignError] = useState('')
   const [assignedIds, setAssignedIds] = useState<string[]>([])
   const [checked, setChecked] = useState<readonly string[]>([])
   const [newRoleName, setNewRoleName] = useState('')
@@ -165,6 +167,16 @@ export default function RolesManagementPage() {
 
   const handleSaveAssignments = () => {
     if (!selectedRoleId) return
+    const error = validateProjectDirectorRoleMembers({
+      roleId: selectedRoleId,
+      userIds: assignedIds,
+      users,
+    })
+    if (error) {
+      setAssignError(error)
+      return
+    }
+    setAssignError('')
     assignUsersToRole(selectedRoleId, assignedIds)
     setSuccessMessage(`Updated members for ${selectedRole?.name ?? 'role'}.`)
     setShowSuccess(true)
@@ -265,7 +277,10 @@ export default function RolesManagementPage() {
                       bgcolor: role.id === selectedRoleId ? 'rgba(211,84,0,0.06)' : 'transparent',
                       cursor: 'pointer',
                     }}
-                    onClick={() => setSelectedRoleId(role.id)}
+                    onClick={() => {
+                      setSelectedRoleId(role.id)
+                      setAssignError('')
+                    }}
                   >
                     <Typography variant="subtitle2">{role.name}</Typography>
                     <Typography variant="caption" color="text.secondary">
@@ -379,6 +394,11 @@ export default function RolesManagementPage() {
                       Save Assignments
                     </Button>
                   </Box>
+                  {assignError ? (
+                    <Alert severity="error" sx={{ mt: 2 }}>
+                      {assignError}
+                    </Alert>
+                  ) : null}
                 </>
               ) : (
                 <Alert severity="info">Create a role to start assigning users.</Alert>

@@ -26,7 +26,7 @@ function currentNode(
   return workflow.nodes.find((node) => node.id === request.workflow!.currentNodeId)
 }
 
-function isWaitingForUserRole(
+export function isWaitingForUserRole(
   node: WorkflowDefinition['nodes'][number] | undefined,
   userRoleIds: string[],
   adminBypass: boolean,
@@ -40,6 +40,36 @@ function isWaitingForUserRole(
   if (adminBypass) return true
   if (!data.roleId) return false
   return userRoleIds.includes(data.roleId)
+}
+
+/** True when the request is waiting on a step/decision owned by this user's roles. */
+export function canActOnWorkflowRequest(
+  request: { workflow?: { currentNodeId: string; workflowId: string }; status: string },
+  roles: AppRole[],
+  getWorkflow: (workflowId: string) => WorkflowDefinition | undefined,
+  fallbackRoleId = 'role-manager',
+): boolean {
+  if (request.status !== 'pending') return false
+  const userRoleIds = roleIdsOf(roles)
+  const adminBypass = isAdmin(roles)
+
+  if (!request.workflow) {
+    return adminBypass || userRoleIds.includes(fallbackRoleId)
+  }
+
+  const workflow = getWorkflow(request.workflow.workflowId)
+  const node = currentNode(workflow, request)
+  return isWaitingForUserRole(node, userRoleIds, adminBypass)
+}
+
+export function isCostEngineerReviewStep(
+  request: { workflow?: { currentNodeId: string; workflowId: string } },
+  getWorkflow: (workflowId: string) => WorkflowDefinition | undefined,
+): boolean {
+  if (!request.workflow) return false
+  const workflow = getWorkflow(request.workflow.workflowId)
+  const node = currentNode(workflow, request)
+  return node?.data.roleId === 'role-cost-engineer' && Boolean(node.data.waitForAction)
 }
 
 export function getPendingApprovalsForUser(options: {

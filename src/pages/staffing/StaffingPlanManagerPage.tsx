@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -11,6 +12,7 @@ import {
   Stack,
   Tab,
   Tabs,
+  TextField,
   Typography,
 } from '@mui/material'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
@@ -34,6 +36,17 @@ import {
   getPreviousRevision,
   STAFFING_PLAN_COMPARE_FIELDS,
 } from '../../utils/revisionDiff'
+import {
+  canActOnWorkflowRequest,
+  isCostEngineerReviewStep,
+} from '../../utils/pendingApprovals'
+import { canEditHourlyCost, canViewCostInfo } from '../../utils/permissions'
+import {
+  computePositionCost,
+  formatCostAmount,
+  formatCostDelta,
+  formatCostWithDelta,
+} from '../../utils/positionCost'
 
 type FilterTab = 'all' | 'pending' | 'approved' | 'rejected'
 
@@ -59,12 +72,28 @@ function formatTimestamp(dateString: string) {
 
 function RequestDetails({
   request,
+  previous,
   changedFields,
+  showCost,
 }: {
   request: StaffingPlanRequest
+  previous?: StaffingPlanRequest
   changedFields?: Set<string>
+  showCost: boolean
 }) {
   const changed = (field: string) => changedFields?.has(field) ?? false
+
+  const hourly = formatCostWithDelta(request.hourlyCost, previous?.hourlyCost)
+  const currentPositionCost = computePositionCost(request.hoursToGo, request.hourlyCost)
+  const previousPositionCost = previous
+    ? computePositionCost(previous.hoursToGo, previous.hourlyCost)
+    : null
+  const positionCostChanged =
+    currentPositionCost != null &&
+    previousPositionCost != null &&
+    currentPositionCost !== previousPositionCost
+  const hoursChanged = changed('hoursToGo')
+  const rateChanged = changed('hourlyCost')
 
   return (
     <Box
@@ -116,13 +145,35 @@ function RequestDetails({
       <ChangedFieldDetail
         label="Hours To Go"
         value={request.hoursToGo}
-        changed={changed('hoursToGo')}
+        changed={hoursChanged}
+        previousValue={hoursChanged ? previous?.hoursToGo : undefined}
       />
-      <ChangedFieldDetail
-        label="Hourly Cost"
-        value={request.hourlyCost}
-        changed={changed('hourlyCost')}
-      />
+      {showCost ? (
+        <>
+          <ChangedFieldDetail
+            label="Hourly Cost"
+            value={hourly.display}
+            changed={rateChanged}
+            previousValue={rateChanged ? previous?.hourlyCost : undefined}
+            delta={rateChanged ? hourly.delta : undefined}
+          />
+          {currentPositionCost != null ? (
+            <ChangedFieldDetail
+              label="Position Cost"
+              value={formatCostAmount(currentPositionCost)}
+              changed={positionCostChanged}
+              previousValue={
+                positionCostChanged ? formatCostAmount(previousPositionCost) : undefined
+              }
+              delta={
+                positionCostChanged
+                  ? formatCostDelta(currentPositionCost, previousPositionCost)
+                  : undefined
+              }
+            />
+          ) : null}
+        </>
+      ) : null}
       <ChangedFieldDetail
         label="Start Bi-Week"
         value={formatDisplayDate(request.startBiWeek)}
@@ -142,13 +193,18 @@ function RequestDetails({
 }
 
 export default function StaffingPlanManagerPage() {
-  const { currentUser } = useRoles()
+  const { currentUser, currentUserRoles } = useRoles()
   const { openRequestForm } = useRequestForms()
   const { currentRequests, rejectRequest, approveRequest, getHistory } = useStaffingPlanRequests()
   const { getWorkflow } = useWorkflows()
   const [filter, setFilter] = useState<FilterTab>('all')
   const [rejectTarget, setRejectTarget] = useState<StaffingPlanRequest | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+  const [draftHourlyCost, setDraftHourlyCost] = useState<Record<string, string>>({})
+  const [costError, setCostError] = useState<Record<string, string>>({})
+
+  const showCost = canViewCostInfo(currentUserRoles)
+  const canEditCost = canEditHourlyCost(currentUserRoles)
 
   const visibleRequests = useMemo(
     () => filterByCompanyVisibility(currentRequests, currentUser?.company),
@@ -181,6 +237,28 @@ export default function StaffingPlanManagerPage() {
       ...prev,
       [revisionGroupId]: !prev[revisionGroupId],
     }))
+  }
+
+  const handleApprove = (request: StaffingPlanRequest) => {
+    const atCostStep = isCostEngineerReviewStep(request, getWorkflow)
+    if (atCostStep && canEditCost) {
+      const value = (draftHourlyCost[request.id] ?? request.hourlyCost ?? '').trim()
+      if (!value) {
+        setCostError((prev) => ({
+          ...prev,
+          [request.id]: 'Enter an hourly cost before approving',
+        }))
+        return
+      }
+      approveRequest(request.id, { hourlyCost: value })
+      setCostError((prev) => {
+        const next = { ...prev }
+        delete next[request.id]
+        return next
+      })
+      return
+    }
+    approveRequest(request.id)
   }
 
   return (
@@ -236,6 +314,10 @@ export default function StaffingPlanManagerPage() {
                   previousRevision,
                   STAFFING_PLAN_COMPARE_FIELDS,
                 )
+                const canAct = canActOnWorkflowRequest(request, currentUserRoles, getWorkflow)
+                const atCostStep = isCostEngineerReviewStep(request, getWorkflow)
+                const hourlyDraft = draftHourlyCost[request.id] ?? request.hourlyCost ?? ''
+                const draftPositionCost = computePositionCost(request.hoursToGo, hourlyDraft)
 
                 return (
                   <Card key={request.id} variant="outlined" sx={{ boxShadow: 'none' }}>
@@ -287,7 +369,53 @@ export default function StaffingPlanManagerPage() {
                       <Divider sx={{ my: 2 }} />
 
                       <RevisionChangesLegend visible={request.revision > 1} />
-                      <RequestDetails request={request} changedFields={changedFields} />
+                      <RequestDetails
+                        request={request}
+                        previous={previousRevision}
+                        changedFields={changedFields}
+                        showCost={showCost}
+                      />
+
+                      {atCostStep && canAct && canEditCost ? (
+                        <Box sx={{ mt: 2, maxWidth: 360 }}>
+                          <Typography variant="subtitle2" color="primary" sx={{ mb: 1 }}>
+                            Cost Engineer entry
+                          </Typography>
+                          <TextField
+                            label="Hourly Cost"
+                            value={hourlyDraft}
+                            onChange={(event) => {
+                              const value = event.target.value
+                              setDraftHourlyCost((prev) => ({ ...prev, [request.id]: value }))
+                              setCostError((prev) => {
+                                const next = { ...prev }
+                                delete next[request.id]
+                                return next
+                              })
+                            }}
+                            fullWidth
+                            size="small"
+                            error={Boolean(costError[request.id])}
+                            helperText={costError[request.id] || 'Required before Cost Engineer approval'}
+                            slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+                          />
+                          {draftPositionCost != null ? (
+                            <Typography variant="body2" sx={{ mt: 1.25 }}>
+                              <strong>Position Cost:</strong> {formatCostAmount(draftPositionCost)}
+                              <Typography component="span" variant="caption" color="text.secondary">
+                                {' '}
+                                (Hours To Go × Hourly Cost)
+                              </Typography>
+                            </Typography>
+                          ) : null}
+                        </Box>
+                      ) : null}
+
+                      {request.status === 'pending' && !canAct ? (
+                        <Alert severity="info" sx={{ mt: 2 }}>
+                          Waiting on another role before you can approve or reject this request.
+                        </Alert>
+                      ) : null}
 
                       {request.status === 'rejected' && request.rejectionComment && (
                         <Box
@@ -357,7 +485,12 @@ export default function StaffingPlanManagerPage() {
                                       </Typography>
                                     </Box>
                                     <RevisionChangesLegend visible={entry.revision > 1} />
-                                    <RequestDetails request={entry} changedFields={entryChangedFields} />
+                                    <RequestDetails
+                                      request={entry}
+                                      previous={entryPrevious}
+                                      changedFields={entryChangedFields}
+                                      showCost={showCost}
+                                    />
                                   </Box>
                                   )
                                 })}
@@ -368,13 +501,13 @@ export default function StaffingPlanManagerPage() {
                     </CardContent>
 
                     <CardActions sx={{ px: 2, pb: 2, gap: 1, flexWrap: 'wrap' }}>
-                      {request.status === 'pending' && (
+                      {request.status === 'pending' && canAct && (
                         <>
                           <Button
                             variant="contained"
                             color="success"
                             startIcon={<CheckCircleIcon />}
-                            onClick={() => approveRequest(request.id)}
+                            onClick={() => handleApprove(request)}
                           >
                             Approve
                           </Button>

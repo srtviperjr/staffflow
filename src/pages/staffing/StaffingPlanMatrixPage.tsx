@@ -50,7 +50,13 @@ import { useProjectAuthorizationRequests } from '../../context/ProjectAuthorizat
 import { useRequestForms } from '../../context/RequestFormsContext'
 import { useRoles } from '../../context/RolesContext'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
-import { canReviewRequests, canSubmitRequests } from '../../utils/permissions'
+import {
+  canReviewRequests,
+  canSubmitRequests,
+  canViewCostInfo,
+} from '../../utils/permissions'
+import { canActOnWorkflowRequest } from '../../utils/pendingApprovals'
+import { useWorkflows } from '../../context/WorkflowContext'
 import {
   formatRelatedItemCaption,
   getGroupedRelatedItemsForStaffingPosition,
@@ -72,6 +78,7 @@ import {
 import type { ProjectAuthorizationRequest } from '../../types/projectAuthorization'
 import type { StaffingPlanRequest } from '../../types/staffingPlan'
 import {
+  COST_MATRIX_COLUMN_IDS,
   DEFAULT_COLUMN_ORDER,
   DEFAULT_STICKY_COLUMNS,
   MATRIX_COLUMN_DEFS,
@@ -84,9 +91,9 @@ import {
   type StaffingMatrixRow,
 } from '../../utils/staffingPlanMatrix'
 
-const COLUMN_ORDER_KEY = 'staffing-matrix-column-order-v4'
-const COLUMN_VISIBLE_KEY = 'staffing-matrix-visible-columns-v4'
-const COLUMN_STICKY_KEY = 'staffing-matrix-sticky-columns-v4'
+const COLUMN_ORDER_KEY = 'staffing-matrix-column-order-v5'
+const COLUMN_VISIBLE_KEY = 'staffing-matrix-visible-columns-v5'
+const COLUMN_STICKY_KEY = 'staffing-matrix-sticky-columns-v5'
 const EXPAND_COL_WIDTH = 100
 const ACTIONS_COL_WIDTH = 118
 const META_WIDTH_FALLBACK = 110
@@ -424,8 +431,17 @@ export default function StaffingPlanMatrixPage() {
     approveRequest: approvePaf,
     rejectRequest: rejectPaf,
   } = useProjectAuthorizationRequests()
+  const { getWorkflow } = useWorkflows()
   const canRevise = canSubmitRequests(currentUserRoles)
   const canReview = canReviewRequests(currentUserRoles)
+  const showCost = canViewCostInfo(currentUserRoles)
+  const allowedColumnOrder = useMemo(
+    () =>
+      showCost
+        ? DEFAULT_COLUMN_ORDER
+        : DEFAULT_COLUMN_ORDER.filter((id) => !COST_MATRIX_COLUMN_IDS.includes(id)),
+    [showCost],
+  )
 
   const [selectedPaf, setSelectedPaf] = useState<ProjectAuthorizationRequest | null>(null)
   const [selectedStaffing, setSelectedStaffing] = useState<StaffingPlanRequest | null>(null)
@@ -436,6 +452,19 @@ export default function StaffingPlanMatrixPage() {
   const [stickyColumns, setStickyColumns] = useState<MatrixColumnId[]>(loadStickyColumns)
   const [filters, setFilters] = useState<Partial<Record<MatrixColumnId, string[]>>>({})
   const [columnsAnchor, setColumnsAnchor] = useState<HTMLElement | null>(null)
+
+  useEffect(() => {
+    const allowed = new Set(allowedColumnOrder)
+    setColumnOrder((prev) => {
+      const filtered = prev.filter((id) => allowed.has(id))
+      return mergeColumnOrder(filtered, allowedColumnOrder, DEFAULT_STICKY_COLUMNS)
+    })
+    setVisibleColumns((prev) => {
+      const filtered = prev.filter((id) => allowed.has(id))
+      return filtered.length > 0 ? filtered : [...allowedColumnOrder]
+    })
+    setStickyColumns((prev) => prev.filter((id) => allowed.has(id)))
+  }, [allowedColumnOrder])
 
   useEffect(() => {
     localStorage.setItem(COLUMN_ORDER_KEY, JSON.stringify(columnOrder))
@@ -566,8 +595,8 @@ export default function StaffingPlanMatrixPage() {
   }
 
   const resetColumns = () => {
-    setColumnOrder([...DEFAULT_COLUMN_ORDER])
-    setVisibleColumns([...DEFAULT_COLUMN_ORDER])
+    setColumnOrder([...allowedColumnOrder])
+    setVisibleColumns([...allowedColumnOrder])
     setStickyColumns([...DEFAULT_STICKY_COLUMNS])
   }
 
@@ -1060,7 +1089,13 @@ export default function StaffingPlanMatrixPage() {
                                 : undefined,
                             }}
                           >
-                            {canReview && row.status === 'pending' ? (
+                            {canReview &&
+                            row.status === 'pending' &&
+                            canActOnWorkflowRequest(
+                              row.positionRequest,
+                              currentUserRoles,
+                              getWorkflow,
+                            ) ? (
                               <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
                                 <Button
                                   size="small"
@@ -1329,7 +1364,13 @@ export default function StaffingPlanMatrixPage() {
       <StaffingDetailDialog
         request={selectedStaffing}
         onClose={() => setSelectedStaffing(null)}
-        canReview={canReview}
+        canReview={
+          Boolean(
+            selectedStaffing &&
+              canActOnWorkflowRequest(selectedStaffing, currentUserRoles, getWorkflow),
+          )
+        }
+        showCost={showCost}
         onApprove={() => {
           if (!selectedStaffing) return
           approveStaffing(selectedStaffing.id)

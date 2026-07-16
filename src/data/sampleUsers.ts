@@ -57,6 +57,43 @@ export const SAMPLE_USERS: AppUser[] = [
     title: 'Project Services Lead',
     company: 'Fluor',
   },
+  {
+    id: 'user-009',
+    name: 'Taylor Brooks',
+    email: 'taylor.brooks@bhp.com',
+    title: 'Senior Cost Engineer',
+    company: 'BHP',
+  },
+  {
+    id: 'user-010',
+    name: 'Jamie Ng',
+    email: 'jamie.ng@bhp.com',
+    title: 'Cost Engineer',
+    company: 'BHP',
+  },
+  {
+    id: 'user-011',
+    name: 'Drew Alvarez',
+    email: 'drew.alvarez@bhp.com',
+    title: 'Cost Engineer',
+    company: 'BHP',
+  },
+  {
+    id: 'user-012',
+    name: 'Pat Okonkwo',
+    email: 'pat.okonkwo@bhp.com',
+    title: 'Project Director',
+    company: 'BHP',
+    project: 'JS1',
+  },
+  {
+    id: 'user-013',
+    name: 'Quinn Sato',
+    email: 'quinn.sato@bhp.com',
+    title: 'Project Director',
+    company: 'BHP',
+    project: 'JS2',
+  },
 ]
 
 export const DEFAULT_ROLES: AppRole[] = [
@@ -86,6 +123,22 @@ export const DEFAULT_ROLES: AppRole[] = [
     name: 'Viewer',
     description: 'Read-only access to staffing plan views',
     userIds: ['user-008'],
+    createdAt: '2026-06-01T09:00:00.000Z',
+  },
+  {
+    id: 'role-cost-engineer',
+    name: 'Cost Engineer',
+    description:
+      'First approver on staffing position requests; enters and maintains hourly cost',
+    userIds: ['user-009', 'user-010', 'user-011'],
+    createdAt: '2026-06-01T09:00:00.000Z',
+  },
+  {
+    id: 'role-project-director',
+    name: 'Project Director',
+    description:
+      'BHP project lead (one per JS1/JS2 project) with visibility into position cost',
+    userIds: ['user-012', 'user-013'],
     createdAt: '2026-06-01T09:00:00.000Z',
   },
 ]

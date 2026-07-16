@@ -3,6 +3,7 @@ import type { WorkflowDefinition } from '../types/workflow'
 const SHARED_STATES = [
   { id: 'state-draft', name: 'Draft', color: '#757575' },
   { id: 'state-submitted', name: 'Submitted', color: '#1976d2' },
+  { id: 'state-cost-review', name: 'Cost Review', color: '#6a1b9a' },
   { id: 'state-in-review', name: 'In Review', color: '#ed6c02' },
   { id: 'state-approved', name: 'Approved', color: '#2e7d32' },
   { id: 'state-rejected', name: 'Rejected', color: '#c62828' },
@@ -10,16 +11,14 @@ const SHARED_STATES = [
 ]
 
 /**
- * Canonical Staffing Plan approval flow — mirrors the product behavior:
- * submit → manager review → approve / reject.
- * Includes a field-based company gate so both paths reunite at review
- * (demonstrates form-field decisions without changing who approves).
+ * Canonical Staffing Plan approval flow:
+ * submit → Cost Engineer (hourly cost) → company gate → manager approve / reject.
  */
 export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
   id: 'workflow-staffing-plan-approval',
   name: 'Staffing Plan Approval',
   description:
-    'Submit a staffing plan position request, optionally route by company, then manager approve or reject',
+    'Submit a staffing plan position request, Cost Engineer enters hourly cost, then manager approve or reject',
   formType: 'staffing-plan',
   states: SHARED_STATES,
   nodes: [
@@ -47,9 +46,21 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
       },
     },
     {
+      id: 'sp-cost-review',
+      type: 'step',
+      position: { x: 280, y: 260 },
+      data: {
+        kind: 'step',
+        label: 'Cost Engineer Review',
+        roleId: 'role-cost-engineer',
+        stateId: 'state-cost-review',
+        waitForAction: true,
+      },
+    },
+    {
       id: 'sp-hiring-gate',
       type: 'decision',
-      position: { x: 290, y: 260 },
+      position: { x: 290, y: 420 },
       data: {
         kind: 'decision',
         label: 'Bantrel company?',
@@ -67,7 +78,7 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
     {
       id: 'sp-review-bantrel',
       type: 'step',
-      position: { x: 40, y: 440 },
+      position: { x: 40, y: 580 },
       data: {
         kind: 'step',
         label: 'Manager Review (Bantrel)',
@@ -79,7 +90,7 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
     {
       id: 'sp-review-other',
       type: 'step',
-      position: { x: 480, y: 440 },
+      position: { x: 480, y: 580 },
       data: {
         kind: 'step',
         label: 'Manager Review',
@@ -91,7 +102,7 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
     {
       id: 'sp-decision',
       type: 'decision',
-      position: { x: 290, y: 600 },
+      position: { x: 290, y: 740 },
       data: {
         kind: 'decision',
         label: 'Approved?',
@@ -104,7 +115,7 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
     {
       id: 'sp-approved',
       type: 'step',
-      position: { x: 80, y: 780 },
+      position: { x: 80, y: 920 },
       data: {
         kind: 'step',
         label: 'Mark Approved',
@@ -116,7 +127,7 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
     {
       id: 'sp-rejected',
       type: 'step',
-      position: { x: 480, y: 780 },
+      position: { x: 480, y: 920 },
       data: {
         kind: 'step',
         label: 'Mark Rejected',
@@ -128,7 +139,7 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
     {
       id: 'sp-end-ok',
       type: 'end',
-      position: { x: 120, y: 920 },
+      position: { x: 120, y: 1060 },
       data: {
         kind: 'end',
         label: 'Complete',
@@ -139,7 +150,7 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
     {
       id: 'sp-end-reject',
       type: 'end',
-      position: { x: 520, y: 920 },
+      position: { x: 520, y: 1060 },
       data: {
         kind: 'end',
         label: 'Ended (Rejected)',
@@ -150,7 +161,8 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
   ],
   edges: [
     { id: 'sp-e-start-submit', source: 'sp-start', target: 'sp-submit' },
-    { id: 'sp-e-submit-gate', source: 'sp-submit', target: 'sp-hiring-gate' },
+    { id: 'sp-e-submit-cost', source: 'sp-submit', target: 'sp-cost-review' },
+    { id: 'sp-e-cost-gate', source: 'sp-cost-review', target: 'sp-hiring-gate' },
     {
       id: 'sp-e-gate-yes',
       source: 'sp-hiring-gate',
@@ -184,7 +196,7 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
     { id: 'sp-e-approved-end', source: 'sp-approved', target: 'sp-end-ok' },
     { id: 'sp-e-rejected-end', source: 'sp-rejected', target: 'sp-end-reject' },
   ],
-  updatedAt: '2026-07-15T12:00:00.000Z',
+  updatedAt: '2026-07-16T21:00:00.000Z',
 }
 
 /**

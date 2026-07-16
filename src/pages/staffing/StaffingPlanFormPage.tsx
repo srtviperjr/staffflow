@@ -27,6 +27,8 @@ import {
 } from '../../constants/companies'
 import { useRoles } from '../../context/RolesContext'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
+import { canEditHourlyCost, canViewCostInfo } from '../../utils/permissions'
+import { computePositionCost, formatCostAmount } from '../../utils/positionCost'
 import {
   AREAS,
   CLASSES,
@@ -102,11 +104,14 @@ export default function StaffingPlanFormPage({
   const { requestId: requestIdParam } = useParams()
   const requestId = reviseRequestIdProp ?? requestIdParam
   const navigate = useNavigate()
-  const { currentUser } = useRoles()
+  const { currentUser, currentUserRoles } = useRoles()
   const { currentRequests, addRequest, reviseRequest } = useStaffingPlanRequests()
+  const canEditCost = canEditHourlyCost(currentUserRoles)
+  const canViewCost = canViewCostInfo(currentUserRoles)
   const [form, setForm] = useState<StaffingPlanFormData>(() =>
     createEmptyForm(currentUser?.company ?? ''),
   )
+  const positionCost = computePositionCost(form.hoursToGo, form.hourlyCost)
   const [errors, setErrors] = useState<Partial<Record<keyof StaffingPlanFormData, string>>>({})
   const [showSuccess, setShowSuccess] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
@@ -434,16 +439,29 @@ export default function StaffingPlanFormPage({
                   fullWidth
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                <TextField
-                  label="Hourly Cost"
-                  value={form.hourlyCost}
-                  onChange={(e) => updateField('hourlyCost', e.target.value)}
-                  fullWidth
-                  helperText="Cost rate per hour"
-                  slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-                />
-              </Grid>
+              {canEditCost ? (
+                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                  <TextField
+                    label="Hourly Cost"
+                    value={form.hourlyCost}
+                    onChange={(e) => updateField('hourlyCost', e.target.value)}
+                    fullWidth
+                    helperText="Cost rate per hour (Cost Engineer)"
+                    slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+                  />
+                </Grid>
+              ) : null}
+              {canViewCost && positionCost != null ? (
+                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                  <TextField
+                    label="Position Cost"
+                    value={formatCostAmount(positionCost)}
+                    fullWidth
+                    helperText="Hours To Go × Hourly Cost"
+                    slotProps={{ input: { readOnly: true } }}
+                  />
+                </Grid>
+              ) : null}
             </Grid>
 
             <SectionTitle>Schedule</SectionTitle>

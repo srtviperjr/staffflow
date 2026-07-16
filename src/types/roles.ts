@@ -1,4 +1,5 @@
 import type { Company } from '../constants/companies'
+import type { Phase } from './staffingPlan'
 
 export interface AppUser {
   id: string
@@ -6,6 +7,11 @@ export interface AppUser {
   email: string
   title: string
   company: Company
+  /**
+   * Project assignment (JS1 / JS2). Required for Project Director —
+   * only one Project Director user per project.
+   */
+  project?: Phase | null
 }
 
 export interface AppRole {
@@ -26,4 +32,5 @@ export interface CreateUserInput {
   email: string
   title: string
   company: Company
+  project?: Phase | null
 }

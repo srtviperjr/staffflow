@@ -31,8 +31,12 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft'
 import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArrowRight'
 import { COMPANIES, type Company } from '../../constants/companies'
+import { PHASES } from '../../constants/staffingPlanOptions'
 import { useRoles } from '../../context/RolesContext'
 import type { AppRole, CreateUserInput } from '../../types/roles'
+import type { Phase } from '../../types/staffingPlan'
+import { ROLE_PROJECT_DIRECTOR } from '../../utils/permissions'
+import { validateProjectDirectorAssignment } from '../../utils/projectDirector'
 
 function not(a: readonly string[], b: readonly string[]) {
   return a.filter((value) => !b.includes(value))
@@ -47,6 +51,7 @@ const emptyForm: CreateUserInput = {
   email: '',
   title: '',
   company: 'BHP',
+  project: null,
 }
 
 function RoleTransferList({
@@ -149,6 +154,7 @@ export default function UsersManagementPage() {
       email: selectedUser.email,
       title: selectedUser.title,
       company: selectedUser.company,
+      project: selectedUser.project ?? null,
     })
     setAssignedRoleIds(getRolesForUser(selectedUser.id).map((role) => role.id))
     setChecked([])
@@ -197,7 +203,11 @@ export default function UsersManagementPage() {
     setChecked([])
   }
 
-  const validateUserForm = (form: CreateUserInput, excludeUserId?: string) => {
+  const validateUserForm = (
+    form: CreateUserInput,
+    roleIds: readonly string[] = [],
+    excludeUserId?: string,
+  ) => {
     if (!form.name.trim()) return 'Name is required'
     if (!form.email.trim()) return 'Email is required'
     if (!form.title.trim()) return 'Title is required'
@@ -208,6 +218,18 @@ export default function UsersManagementPage() {
         user.id !== excludeUserId,
     )
     if (emailTaken) return 'A user with this email already exists'
+    if (roleIds.includes(ROLE_PROJECT_DIRECTOR)) {
+      return validateProjectDirectorAssignment({
+        user: {
+          id: excludeUserId ?? '',
+          company: form.company,
+          project: form.project,
+        },
+        roleIds,
+        users,
+        roles,
+      })
+    }
     return ''
   }
 
@@ -219,7 +241,10 @@ export default function UsersManagementPage() {
       return
     }
 
-    const created = createUser(createForm)
+    const created = createUser({
+      ...createForm,
+      project: createForm.company === 'BHP' ? createForm.project ?? null : null,
+    })
     setCreateForm(emptyForm)
     setCreateError('')
     setSelectedUserId(created.id)
@@ -229,13 +254,17 @@ export default function UsersManagementPage() {
 
   const handleSaveUser = () => {
     if (!selectedUser) return
-    const error = validateUserForm(editForm, selectedUser.id)
+    const nextForm: CreateUserInput = {
+      ...editForm,
+      project: editForm.company === 'BHP' ? editForm.project ?? null : null,
+    }
+    const error = validateUserForm(nextForm, assignedRoleIds, selectedUser.id)
     if (error) {
       setEditError(error)
       return
     }
 
-    updateUser(selectedUser.id, editForm)
+    updateUser(selectedUser.id, nextForm)
     setRolesForUser(selectedUser.id, assignedRoleIds)
     setEditError('')
     setSuccessMessage(`Updated ${editForm.name.trim()} and role assignments.`)
@@ -263,8 +292,12 @@ export default function UsersManagementPage() {
     ? editForm.name !== selectedUser.name ||
       editForm.email !== selectedUser.email ||
       editForm.title !== selectedUser.title ||
-      editForm.company !== selectedUser.company
+      editForm.company !== selectedUser.company ||
+      (editForm.project ?? null) !== (selectedUser.project ?? null)
     : false
+  const showProjectField =
+    editForm.company === 'BHP' || assignedRoleIds.includes(ROLE_PROJECT_DIRECTOR)
+  const showCreateProjectField = createForm.company === 'BHP'
   const hasUnsavedChanges = hasUnsavedRoleChanges || hasUnsavedProfileChanges
 
   return (
@@ -328,9 +361,11 @@ export default function UsersManagementPage() {
                       label="Company"
                       value={createForm.company}
                       onChange={(event) => {
+                        const company = event.target.value as Company
                         setCreateForm((prev) => ({
                           ...prev,
-                          company: event.target.value as Company,
+                          company,
+                          project: company === 'BHP' ? prev.project ?? null : null,
                         }))
                         setCreateError('')
                       }}
@@ -342,6 +377,32 @@ export default function UsersManagementPage() {
                       ))}
                     </Select>
                   </FormControl>
+                  {showCreateProjectField ? (
+                    <FormControl fullWidth>
+                      <InputLabel id="create-project-label">Project</InputLabel>
+                      <Select
+                        labelId="create-project-label"
+                        label="Project"
+                        value={createForm.project ?? ''}
+                        onChange={(event) => {
+                          setCreateForm((prev) => ({
+                            ...prev,
+                            project: (event.target.value || null) as Phase | null,
+                          }))
+                          setCreateError('')
+                        }}
+                      >
+                        <MenuItem value="">
+                          <em>None</em>
+                        </MenuItem>
+                        {PHASES.map((phase) => (
+                          <MenuItem key={phase} value={phase}>
+                            {phase}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  ) : null}
                   {createError ? <Alert severity="error">{createError}</Alert> : null}
                   <Button type="submit" variant="contained" startIcon={<AddIcon />}>
                     Create User
@@ -373,7 +434,8 @@ export default function UsersManagementPage() {
                     >
                       <Typography variant="subtitle2">{user.name}</Typography>
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                        {user.company} · {user.title}
+                        {user.company}
+                        {user.project ? ` · ${user.project}` : ''} · {user.title}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {userRoles.length > 0
@@ -462,12 +524,14 @@ export default function UsersManagementPage() {
                               labelId="edit-company-label"
                               label="Company"
                               value={editForm.company}
-                              onChange={(event) =>
+                              onChange={(event) => {
+                                const company = event.target.value as Company
                                 setEditForm((prev) => ({
                                   ...prev,
-                                  company: event.target.value as Company,
+                                  company,
+                                  project: company === 'BHP' ? prev.project ?? null : null,
                                 }))
-                              }
+                              }}
                             >
                               {COMPANIES.map((company) => (
                                 <MenuItem key={company} value={company}>
@@ -477,7 +541,43 @@ export default function UsersManagementPage() {
                             </Select>
                           </FormControl>
                         </Grid>
+                        {showProjectField ? (
+                          <Grid size={{ xs: 12, sm: 6 }}>
+                            <FormControl
+                              fullWidth
+                              required={assignedRoleIds.includes(ROLE_PROJECT_DIRECTOR)}
+                            >
+                              <InputLabel id="edit-project-label">Project</InputLabel>
+                              <Select
+                                labelId="edit-project-label"
+                                label="Project"
+                                value={editForm.project ?? ''}
+                                onChange={(event) =>
+                                  setEditForm((prev) => ({
+                                    ...prev,
+                                    project: (event.target.value || null) as Phase | null,
+                                  }))
+                                }
+                              >
+                                <MenuItem value="">
+                                  <em>None</em>
+                                </MenuItem>
+                                {PHASES.map((phase) => (
+                                  <MenuItem key={phase} value={phase}>
+                                    {phase}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          </Grid>
+                        ) : null}
                       </Grid>
+                      {assignedRoleIds.includes(ROLE_PROJECT_DIRECTOR) ? (
+                        <Alert severity="info" sx={{ mb: 2 }}>
+                          Project Director is BHP-only and limited to one user per project (JS1 or
+                          JS2).
+                        </Alert>
+                      ) : null}
 
                       {editError ? (
                         <Alert severity="error" sx={{ mb: 2 }}>

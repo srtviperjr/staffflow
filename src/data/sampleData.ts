@@ -140,6 +140,20 @@ function candidateName(seed: number) {
   return `${pick(FIRST_NAMES, seed)} ${pick(LAST_NAMES, seed * 3 + 1)}`
 }
 
+/** Waiting on Cost Engineer before manager review (no hourly cost yet). */
+function staffingPendingAtCostWorkflow(): WorkflowProgress {
+  return {
+    workflowId: 'workflow-staffing-plan-approval',
+    currentNodeId: 'sp-cost-review',
+    history: [
+      { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0) },
+    ],
+  }
+}
+
+/** Waiting on manager after Cost Engineer has entered hourly cost. */
 function staffingPendingWorkflow(company: string): WorkflowProgress {
   const reviewNode = company === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
   return {
@@ -148,6 +162,7 @@ function staffingPendingWorkflow(company: string): WorkflowProgress {
     history: [
       { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
       { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
       {
         nodeId: 'sp-hiring-gate',
         arrivedAt: submittedAt(0),
@@ -166,6 +181,7 @@ function staffingApprovedWorkflow(company: string): WorkflowProgress {
     history: [
       { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
       { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
       {
         nodeId: 'sp-hiring-gate',
         arrivedAt: submittedAt(0),
@@ -187,6 +203,7 @@ function staffingRejectedWorkflow(company: string): WorkflowProgress {
     history: [
       { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
       { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
       {
         nodeId: 'sp-hiring-gate',
         arrivedAt: submittedAt(0),
@@ -554,6 +571,8 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
             reviewedAt: reviewedAt(idIndex + 1),
             workflow: staffingApprovedWorkflow(company),
             totalHours: '1200',
+            hourlyCost: '90',
+            hoursToGo: '600',
           }),
         )
         staffing.push(
@@ -576,9 +595,12 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
                 : staffingPendingWorkflow(company),
             totalHours: '1800',
             hoursToGo: '900',
+            // Cost change vs r1 so revision diffs can show a delta.
+            hourlyCost: '105',
           }),
         )
       } else {
+        const awaitingCost = status === 'pending' && (companyIndex + i) % 2 === 0
         staffing.push(
           buildStaffingPosition(company, idIndex, {
             id: groupId,
@@ -594,12 +616,15 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
             reviewedAt: status === 'pending' ? undefined : reviewedAt(idIndex + 1),
             rejectionComment:
               status === 'rejected' ? 'Position budget not approved for this phase.' : undefined,
+            hourlyCost: awaitingCost ? '' : undefined,
             workflow:
               status === 'approved'
                 ? staffingApprovedWorkflow(company)
                 : status === 'rejected'
                   ? staffingRejectedWorkflow(company)
-                  : staffingPendingWorkflow(company),
+                  : awaitingCost
+                    ? staffingPendingAtCostWorkflow()
+                    : staffingPendingWorkflow(company),
           }),
         )
       }
