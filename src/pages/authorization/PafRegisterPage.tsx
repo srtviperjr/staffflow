@@ -52,8 +52,8 @@ import {
 } from '../../utils/relatedRegisterItems'
 import { formatDisplayDate } from '../../utils/staffingPlanDates'
 import {
-  buildStickyMetaLayout,
-  columnWidth,
+  STICKY_EXPAND_DETAIL_WIDTH,
+  stickyDetailLeft,
   stickyEdgeShadow,
 } from '../../utils/stickyTableColumns'
 import type { ProjectAuthorizationRequest } from '../../types/projectAuthorization'
@@ -72,7 +72,7 @@ const COLUMN_ORDER_KEY = 'paf-register-column-order'
 const COLUMN_VISIBLE_KEY = 'paf-register-visible-columns'
 const EXPAND_COL_WIDTH = 48
 const ACTIONS_COL_WIDTH = 118
-const META_WIDTH_FALLBACK = 110
+const DETAIL_STICKY_LEFT = stickyDetailLeft(EXPAND_COL_WIDTH, ACTIONS_COL_WIDTH)
 
 const cellSx = {
   border: '1px solid #bdbdbd',
@@ -172,17 +172,6 @@ export default function PafRegisterPage() {
     [columnOrder, visibleColumns],
   )
 
-  const stickyLayout = useMemo(
-    () =>
-      buildStickyMetaLayout(
-        EXPAND_COL_WIDTH,
-        ACTIONS_COL_WIDTH,
-        visibleColumnDefs,
-        META_WIDTH_FALLBACK,
-      ),
-    [visibleColumnDefs],
-  )
-
   const relatedByRowId = useMemo(() => {
     const map = new Map<string, RelatedRegisterItem[]>()
     for (const row of rows) {
@@ -246,7 +235,6 @@ export default function PafRegisterPage() {
   )
 
   const detailColSpan = visibleColumnDefs.length
-  const lastMetaIndex = visibleColumnDefs.length - 1
 
   const handleRejectConfirm = (comment: string) => {
     if (!rejectTarget) return
@@ -275,7 +263,8 @@ export default function PafRegisterPage() {
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Main rows show the latest approved PAF for each person. Expand to review pending or
-              rejected revisions; scroll the calendar while the left columns stay fixed.
+              rejected revisions; Expand/Actions stay fixed, and expand details stay visible while
+              scrolling the calendar.
             </Typography>
           </Box>
         </Box>
@@ -420,25 +409,23 @@ export default function PafRegisterPage() {
                         fontWeight: 700,
                         minWidth: ACTIONS_COL_WIDTH,
                         width: ACTIONS_COL_WIDTH,
+                        boxShadow: stickyEdgeShadow,
                       }}
                     >
                       Actions
                     </TableCell>
-                    {visibleColumnDefs.map((column, index) => (
+                    {visibleColumnDefs.map((column) => (
                       <TableCell
                         key={column.id}
                         sx={{
                           ...cellSx,
                           position: 'sticky',
                           top: 0,
-                          left: stickyLayout.offsets[index],
                           zIndex: 5,
                           bgcolor: '#6a1b9a',
                           color: 'white',
                           fontWeight: 700,
-                          minWidth: columnWidth(column.minWidth, META_WIDTH_FALLBACK),
-                          width: columnWidth(column.minWidth, META_WIDTH_FALLBACK),
-                          boxShadow: index === lastMetaIndex ? stickyEdgeShadow : undefined,
+                          minWidth: column.minWidth ?? 110,
                         }}
                       >
                         {column.label}
@@ -477,9 +464,10 @@ export default function PafRegisterPage() {
                         bgcolor: '#f3e5f5',
                         minWidth: ACTIONS_COL_WIDTH,
                         width: ACTIONS_COL_WIDTH,
+                        boxShadow: stickyEdgeShadow,
                       }}
                     />
-                    {visibleColumnDefs.map((column, index) => {
+                    {visibleColumnDefs.map((column) => {
                       const options = getUniquePafColumnValues(rows, column.id)
                       return (
                         <TableCell
@@ -488,13 +476,10 @@ export default function PafRegisterPage() {
                             ...cellSx,
                             position: 'sticky',
                             top: 40,
-                            left: stickyLayout.offsets[index],
                             zIndex: 5,
                             bgcolor: '#f3e5f5',
-                            minWidth: columnWidth(column.minWidth, META_WIDTH_FALLBACK),
-                            width: columnWidth(column.minWidth, META_WIDTH_FALLBACK),
+                            minWidth: column.minWidth ?? 110,
                             p: 0.5,
-                            boxShadow: index === lastMetaIndex ? stickyEdgeShadow : undefined,
                           }}
                         >
                           <FormControl size="small" fullWidth>
@@ -580,6 +565,7 @@ export default function PafRegisterPage() {
                               minWidth: ACTIONS_COL_WIDTH,
                               width: ACTIONS_COL_WIDTH,
                               whiteSpace: 'normal',
+                              boxShadow: stickyEdgeShadow,
                             }}
                           >
                             <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
@@ -636,21 +622,12 @@ export default function PafRegisterPage() {
                               ) : null}
                             </Stack>
                           </TableCell>
-                          {visibleColumnDefs.map((column, index) => {
+                          {visibleColumnDefs.map((column) => {
                             const value = column.getValue(row)
                             return (
                               <TableCell
                                 key={`${row.id}-${column.id}`}
-                                sx={{
-                                  ...cellSx,
-                                  position: 'sticky',
-                                  left: stickyLayout.offsets[index],
-                                  zIndex: 2,
-                                  bgcolor: 'background.paper',
-                                  minWidth: columnWidth(column.minWidth, META_WIDTH_FALLBACK),
-                                  width: columnWidth(column.minWidth, META_WIDTH_FALLBACK),
-                                  boxShadow: index === lastMetaIndex ? stickyEdgeShadow : undefined,
-                                }}
+                                sx={{ ...cellSx, minWidth: column.minWidth ?? 110 }}
                               >
                                 {column.id === 'status' ? (
                                   <Chip size="small" label={value} color={statusChipColor(value)} />
@@ -770,14 +747,14 @@ export default function PafRegisterPage() {
                                   sx={{
                                     ...cellSx,
                                     position: 'sticky',
-                                    left: stickyLayout.metaBlockLeft,
-                                    zIndex: 2,
+                                    left: DETAIL_STICKY_LEFT,
+                                    zIndex: 1,
                                     bgcolor: 'rgba(243,229,245,0.95)',
-                                    minWidth: stickyLayout.metaBlockWidth,
-                                    width: stickyLayout.metaBlockWidth,
-                                    maxWidth: stickyLayout.metaBlockWidth,
                                     py: 1,
                                     whiteSpace: 'normal',
+                                    minWidth: STICKY_EXPAND_DETAIL_WIDTH,
+                                    width: STICKY_EXPAND_DETAIL_WIDTH,
+                                    maxWidth: STICKY_EXPAND_DETAIL_WIDTH,
                                     boxShadow: stickyEdgeShadow,
                                   }}
                                 >
@@ -850,7 +827,7 @@ export default function PafRegisterPage() {
                 ? ` · ${activeFilterCount} filter${activeFilterCount === 1 ? '' : 's'} applied`
                 : ''}
               {' · '}
-              Expand a row to see pending/rejected revisions · calendar scrolls under the frozen left columns
+              Expand a row to see pending/rejected revisions · Expand/Actions (and expand details) stay fixed while the calendar scrolls
             </Typography>
           ) : null}
         </CardContent>
