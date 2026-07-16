@@ -41,6 +41,37 @@ const POSITION_WINDOW_BIWEEKS = 26
 const DEFAULT_BOOTSTRAP_RECORD_COUNT = 280
 const DEFAULT_BOOTSTRAP_POSITION_RATIO = 0.64
 
+/** Default hourly cost range used by bootstrap and the sample-data dialog. */
+export const DEFAULT_HOURLY_COST_MIN = 85
+export const DEFAULT_HOURLY_COST_MAX = 130
+export const HOURLY_COST_SLIDER_MIN = 40
+export const HOURLY_COST_SLIDER_MAX = 250
+
+export type HourlyCostRange = {
+  min: number
+  max: number
+}
+
+function normalizeHourlyCostRange(range?: Partial<HourlyCostRange> | null): HourlyCostRange {
+  const rawMin = Number(range?.min)
+  const rawMax = Number(range?.max)
+  const min = Number.isFinite(rawMin) ? Math.round(rawMin) : DEFAULT_HOURLY_COST_MIN
+  const max = Number.isFinite(rawMax) ? Math.round(rawMax) : DEFAULT_HOURLY_COST_MAX
+  const lo = Math.min(min, max)
+  const hi = Math.max(min, max)
+  return {
+    min: Math.max(HOURLY_COST_SLIDER_MIN, Math.min(HOURLY_COST_SLIDER_MAX, lo)),
+    max: Math.max(HOURLY_COST_SLIDER_MIN, Math.min(HOURLY_COST_SLIDER_MAX, hi)),
+  }
+}
+
+/** Deterministic hourly cost within [min, max] from a seed. */
+export function sampleHourlyCost(seed: number, range: HourlyCostRange): string {
+  const { min, max } = normalizeHourlyCostRange(range)
+  if (max <= min) return String(min)
+  return String(min + (((seed % (max - min + 1)) + (max - min + 1)) % (max - min + 1)))
+}
+
 const FIRST_NAMES = [
   'Jane',
   'Priya',
@@ -94,6 +125,9 @@ export type GenerateSampleDataOptions = {
   recordCount: number
   /** Fraction (0–1) of records that are staffing positions; remainder are PAFs. */
   positionRatio: number
+  /** Inclusive hourly cost range for generated staffing positions. */
+  hourlyCostMin?: number
+  hourlyCostMax?: number
   existingStaffing?: StaffingPlanRequest[]
   existingAuthorizations?: ProjectAuthorizationRequest[]
   /** Prefix for generated ids (unique when appending). */
@@ -115,6 +149,8 @@ export type ApplySampleDataOptions = {
   mode: SampleDataMode
   recordCount: number
   positionRatio: number
+  hourlyCostMin?: number
+  hourlyCostMax?: number
 }
 
 function submittedAt(offsetDays: number) {
@@ -140,14 +176,37 @@ function candidateName(seed: number) {
   return `${pick(FIRST_NAMES, seed)} ${pick(LAST_NAMES, seed * 3 + 1)}`
 }
 
-function staffingPendingWorkflow(company: string): WorkflowProgress {
-  const reviewNode = company === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
+function pdNodeForPhase(phase: string): 'sp-pd-js1' | 'sp-pd-js2' {
+  return phase === 'JS2' ? 'sp-pd-js2' : 'sp-pd-js1'
+}
+
+function managerNodeForCompany(company: string): 'sp-review-bantrel' | 'sp-review-other' {
+  return company === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
+}
+
+/** Waiting on Cost Engineer (after requestor submit). */
+function staffingPendingAtCostWorkflow(): WorkflowProgress {
+  return {
+    workflowId: 'workflow-staffing-plan-approval',
+    currentNodeId: 'sp-cost-review',
+    history: [
+      { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0) },
+    ],
+  }
+}
+
+/** Waiting on Manager after Cost Engineer. */
+function staffingPendingWorkflow(company: string, _phase: string): WorkflowProgress {
+  const reviewNode = managerNodeForCompany(company)
   return {
     workflowId: 'workflow-staffing-plan-approval',
     currentNodeId: reviewNode,
     history: [
       { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
       { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
       {
         nodeId: 'sp-hiring-gate',
         arrivedAt: submittedAt(0),
@@ -158,42 +217,76 @@ function staffingPendingWorkflow(company: string): WorkflowProgress {
   }
 }
 
-function staffingApprovedWorkflow(company: string): WorkflowProgress {
-  const reviewNode = company === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
+/** Waiting on Project Director (final approval) after Manager. */
+function staffingPendingAtPdWorkflow(company: string, phase: string): WorkflowProgress {
+  const reviewNode = managerNodeForCompany(company)
+  const pdNode = pdNodeForPhase(phase)
+  return {
+    workflowId: 'workflow-staffing-plan-approval',
+    currentNodeId: pdNode,
+    history: [
+      { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
+      {
+        nodeId: 'sp-hiring-gate',
+        arrivedAt: submittedAt(0),
+        branch: company === 'Bantrel' ? 'yes' : 'no',
+      },
+      { nodeId: reviewNode, arrivedAt: submittedAt(0), branch: 'yes' },
+      {
+        nodeId: 'sp-project-gate',
+        arrivedAt: submittedAt(0),
+        branch: phase === 'JS1' ? 'yes' : 'no',
+      },
+      { nodeId: pdNode, arrivedAt: submittedAt(0) },
+    ],
+  }
+}
+
+function staffingApprovedWorkflow(company: string, phase: string): WorkflowProgress {
+  const reviewNode = managerNodeForCompany(company)
+  const pdNode = pdNodeForPhase(phase)
   return {
     workflowId: 'workflow-staffing-plan-approval',
     currentNodeId: 'sp-end-ok',
     history: [
       { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
       { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
       {
         nodeId: 'sp-hiring-gate',
         arrivedAt: submittedAt(0),
         branch: company === 'Bantrel' ? 'yes' : 'no',
       },
-      { nodeId: reviewNode, arrivedAt: submittedAt(0) },
-      { nodeId: 'sp-decision', arrivedAt: submittedAt(1), branch: 'yes' },
+      { nodeId: reviewNode, arrivedAt: submittedAt(0), branch: 'yes' },
+      {
+        nodeId: 'sp-project-gate',
+        arrivedAt: submittedAt(0),
+        branch: phase === 'JS1' ? 'yes' : 'no',
+      },
+      { nodeId: pdNode, arrivedAt: submittedAt(1), branch: 'yes' },
       { nodeId: 'sp-approved', arrivedAt: submittedAt(1) },
       { nodeId: 'sp-end-ok', arrivedAt: submittedAt(1) },
     ],
   }
 }
 
-function staffingRejectedWorkflow(company: string): WorkflowProgress {
-  const reviewNode = company === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
+function staffingRejectedWorkflow(company: string, _phase: string): WorkflowProgress {
+  const reviewNode = managerNodeForCompany(company)
   return {
     workflowId: 'workflow-staffing-plan-approval',
     currentNodeId: 'sp-end-reject',
     history: [
       { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
       { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
       {
         nodeId: 'sp-hiring-gate',
         arrivedAt: submittedAt(0),
         branch: company === 'Bantrel' ? 'yes' : 'no',
       },
-      { nodeId: reviewNode, arrivedAt: submittedAt(0) },
-      { nodeId: 'sp-decision', arrivedAt: submittedAt(1), branch: 'no' },
+      { nodeId: reviewNode, arrivedAt: submittedAt(0), branch: 'no' },
       { nodeId: 'sp-rejected', arrivedAt: submittedAt(1) },
       { nodeId: 'sp-end-reject', arrivedAt: submittedAt(1) },
     ],
@@ -270,6 +363,10 @@ function buildStaffingPosition(
     isCurrentRevision: boolean
     status: StaffingPlanRequest['status']
   },
+  costRange: HourlyCostRange = {
+    min: DEFAULT_HOURLY_COST_MIN,
+    max: DEFAULT_HOURLY_COST_MAX,
+  },
 ): StaffingPlanRequest {
   const seed = COMPANIES.indexOf(company) * 100 + index
   const startBiWeek = overrides.startBiWeek ?? addBiWeeks(POSITION_WINDOW_START, index % 3)
@@ -302,6 +399,7 @@ function buildStaffingPosition(
     sortNumber: overrides.sortNumber ?? String(1000 + seed),
     totalHours: overrides.totalHours ?? String(1600 + (seed % 8) * 80),
     hoursToGo: overrides.hoursToGo ?? String(800 + (seed % 6) * 40),
+    hourlyCost: overrides.hourlyCost ?? sampleHourlyCost(seed, costRange),
     roster: overrides.roster ?? pick(ROSTERS, seed),
     startBiWeek,
     lwp,
@@ -464,6 +562,10 @@ function readStoredAuthorizations(): ProjectAuthorizationRequest[] {
 export function generateSampleData(options: GenerateSampleDataOptions): GeneratedSampleData {
   const recordCount = Math.max(0, Math.floor(options.recordCount))
   const positionRatio = Math.min(1, Math.max(0, options.positionRatio))
+  const costRange = normalizeHourlyCostRange({
+    min: options.hourlyCostMin,
+    max: options.hourlyCostMax,
+  })
   const existingStaffing = options.existingStaffing ?? []
   const existingAuthorizations = options.existingAuthorizations ?? []
   const idPrefix = options.idPrefix ?? 'sample'
@@ -538,68 +640,100 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
           : 'approved'
         const revisionTwoLwp = approvedThenApproved ? addBiWeeks(lwp, 2) : lwp
 
+        const revisionOneCost = sampleHourlyCost(idIndex, costRange)
+        const revisionTwoCost = sampleHourlyCost(idIndex + 17, costRange)
         staffing.push(
-          buildStaffingPosition(company, idIndex, {
-            id: `${groupId}-r1`,
-            revisionGroupId: groupId,
-            revision: 1,
-            isCurrentRevision: false,
-            status: 'approved',
-            phase,
-            positionNumber,
-            startBiWeek,
-            lwp,
-            submittedAt: submittedAt(idIndex),
-            reviewedAt: reviewedAt(idIndex + 1),
-            workflow: staffingApprovedWorkflow(company),
-            totalHours: '1200',
-          }),
+          buildStaffingPosition(
+            company,
+            idIndex,
+            {
+              id: `${groupId}-r1`,
+              revisionGroupId: groupId,
+              revision: 1,
+              isCurrentRevision: false,
+              status: 'approved',
+              phase,
+              positionNumber,
+              startBiWeek,
+              lwp,
+              submittedAt: submittedAt(idIndex),
+              reviewedAt: reviewedAt(idIndex + 1),
+              workflow: staffingApprovedWorkflow(company, phase),
+              totalHours: '1200',
+              hourlyCost: revisionOneCost,
+              hoursToGo: '600',
+            },
+            costRange,
+          ),
         )
         staffing.push(
-          buildStaffingPosition(company, idIndex, {
-            id: `${groupId}-r2`,
-            revisionGroupId: groupId,
-            revision: 2,
-            supersedesId: `${groupId}-r1`,
-            isCurrentRevision: true,
-            status: revisionTwoStatus,
-            phase,
-            positionNumber,
-            startBiWeek,
-            lwp: revisionTwoLwp,
-            submittedAt: submittedAt(idIndex + 2),
-            reviewedAt: revisionTwoStatus === 'approved' ? reviewedAt(idIndex + 3) : undefined,
-            workflow:
-              revisionTwoStatus === 'approved'
-                ? staffingApprovedWorkflow(company)
-                : staffingPendingWorkflow(company),
-            totalHours: '1800',
-            hoursToGo: '900',
-          }),
+          buildStaffingPosition(
+            company,
+            idIndex,
+            {
+              id: `${groupId}-r2`,
+              revisionGroupId: groupId,
+              revision: 2,
+              supersedesId: `${groupId}-r1`,
+              isCurrentRevision: true,
+              status: revisionTwoStatus,
+              phase,
+              positionNumber,
+              startBiWeek,
+              lwp: revisionTwoLwp,
+              submittedAt: submittedAt(idIndex + 2),
+              reviewedAt: revisionTwoStatus === 'approved' ? reviewedAt(idIndex + 3) : undefined,
+              workflow:
+                revisionTwoStatus === 'approved'
+                  ? staffingApprovedWorkflow(company, phase)
+                  : staffingPendingWorkflow(company, phase),
+              totalHours: '1800',
+              hoursToGo: '900',
+              // Prefer a different cost vs r1 so revision diffs can show a delta.
+              hourlyCost:
+                revisionTwoCost === revisionOneCost && costRange.max > costRange.min
+                  ? String(Math.min(costRange.max, Number(revisionOneCost) + 1))
+                  : revisionTwoCost,
+            },
+            costRange,
+          ),
         )
       } else {
+        const pendingBucket = (companyIndex + i) % 3
+        const awaitingCost = status === 'pending' && pendingBucket === 0
+        const awaitingPd = status === 'pending' && pendingBucket === 1
         staffing.push(
-          buildStaffingPosition(company, idIndex, {
-            id: groupId,
-            revisionGroupId: groupId,
-            revision: 1,
-            isCurrentRevision: true,
-            status,
-            phase,
-            positionNumber,
-            startBiWeek,
-            lwp,
-            submittedAt: submittedAt(idIndex),
-            reviewedAt: status === 'pending' ? undefined : reviewedAt(idIndex + 1),
-            rejectionComment:
-              status === 'rejected' ? 'Position budget not approved for this phase.' : undefined,
-            workflow:
-              status === 'approved'
-                ? staffingApprovedWorkflow(company)
-                : status === 'rejected'
-                  ? staffingRejectedWorkflow(company)
-                  : staffingPendingWorkflow(company),
-          }),
+          buildStaffingPosition(
+            company,
+            idIndex,
+            {
+              id: groupId,
+              revisionGroupId: groupId,
+              revision: 1,
+              isCurrentRevision: true,
+              status,
+              phase,
+              positionNumber,
+              startBiWeek,
+              lwp,
+              submittedAt: submittedAt(idIndex),
+              reviewedAt: status === 'pending' ? undefined : reviewedAt(idIndex + 1),
+              rejectionComment:
+                status === 'rejected' ? 'Position budget not approved for this phase.' : undefined,
+              hourlyCost: awaitingCost ? '' : undefined,
+              workflow:
+                status === 'approved'
+                  ? staffingApprovedWorkflow(company, phase)
+                  : status === 'rejected'
+                    ? staffingRejectedWorkflow(company, phase)
+                    : awaitingCost
+                      ? staffingPendingAtCostWorkflow()
+                      : awaitingPd
+                        ? staffingPendingAtPdWorkflow(company, phase)
+                        : staffingPendingWorkflow(company, phase),
+            },
+            costRange,
+          ),
         )
       }
 
@@ -631,20 +765,25 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
     const startBiWeek = addBiWeeks(POSITION_WINDOW_START, idIndex % 3)
     const lwp = addBiWeeks(startBiWeek, POSITION_WINDOW_BIWEEKS)
     const positionNumber = formatPositionNumber(phase, sequence)
-    const host = buildStaffingPosition(company, idIndex, {
-      id: groupId,
-      revisionGroupId: groupId,
-      revision: 1,
-      isCurrentRevision: true,
-      status: 'approved',
-      phase,
-      positionNumber,
-      startBiWeek,
-      lwp,
-      submittedAt: submittedAt(idIndex),
-      reviewedAt: reviewedAt(idIndex + 1),
-      workflow: staffingApprovedWorkflow(company),
-    })
+    const host = buildStaffingPosition(
+      company,
+      idIndex,
+      {
+        id: groupId,
+        revisionGroupId: groupId,
+        revision: 1,
+        isCurrentRevision: true,
+        status: 'approved',
+        phase,
+        positionNumber,
+        startBiWeek,
+        lwp,
+        submittedAt: submittedAt(idIndex),
+        reviewedAt: reviewedAt(idIndex + 1),
+        workflow: staffingApprovedWorkflow(company, phase),
+      },
+      costRange,
+    )
     staffing.push(host)
     allStaffingForRules.push(host)
     pool.push(host)
@@ -868,6 +1007,8 @@ export function applySampleDataLoad(options: ApplySampleDataOptions): GeneratedS
   const generated = generateSampleData({
     recordCount: options.recordCount,
     positionRatio: options.positionRatio,
+    hourlyCostMin: options.hourlyCostMin,
+    hourlyCostMax: options.hourlyCostMax,
     existingStaffing,
     existingAuthorizations,
     idPrefix: `gen-${Date.now().toString(36)}`,
@@ -893,6 +1034,8 @@ export function applySampleDataLoad(options: ApplySampleDataOptions): GeneratedS
 const bootstrap = generateSampleData({
   recordCount: DEFAULT_BOOTSTRAP_RECORD_COUNT,
   positionRatio: DEFAULT_BOOTSTRAP_POSITION_RATIO,
+  hourlyCostMin: DEFAULT_HOURLY_COST_MIN,
+  hourlyCostMax: DEFAULT_HOURLY_COST_MAX,
   idPrefix: 'sample',
 })
 

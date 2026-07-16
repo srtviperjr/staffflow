@@ -13,6 +13,10 @@ export type ConditionOperator =
   | 'lessThan'
   | 'isEmpty'
   | 'isNotEmpty'
+  /** True when the field value differs from the previous revision (revise only). */
+  | 'hasChanged'
+  /** True when the field value matches the previous revision, or there is no previous. */
+  | 'hasNotChanged'
 
 export interface FieldCondition {
   field: string
@@ -89,6 +93,11 @@ export interface WorkflowProgress {
     arrivedAt: string
     branch?: 'yes' | 'no'
   }>
+  /**
+   * Form snapshot from the prior revision when this run started via revise.
+   * Used by hasChanged / hasNotChanged field decisions throughout the run.
+   */
+  previousFormData?: Record<string, unknown>
 }
 
 export type WorkflowAction = 'approve' | 'reject'

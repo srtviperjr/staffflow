@@ -4,9 +4,22 @@ interface ChangedFieldDetailProps {
   label: string
   value: string
   changed?: boolean
+  /** When set with changed, show previous → current */
+  previousValue?: string
+  /** Optional numeric delta label, e.g. "Δ +1,500" */
+  delta?: string
 }
 
-export function ChangedFieldDetail({ label, value, changed = false }: ChangedFieldDetailProps) {
+export function ChangedFieldDetail({
+  label,
+  value,
+  changed = false,
+  previousValue,
+  delta,
+}: ChangedFieldDetailProps) {
+  const showTransition =
+    changed && previousValue != null && previousValue !== '' && previousValue !== value
+
   return (
     <Box
       sx={
@@ -23,7 +36,27 @@ export function ChangedFieldDetail({ label, value, changed = false }: ChangedFie
       }
     >
       <Typography variant="body2" sx={{ fontWeight: changed ? 600 : 400 }}>
-        <strong>{label}:</strong> {value || '—'}
+        <strong>{label}:</strong>{' '}
+        {showTransition ? (
+          <>
+            <Typography component="span" variant="body2" color="text.secondary">
+              {previousValue}
+            </Typography>
+            {' → '}
+            {value || '—'}
+          </>
+        ) : (
+          value || '—'
+        )}
+        {changed && delta ? (
+          <Typography
+            component="span"
+            variant="body2"
+            sx={{ ml: 1, color: 'primary.dark', fontWeight: 700 }}
+          >
+            ({delta})
+          </Typography>
+        ) : null}
       </Typography>
     </Box>
   )
@@ -34,7 +67,7 @@ export function RevisionChangesLegend({ visible }: { visible: boolean }) {
 
   return (
     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-      Highlighted fields changed from the previous revision.
+      Highlighted fields changed from the previous revision. Cost changes include a delta.
     </Typography>
   )
 }

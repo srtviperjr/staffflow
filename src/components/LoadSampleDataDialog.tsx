@@ -22,6 +22,10 @@ import CloseIcon from '@mui/icons-material/Close'
 import ScienceIcon from '@mui/icons-material/Science'
 import {
   applySampleDataLoad,
+  DEFAULT_HOURLY_COST_MAX,
+  DEFAULT_HOURLY_COST_MIN,
+  HOURLY_COST_SLIDER_MAX,
+  HOURLY_COST_SLIDER_MIN,
   type SampleDataMode,
 } from '../data/sampleData'
 import { COMPANIES } from '../constants/companies'
@@ -36,10 +40,18 @@ const MAX_RECORDS = 500
 const DEFAULT_RECORDS = 80
 const DEFAULT_POSITION_PERCENT = 60
 
+function formatDollar(value: number) {
+  return `$${value}`
+}
+
 export default function LoadSampleDataDialog({ open, onClose }: LoadSampleDataDialogProps) {
   const [mode, setMode] = useState<SampleDataMode>('replace')
   const [recordCount, setRecordCount] = useState(String(DEFAULT_RECORDS))
   const [positionPercent, setPositionPercent] = useState(DEFAULT_POSITION_PERCENT)
+  const [hourlyCostRange, setHourlyCostRange] = useState<number[]>([
+    DEFAULT_HOURLY_COST_MIN,
+    DEFAULT_HOURLY_COST_MAX,
+  ])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -49,6 +61,12 @@ export default function LoadSampleDataDialog({ open, onClose }: LoadSampleDataDi
     Number.isInteger(parsedCount) &&
     parsedCount >= MIN_RECORDS &&
     parsedCount <= MAX_RECORDS
+
+  const [hourlyCostMin, hourlyCostMax] = hourlyCostRange
+  const costRangeValid =
+    Number.isFinite(hourlyCostMin) &&
+    Number.isFinite(hourlyCostMax) &&
+    hourlyCostMin <= hourlyCostMax
 
   const preview = useMemo(() => {
     if (!countValid) return null
@@ -64,6 +82,10 @@ export default function LoadSampleDataDialog({ open, onClose }: LoadSampleDataDi
       setError(`Enter a whole number between ${MIN_RECORDS} and ${MAX_RECORDS}.`)
       return
     }
+    if (!costRangeValid) {
+      setError('Hourly cost minimum must be less than or equal to the maximum.')
+      return
+    }
 
     setBusy(true)
     try {
@@ -71,6 +93,8 @@ export default function LoadSampleDataDialog({ open, onClose }: LoadSampleDataDi
         mode,
         recordCount: parsedCount,
         positionRatio: positionPercent / 100,
+        hourlyCostMin,
+        hourlyCostMax,
       })
       window.location.reload()
     } catch (err) {
@@ -163,12 +187,38 @@ export default function LoadSampleDataDialog({ open, onClose }: LoadSampleDataDi
             />
           </Box>
 
+          <Box>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Hourly cost range for positions: {formatDollar(hourlyCostMin)} –{' '}
+              {formatDollar(hourlyCostMax)}
+            </Typography>
+            <Slider
+              value={hourlyCostRange}
+              onChange={(_, value) => setHourlyCostRange(value as number[])}
+              min={HOURLY_COST_SLIDER_MIN}
+              max={HOURLY_COST_SLIDER_MAX}
+              step={5}
+              disableSwap
+              valueLabelDisplay="auto"
+              valueLabelFormat={formatDollar}
+              marks={[
+                { value: HOURLY_COST_SLIDER_MIN, label: formatDollar(HOURLY_COST_SLIDER_MIN) },
+                { value: 100, label: '$100' },
+                { value: HOURLY_COST_SLIDER_MAX, label: formatDollar(HOURLY_COST_SLIDER_MAX) },
+              ]}
+            />
+            <Typography variant="caption" color="text.secondary">
+              Positions awaiting Cost Engineer entry stay blank; others get a rate in this range.
+            </Typography>
+          </Box>
+
           {preview ? (
             <Alert severity="info" variant="outlined">
               About <strong>{preview.positions}</strong> position groups and{' '}
               <strong>{preview.pafs}</strong> PAF numbers (~{preview.perCompany} records per
-              company). Some positions may get multiple sequential people; PAF revisions keep the
-              same person on the same PAF number.
+              company). Position hourly costs will fall between{' '}
+              <strong>{formatDollar(hourlyCostMin)}</strong> and{' '}
+              <strong>{formatDollar(hourlyCostMax)}</strong>.
             </Alert>
           ) : null}
 
@@ -183,7 +233,7 @@ export default function LoadSampleDataDialog({ open, onClose }: LoadSampleDataDi
         <Button
           variant="contained"
           onClick={handleGenerate}
-          disabled={busy || !countValid}
+          disabled={busy || !countValid || !costRangeValid}
           startIcon={<ScienceIcon />}
         >
           {busy ? 'Generating…' : 'Generate'}

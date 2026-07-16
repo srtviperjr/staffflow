@@ -43,6 +43,7 @@ export const STAFFING_PLAN_COMPARE_FIELDS = [
   'sortNumber',
   'totalHours',
   'hoursToGo',
+  'hourlyCost',
   'roster',
   'startBiWeek',
   'lwp',

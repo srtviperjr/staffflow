@@ -16,6 +16,7 @@ import {
   getRevisionHistory,
   nextPafNumber,
   normalizeAuthorizationRequests,
+  requestToFormData,
   validatePafSchedule,
 } from '../utils/projectAuthorizationRevisions'
 import { SAMPLE_PROJECT_AUTHORIZATION_REQUESTS } from '../data/sampleData'
@@ -195,11 +196,20 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
       let workflowProgress: ProjectAuthorizationRequest['workflow']
 
       if (workflow) {
-        const result = startWorkflow(workflow, {
-          ...data,
-          position,
-          approvedPositionLabel: positionLabel,
-        })
+        const previousFormData = {
+          ...requestToFormData(source),
+          position: source.position,
+          approvedPositionLabel: source.approvedPositionLabel,
+        } as Record<string, unknown>
+        const result = startWorkflow(
+          workflow,
+          {
+            ...data,
+            position,
+            approvedPositionLabel: positionLabel,
+          },
+          previousFormData,
+        )
         status = result.status
         workflowProgress = result.progress
       }

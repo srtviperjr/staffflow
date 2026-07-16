@@ -32,6 +32,7 @@ import {
   isAdmin,
 } from '../utils/permissions'
 import { getPendingApprovalsForUser } from '../utils/pendingApprovals'
+import StaffingApprovalSteps from '../components/StaffingApprovalSteps'
 
 function formatSubmittedAt(value: string) {
   return new Date(value).toLocaleString(undefined, {
@@ -63,9 +64,17 @@ export default function HomePage() {
         pafRequests,
         roles: currentUserRoles,
         company: currentUser?.company,
+        userProject: currentUser?.project,
         getWorkflow,
       }),
-    [staffingRequests, pafRequests, currentUserRoles, currentUser?.company, getWorkflow],
+    [
+      staffingRequests,
+      pafRequests,
+      currentUserRoles,
+      currentUser?.company,
+      currentUser?.project,
+      getWorkflow,
+    ],
   )
 
   const availableWorkflows = [
@@ -239,7 +248,7 @@ export default function HomePage() {
             Pending your approval
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Requests waiting on a workflow step assigned to your roles
+            Only requests you can approve right now (your role has not already cleared its step)
           </Typography>
         </Box>
       </Box>
@@ -293,6 +302,9 @@ export default function HomePage() {
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
                       Waiting at: {item.workflowStepLabel}
                     </Typography>
+                  ) : null}
+                  {item.approvalSteps && item.approvalSteps.length > 0 ? (
+                    <StaffingApprovalSteps steps={item.approvalSteps} compact />
                   ) : null}
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
                     Submitted {formatSubmittedAt(item.submittedAt)}

@@ -15,11 +15,20 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 import type { StaffingPlanRequest } from '../types/staffingPlan'
 import { formatDisplayDate } from '../utils/staffingPlanDates'
+import {
+  computePositionCost,
+  formatCostAmount,
+  formatHourlyCostDisplay,
+} from '../utils/positionCost'
+import type { StaffingApprovalStep } from '../utils/staffingApprovalSteps'
+import StaffingApprovalSteps from './StaffingApprovalSteps'
 
 interface StaffingDetailDialogProps {
   request: StaffingPlanRequest | null
   onClose: () => void
   canReview?: boolean
+  showCost?: boolean
+  approvalSteps?: StaffingApprovalStep[]
   onApprove?: () => void
   onReject?: () => void
 }
@@ -42,10 +51,15 @@ export default function StaffingDetailDialog({
   request,
   onClose,
   canReview = false,
+  showCost = false,
+  approvalSteps = [],
   onApprove,
   onReject,
 }: StaffingDetailDialogProps) {
   const showActions = Boolean(request && request.status === 'pending' && canReview)
+  const positionCost = request
+    ? computePositionCost(request.hoursToGo, request.hourlyCost)
+    : null
 
   return (
     <Dialog open={Boolean(request)} onClose={onClose} maxWidth="md" fullWidth>
@@ -61,6 +75,11 @@ export default function StaffingDetailDialog({
         ) : null}
       </DialogTitle>
       <DialogContent>
+        {approvalSteps.length > 0 ? (
+          <Box sx={{ mb: 2 }}>
+            <StaffingApprovalSteps steps={approvalSteps} />
+          </Box>
+        ) : null}
         {request && (
           <Box
             sx={{
@@ -84,6 +103,14 @@ export default function StaffingDetailDialog({
             <Detail label="Sort Number" value={request.sortNumber} />
             <Detail label="Total Hours" value={request.totalHours} />
             <Detail label="Hours To Go" value={request.hoursToGo} />
+            {showCost ? (
+              <>
+                <Detail label="Hourly Cost" value={formatHourlyCostDisplay(request.hourlyCost)} />
+                {positionCost != null ? (
+                  <Detail label="Total Cost" value={formatCostAmount(positionCost)} />
+                ) : null}
+              </>
+            ) : null}
             <Detail label="Start Bi-Week" value={formatDisplayDate(request.startBiWeek)} />
             <Detail label="Last Working Day" value={formatDisplayDate(request.lwp)} />
           </Box>

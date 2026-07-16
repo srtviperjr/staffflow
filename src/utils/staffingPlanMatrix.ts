@@ -55,6 +55,8 @@ export interface StaffingMatrixRow {
   sortNumber: string
   totalHours: string
   hoursToGo: string
+  hourlyCost: string
+  positionCost: string
   roster: string
   startBiWeek: string
   lwp: string
@@ -81,9 +83,14 @@ export type MatrixColumnId =
   | 'sortNumber'
   | 'totalHours'
   | 'hoursToGo'
+  | 'hourlyCost'
+  | 'positionCost'
   | 'roster'
   | 'startBiWeek'
   | 'lwp'
+
+/** Columns that expose cost information — only for Cost Engineer / Project Director. */
+export const COST_MATRIX_COLUMN_IDS: MatrixColumnId[] = ['hourlyCost', 'positionCost']
 
 export interface MatrixColumnDef {
   id: MatrixColumnId
@@ -111,6 +118,8 @@ export const MATRIX_COLUMN_DEFS: MatrixColumnDef[] = [
   { id: 'sortNumber', label: 'Sort Number', getValue: (row) => row.sortNumber },
   { id: 'totalHours', label: 'Total Hours', getValue: (row) => row.totalHours },
   { id: 'hoursToGo', label: 'HoursToGo', getValue: (row) => row.hoursToGo },
+  { id: 'hourlyCost', label: 'Hourly Cost', getValue: (row) => row.hourlyCost },
+  { id: 'positionCost', label: 'Total Cost', getValue: (row) => row.positionCost },
   { id: 'roster', label: 'Roster', getValue: (row) => row.roster },
   { id: 'startBiWeek', label: 'Start Bi-Week', getValue: (row) => row.startBiWeek, minWidth: 120 },
   { id: 'lwp', label: 'Last Working Day', getValue: (row) => row.lwp, minWidth: 140 },
@@ -136,6 +145,8 @@ export const DEFAULT_COLUMN_ORDER: MatrixColumnId[] = [
   'sortNumber',
   'totalHours',
   'hoursToGo',
+  'hourlyCost',
+  'positionCost',
   'roster',
   'startBiWeek',
   'lwp',
@@ -330,6 +341,22 @@ function buildRow(
     sortNumber: position.sortNumber,
     totalHours: position.totalHours,
     hoursToGo: position.hoursToGo,
+    hourlyCost: (() => {
+      const raw = position.hourlyCost ?? ''
+      const rate = Number(String(raw).replace(/[$,]/g, ''))
+      if (!raw.trim() || !Number.isFinite(rate)) return raw
+      return `$${rate.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+    })(),
+    positionCost: (() => {
+      const hours = Number(String(position.hoursToGo ?? '').replace(/,/g, ''))
+      const rate = Number(String(position.hourlyCost ?? '').replace(/[$,]/g, ''))
+      if (!Number.isFinite(hours) || !Number.isFinite(rate) || !position.hourlyCost?.trim()) {
+        return ''
+      }
+      return `$${(hours * rate).toLocaleString(undefined, {
+        maximumFractionDigits: 2,
+      })}`
+    })(),
     roster: position.roster,
     startBiWeek: formatMatrixDate(position.startBiWeek),
     lwp: formatMatrixDate(position.lwp),

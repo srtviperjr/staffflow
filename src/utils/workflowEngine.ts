@@ -67,14 +67,19 @@ function followBranch(
   return labeled?.target ?? null
 }
 
+function normalizeConditionValue(raw: unknown): string {
+  if (raw == null) return ''
+  return String(raw).trim()
+}
+
 export function evaluateFieldCondition(
   formData: FormRecord,
   condition: FieldCondition | undefined,
+  previousFormData?: FormRecord | null,
 ): boolean {
   if (!condition?.field) return false
 
-  const raw = formData[condition.field]
-  const value = raw == null ? '' : String(raw).trim()
+  const value = normalizeConditionValue(formData[condition.field])
   const expected = (condition.value ?? '').trim()
   const operator = condition.operator || 'equals'
 
@@ -83,6 +88,16 @@ export function evaluateFieldCondition(
       return value.length === 0
     case 'isNotEmpty':
       return value.length > 0
+    case 'hasChanged': {
+      if (!previousFormData) return false
+      const previous = normalizeConditionValue(previousFormData[condition.field])
+      return value !== previous
+    }
+    case 'hasNotChanged': {
+      if (!previousFormData) return true
+      const previous = normalizeConditionValue(previousFormData[condition.field])
+      return value === previous
+    }
     case 'contains':
       return value.toLowerCase().includes(expected.toLowerCase())
     case 'greaterThan': {
@@ -116,6 +131,19 @@ export function mapStateToRequestStatus(
   return 'pending'
 }
 
+function resolveRunStatus(
+  workflow: WorkflowDefinition,
+  stateId: string,
+  completed: boolean,
+  waiting: boolean,
+): RequestStatus {
+  // Intermediate labels like "Costing Approved" must stay pending while waiting.
+  if (waiting) return 'pending'
+  const mapped = mapStateToRequestStatus(workflow, stateId)
+  if (!completed && mapped === 'approved') return 'pending'
+  return mapped
+}
+
 function buildResult(
   workflow: WorkflowDefinition,
   progress: WorkflowProgress,
@@ -127,7 +155,7 @@ function buildResult(
   const state = workflow.states.find((item) => item.id === stateId)
   return {
     progress,
-    status: mapStateToRequestStatus(workflow, stateId),
+    status: resolveRunStatus(workflow, stateId, completed, waiting),
     stateId,
     stateName: state?.name || '',
     completed,
@@ -164,12 +192,14 @@ export function advanceWorkflow(
   progress: WorkflowProgress,
   formData: FormRecord,
   action?: WorkflowAction,
+  previousFormData?: FormRecord | null,
 ): WorkflowRunResult {
   let current = getNode(workflow, progress.currentNodeId)
   if (!current) {
     throw new Error(`Workflow node "${progress.currentNodeId}" not found`)
   }
 
+  const priorForm = previousFormData ?? progress.previousFormData ?? null
   let nextProgress = progress
   let pendingAction = action
   let safety = 0
@@ -190,7 +220,7 @@ export function advanceWorkflow(
       const mode = data.decisionMode || 'manual'
 
       if (mode === 'field') {
-        const yes = evaluateFieldCondition(formData, data.fieldCondition)
+        const yes = evaluateFieldCondition(formData, data.fieldCondition, priorForm)
         const branch: 'yes' | 'no' = yes ? 'yes' : 'no'
         const target = followBranch(workflow, current.id, branch)
         if (!target) {
@@ -227,8 +257,8 @@ export function advanceWorkflow(
         const actionNow = pendingAction
 
         if (actionNow === 'reject') {
-          // Prefer an explicit reject/no edge from this step; otherwise walk forward
-          // to the next manual decision and take No there.
+          // Any rejection ends the workflow: follow an explicit reject/no edge when
+          // present, otherwise mark rejected immediately (do not continue approve path).
           const rejectTarget = followBranch(workflow, current.id, 'no')
           if (rejectTarget) {
             pendingAction = undefined
@@ -240,20 +270,13 @@ export function advanceWorkflow(
             continue
           }
 
-          const forward = followSingle(workflow, current.id)
-          if (forward) {
-            // Keep reject action so a following manual decision can consume it
-            nextProgress = appendHistory({ ...nextProgress, currentNodeId: forward }, forward)
-            continue
-          }
-
           return {
             ...buildResult(workflow, nextProgress, current, true, false),
             status: 'rejected',
           }
         }
 
-        // approve → continue along the default edge; keep action for a following decision
+        // approve → continue along the default (non-reject) edge
         const target = followSingle(workflow, current.id)
         if (!target) {
           pendingAction = undefined
@@ -262,7 +285,16 @@ export function advanceWorkflow(
             status: 'approved',
           }
         }
+        pendingAction = undefined
         nextProgress = appendHistory({ ...nextProgress, currentNodeId: target }, target, 'yes')
+        // If the next node is a manual decision, apply this approve as Yes immediately
+        const nextNode = getNode(workflow, target)
+        if (
+          nextNode?.type === 'decision' &&
+          (nextNode.data.decisionMode || 'manual') === 'manual'
+        ) {
+          pendingAction = 'approve'
+        }
         continue
       }
 
@@ -287,6 +319,7 @@ export function advanceWorkflow(
 export function startWorkflow(
   workflow: WorkflowDefinition,
   formData: FormRecord,
+  previousFormData?: FormRecord | null,
 ): WorkflowRunResult {
   const startNode =
     workflow.nodes.find((node) => node.type === 'start') ?? workflow.nodes[0]
@@ -303,9 +336,10 @@ export function startWorkflow(
         arrivedAt: new Date().toISOString(),
       },
     ],
+    ...(previousFormData ? { previousFormData } : {}),
   }
 
-  return advanceWorkflow(workflow, progress, formData)
+  return advanceWorkflow(workflow, progress, formData, undefined, previousFormData)
 }
 
 export function getWorkflowForForm(
@@ -318,7 +352,11 @@ export function getWorkflowForForm(
 export function describeDecision(data: WorkflowNodeData, _formType?: WorkflowFormType | null): string {
   if ((data.decisionMode || 'manual') === 'field' && data.fieldCondition?.field) {
     const { field, operator, value } = data.fieldCondition
-    const needsValue = operator !== 'isEmpty' && operator !== 'isNotEmpty'
+    const needsValue =
+      operator !== 'isEmpty' &&
+      operator !== 'isNotEmpty' &&
+      operator !== 'hasChanged' &&
+      operator !== 'hasNotChanged'
     return `If ${field} ${operator}${needsValue ? ` "${value}"` : ''}`
   }
   return data.decisionQuestion || data.label
