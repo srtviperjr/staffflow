@@ -26,8 +26,12 @@ import { useRequestForms } from '../../context/RequestFormsContext'
 import { useRoles } from '../../context/RolesContext'
 import { useWorkflows } from '../../context/WorkflowContext'
 import RejectDialog from '../../components/RejectDialog'
+import StaffingApprovalSteps from '../../components/StaffingApprovalSteps'
+import StaffingApprovalTrail from '../../components/StaffingApprovalTrail'
 import { ChangedFieldDetail, RevisionChangesLegend } from '../../components/ChangedFieldDetail'
 import type { ProjectAuthorizationRequest } from '../../types/projectAuthorization'
+import { canActOnWorkflowRequest } from '../../utils/pendingApprovals'
+import { getStaffingApprovalSteps } from '../../utils/staffingApprovalSteps'
 import { formatDisplayDate } from '../../utils/staffingPlanDates'
 import {
   getChangedFieldKeys,
@@ -75,6 +79,7 @@ function RequestDetails({
       }}
     >
       <ChangedFieldDetail label="PAF" value={request.pafNumber} />
+      <ChangedFieldDetail label="Phase" value={request.phase} changed={changed('phase')} />
       <ChangedFieldDetail
         label="Functional Group"
         value={request.functionalGroup}
@@ -130,7 +135,7 @@ function RequestDetails({
 }
 
 export default function ProjectAuthorizationManagerPage() {
-  const { currentUser } = useRoles()
+  const { currentUser, currentUserRoles } = useRoles()
   const { openRequestForm } = useRequestForms()
   const { currentRequests, rejectRequest, approveRequest, getHistory } =
     useProjectAuthorizationRequests()
@@ -144,19 +149,30 @@ export default function ProjectAuthorizationManagerPage() {
     [currentRequests, currentUser?.company],
   )
 
+  const actionablePending = useMemo(
+    () =>
+      visibleRequests.filter((request) =>
+        canActOnWorkflowRequest(request, currentUserRoles, getWorkflow, {
+          userProject: currentUser?.project,
+        }),
+      ),
+    [visibleRequests, currentUserRoles, getWorkflow, currentUser?.project],
+  )
+
   const filteredRequests = useMemo(() => {
+    if (filter === 'pending') return actionablePending
     if (filter === 'all') return visibleRequests
     return visibleRequests.filter((request) => request.status === filter)
-  }, [filter, visibleRequests])
+  }, [filter, visibleRequests, actionablePending])
 
   const counts = useMemo(
     () => ({
       all: visibleRequests.length,
-      pending: visibleRequests.filter((r) => r.status === 'pending').length,
+      pending: actionablePending.length,
       approved: visibleRequests.filter((r) => r.status === 'approved').length,
       rejected: visibleRequests.filter((r) => r.status === 'rejected').length,
     }),
-    [visibleRequests],
+    [visibleRequests, actionablePending],
   )
 
   const handleReject = (comment: string) => {
@@ -210,7 +226,9 @@ export default function ProjectAuthorizationManagerPage() {
               <Typography variant="body2" color="text.secondary">
                 {filter === 'all'
                   ? 'Submitted PAF requests will appear here for review.'
-                  : `No ${filter} requests at this time.`}
+                  : filter === 'pending'
+                    ? 'No requests are waiting on your role right now.'
+                    : `No ${filter} requests at this time.`}
               </Typography>
             </Box>
           ) : (
@@ -225,6 +243,22 @@ export default function ProjectAuthorizationManagerPage() {
                   previousRevision,
                   PAF_APPROVAL_COMPARE_FIELDS,
                 )
+                const canAct = canActOnWorkflowRequest(request, currentUserRoles, getWorkflow, {
+                  userProject: currentUser?.project,
+                })
+                const workflow = request.workflow
+                  ? getWorkflow(request.workflow.workflowId)
+                  : undefined
+                const currentWorkflowNode = workflow?.nodes.find(
+                  (item) => item.id === request.workflow?.currentNodeId,
+                )
+                const approvalSteps = getStaffingApprovalSteps({
+                  workflow,
+                  progress: request.workflow,
+                  phase: request.phase,
+                  company: request.company,
+                  requestStatus: request.status,
+                })
 
                 return (
                   <Card key={request.id} variant="outlined" sx={{ boxShadow: 'none' }}>
@@ -254,21 +288,21 @@ export default function ProjectAuthorizationManagerPage() {
                               variant="outlined"
                             />
                             <Chip label={request.company} size="small" variant="outlined" />
+                            <Chip label={request.phase} size="small" variant="outlined" />
                           </Box>
                           <Typography variant="body2" color="text.secondary">
                             {request.approvedPositionLabel}
                           </Typography>
-                          {request.workflow && (() => {
-                            const workflow = getWorkflow(request.workflow.workflowId)
-                            const node = workflow?.nodes.find(
-                              (item) => item.id === request.workflow?.currentNodeId,
-                            )
-                            return node ? (
-                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                                Workflow: {workflow?.name} · {node.data.label}
-                              </Typography>
-                            ) : null
-                          })()}
+                          {currentWorkflowNode ? (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ display: 'block', mt: 0.5 }}
+                            >
+                              Workflow: {workflow?.name} · {currentWorkflowNode.data.label}
+                            </Typography>
+                          ) : null}
+                          <StaffingApprovalSteps steps={approvalSteps} />
                         </Box>
                         <StatusChip status={request.status} />
                       </Box>
@@ -277,6 +311,13 @@ export default function ProjectAuthorizationManagerPage() {
 
                       <RevisionChangesLegend visible={request.revision > 1} />
                       <RequestDetails request={request} changedFields={changedFields} />
+
+                      {approvalSteps.length > 0 ? (
+                        <Box sx={{ mt: 2 }}>
+                          <Divider sx={{ mb: 2 }} />
+                          <StaffingApprovalTrail steps={approvalSteps} />
+                        </Box>
+                      ) : null}
 
                       {request.status === 'rejected' && request.rejectionComment && (
                         <Box
@@ -357,7 +398,7 @@ export default function ProjectAuthorizationManagerPage() {
                     </CardContent>
 
                     <CardActions sx={{ px: 2, pb: 2, gap: 1, flexWrap: 'wrap' }}>
-                      {request.status === 'pending' && (
+                      {canAct ? (
                         <>
                           <Button
                             variant="contained"
@@ -376,7 +417,7 @@ export default function ProjectAuthorizationManagerPage() {
                             Reject
                           </Button>
                         </>
-                      )}
+                      ) : null}
                       <Button
                         onClick={() =>
                           openRequestForm('project-authorization', {

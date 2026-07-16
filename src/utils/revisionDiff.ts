@@ -51,6 +51,7 @@ export const STAFFING_PLAN_COMPARE_FIELDS = [
 
 export const PAF_APPROVAL_COMPARE_FIELDS = [
   'staffingPlanRequestId',
+  'phase',
   'functionalGroup',
   'dsg',
   'position',

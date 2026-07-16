@@ -269,15 +269,16 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
 }
 
 /**
- * Canonical PAF request flow — mirrors the product behavior:
- * submit → manager review → approve / reject.
- * Includes a field-based company gate for Fluor vs other company paths.
+ * PAF approval flow (request stays Pending until the last approval):
+ * Submitted (requestor) → Approved by Manager → Approved by Project Director
+ * (JS1 / JS2 for the linked position's project) → fully Approved.
+ * Reject at any wait step ends the workflow.
  */
 export const PAF_APPROVAL_WORKFLOW: WorkflowDefinition = {
   id: 'workflow-paf-approval',
-  name: 'PAF Request Flow',
+  name: 'PAF Request Approval',
   description:
-    'Submit a PAF request against an approved staffing position, route by company, then manager approve or reject',
+    'Requestor submits a PAF, Manager approves, then the Project Director for that project gives final approval',
   formType: 'project-authorization',
   states: SHARED_STATES,
   nodes: [
@@ -298,75 +299,74 @@ export const PAF_APPROVAL_WORKFLOW: WorkflowDefinition = {
       position: { x: 280, y: 120 },
       data: {
         kind: 'step',
-        label: 'Submit PAF Request',
+        label: 'Submitted — by Requestor',
         roleId: 'role-requestor',
         stateId: 'state-submitted',
         waitForAction: false,
       },
     },
     {
-      id: 'paf-class-gate',
+      id: 'paf-manager-review',
+      type: 'step',
+      position: { x: 280, y: 260 },
+      data: {
+        kind: 'step',
+        label: 'Approved — by Manager',
+        roleId: 'role-manager',
+        stateId: 'state-in-review',
+        waitForAction: true,
+      },
+    },
+    {
+      id: 'paf-project-gate',
       type: 'decision',
-      position: { x: 290, y: 260 },
+      position: { x: 290, y: 400 },
       data: {
         kind: 'decision',
-        label: 'Fluor company?',
-        decisionQuestion: 'Is company Fluor?',
+        label: 'JS1 project?',
+        decisionQuestion: 'Is this a JS1 project position?',
         decisionMode: 'field',
         fieldCondition: {
-          field: 'company',
+          field: 'phase',
           operator: 'equals',
-          value: 'Fluor',
+          value: 'JS1',
         },
         roleId: '',
-        stateId: 'state-submitted',
+        stateId: 'state-in-review',
       },
     },
     {
-      id: 'paf-review-contractor',
+      id: 'paf-pd-js1',
       type: 'step',
-      position: { x: 40, y: 440 },
+      position: { x: 40, y: 540 },
       data: {
         kind: 'step',
-        label: 'Manager Review (Fluor)',
-        roleId: 'role-manager',
-        stateId: 'state-in-review',
+        label: 'Approved — by Project Director',
+        roleId: 'role-project-director',
+        stateId: 'state-pd-review',
         waitForAction: true,
       },
     },
     {
-      id: 'paf-review-standard',
+      id: 'paf-pd-js2',
       type: 'step',
-      position: { x: 480, y: 440 },
+      position: { x: 480, y: 540 },
       data: {
         kind: 'step',
-        label: 'Manager Review',
-        roleId: 'role-manager',
-        stateId: 'state-in-review',
+        label: 'Approved — by Project Director',
+        roleId: 'role-project-director',
+        stateId: 'state-pd-review',
         waitForAction: true,
-      },
-    },
-    {
-      id: 'paf-decision',
-      type: 'decision',
-      position: { x: 290, y: 600 },
-      data: {
-        kind: 'decision',
-        label: 'Approved?',
-        decisionQuestion: 'Does the manager approve this PAF?',
-        decisionMode: 'manual',
-        roleId: 'role-manager',
-        stateId: 'state-in-review',
       },
     },
     {
       id: 'paf-approved',
       type: 'step',
-      position: { x: 80, y: 780 },
+      position: { x: 280, y: 680 },
       data: {
         kind: 'step',
-        label: 'Mark Approved',
-        roleId: 'role-manager',
+        label: 'Fully Approved',
+        roleId: 'role-project-director',
         stateId: 'state-approved',
         waitForAction: false,
       },
@@ -374,7 +374,7 @@ export const PAF_APPROVAL_WORKFLOW: WorkflowDefinition = {
     {
       id: 'paf-rejected',
       type: 'step',
-      position: { x: 480, y: 780 },
+      position: { x: 560, y: 680 },
       data: {
         kind: 'step',
         label: 'Mark Rejected',
@@ -386,7 +386,7 @@ export const PAF_APPROVAL_WORKFLOW: WorkflowDefinition = {
     {
       id: 'paf-end-ok',
       type: 'end',
-      position: { x: 120, y: 920 },
+      position: { x: 320, y: 820 },
       data: {
         kind: 'end',
         label: 'Complete',
@@ -397,7 +397,7 @@ export const PAF_APPROVAL_WORKFLOW: WorkflowDefinition = {
     {
       id: 'paf-end-reject',
       type: 'end',
-      position: { x: 520, y: 920 },
+      position: { x: 600, y: 820 },
       data: {
         kind: 'end',
         label: 'Ended (Rejected)',
@@ -408,55 +408,49 @@ export const PAF_APPROVAL_WORKFLOW: WorkflowDefinition = {
   ],
   edges: [
     { id: 'paf-e-start-submit', source: 'paf-start', target: 'paf-submit' },
-    { id: 'paf-e-submit-gate', source: 'paf-submit', target: 'paf-class-gate' },
+    { id: 'paf-e-submit-manager', source: 'paf-submit', target: 'paf-manager-review' },
     {
-      id: 'paf-e-gate-yes',
-      source: 'paf-class-gate',
+      id: 'paf-e-manager-reject',
+      source: 'paf-manager-review',
+      sourceHandle: 'no',
+      target: 'paf-rejected',
+      label: 'Reject',
+    },
+    { id: 'paf-e-manager-project', source: 'paf-manager-review', target: 'paf-project-gate' },
+    {
+      id: 'paf-e-project-js1',
+      source: 'paf-project-gate',
       sourceHandle: 'yes',
-      target: 'paf-review-contractor',
+      target: 'paf-pd-js1',
       label: 'Yes',
     },
     {
-      id: 'paf-e-gate-no',
-      source: 'paf-class-gate',
+      id: 'paf-e-project-js2',
+      source: 'paf-project-gate',
       sourceHandle: 'no',
-      target: 'paf-review-standard',
+      target: 'paf-pd-js2',
       label: 'No',
     },
     {
-      id: 'paf-e-contractor-reject',
-      source: 'paf-review-contractor',
+      id: 'paf-e-pd-js1-reject',
+      source: 'paf-pd-js1',
       sourceHandle: 'no',
       target: 'paf-rejected',
       label: 'Reject',
     },
     {
-      id: 'paf-e-standard-reject',
-      source: 'paf-review-standard',
+      id: 'paf-e-pd-js2-reject',
+      source: 'paf-pd-js2',
       sourceHandle: 'no',
       target: 'paf-rejected',
       label: 'Reject',
     },
-    { id: 'paf-e-bechtel-decision', source: 'paf-review-contractor', target: 'paf-decision' },
-    { id: 'paf-e-standard-decision', source: 'paf-review-standard', target: 'paf-decision' },
-    {
-      id: 'paf-e-yes',
-      source: 'paf-decision',
-      sourceHandle: 'yes',
-      target: 'paf-approved',
-      label: 'Yes',
-    },
-    {
-      id: 'paf-e-no',
-      source: 'paf-decision',
-      sourceHandle: 'no',
-      target: 'paf-rejected',
-      label: 'No',
-    },
+    { id: 'paf-e-pd-js1-ok', source: 'paf-pd-js1', target: 'paf-approved' },
+    { id: 'paf-e-pd-js2-ok', source: 'paf-pd-js2', target: 'paf-approved' },
     { id: 'paf-e-approved-end', source: 'paf-approved', target: 'paf-end-ok' },
     { id: 'paf-e-rejected-end', source: 'paf-rejected', target: 'paf-end-reject' },
   ],
-  updatedAt: '2026-07-15T12:00:00.000Z',
+  updatedAt: '2026-07-16T23:30:00.000Z',
 }
 
 /** @deprecated Use SAMPLE_WORKFLOWS — kept as alias for the PAF sample */

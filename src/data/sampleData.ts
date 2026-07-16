@@ -401,32 +401,62 @@ function staffingRejectedWorkflow(company: string, _phase: string): WorkflowProg
   }
 }
 
-function pafPendingWorkflow(company: string): WorkflowProgress {
-  const reviewNode = company === 'Fluor' ? 'paf-review-contractor' : 'paf-review-standard'
+function pafPdNodeForPhase(phase: string): 'paf-pd-js1' | 'paf-pd-js2' {
+  return phase === 'JS2' ? 'paf-pd-js2' : 'paf-pd-js1'
+}
+
+/** Waiting on Manager after requestor submit. */
+function pafPendingWorkflow(company: string, _phase: string): WorkflowProgress {
   const requestor = requestorForCompany(company)
   const at = submittedAt(11)
   return {
     workflowId: 'workflow-paf-approval',
-    currentNodeId: reviewNode,
+    currentNodeId: 'paf-manager-review',
     history: [
       { nodeId: 'paf-start', arrivedAt: at },
       { nodeId: 'paf-submit', arrivedAt: at, ...acted(requestor, 'submit', at) },
-      {
-        nodeId: 'paf-class-gate',
-        arrivedAt: at,
-        branch: company === 'Fluor' ? 'yes' : 'no',
-      },
-      { nodeId: reviewNode, arrivedAt: at },
+      { nodeId: 'paf-manager-review', arrivedAt: at },
     ],
   }
 }
 
-function pafApprovedWorkflow(company: string): WorkflowProgress {
-  const reviewNode = company === 'Fluor' ? 'paf-review-contractor' : 'paf-review-standard'
+/** Waiting on Project Director (final approval) after Manager. */
+function pafPendingAtPdWorkflow(company: string, phase: string): WorkflowProgress {
   const requestor = requestorForCompany(company)
   const manager = managerForCompany(company)
+  const pdNode = pafPdNodeForPhase(phase)
   const submitAt = submittedAt(11)
-  const approveAt = submittedAt(12)
+  const managerAt = submittedAt(12)
+  return {
+    workflowId: 'workflow-paf-approval',
+    currentNodeId: pdNode,
+    history: [
+      { nodeId: 'paf-start', arrivedAt: submitAt },
+      { nodeId: 'paf-submit', arrivedAt: submitAt, ...acted(requestor, 'submit', submitAt) },
+      {
+        nodeId: 'paf-manager-review',
+        arrivedAt: submitAt,
+        branch: 'yes',
+        ...acted(manager, 'approve', managerAt),
+      },
+      {
+        nodeId: 'paf-project-gate',
+        arrivedAt: managerAt,
+        branch: phase === 'JS1' ? 'yes' : 'no',
+      },
+      { nodeId: pdNode, arrivedAt: managerAt },
+    ],
+  }
+}
+
+function pafApprovedWorkflow(company: string, phase: string): WorkflowProgress {
+  const requestor = requestorForCompany(company)
+  const manager = managerForCompany(company)
+  const pd = pdForPhase(phase)
+  const pdNode = pafPdNodeForPhase(phase)
+  const submitAt = submittedAt(11)
+  const managerAt = submittedAt(12)
+  const pdAt = submittedAt(13)
   return {
     workflowId: 'workflow-paf-approval',
     currentNodeId: 'paf-end-ok',
@@ -434,29 +464,29 @@ function pafApprovedWorkflow(company: string): WorkflowProgress {
       { nodeId: 'paf-start', arrivedAt: submitAt },
       { nodeId: 'paf-submit', arrivedAt: submitAt, ...acted(requestor, 'submit', submitAt) },
       {
-        nodeId: 'paf-class-gate',
+        nodeId: 'paf-manager-review',
         arrivedAt: submitAt,
-        branch: company === 'Fluor' ? 'yes' : 'no',
-      },
-      {
-        nodeId: reviewNode,
-        arrivedAt: submitAt,
-        ...acted(manager, 'approve', approveAt),
-      },
-      {
-        nodeId: 'paf-decision',
-        arrivedAt: approveAt,
         branch: 'yes',
-        ...acted(manager, 'approve', approveAt),
+        ...acted(manager, 'approve', managerAt),
       },
-      { nodeId: 'paf-approved', arrivedAt: approveAt },
-      { nodeId: 'paf-end-ok', arrivedAt: approveAt },
+      {
+        nodeId: 'paf-project-gate',
+        arrivedAt: managerAt,
+        branch: phase === 'JS1' ? 'yes' : 'no',
+      },
+      {
+        nodeId: pdNode,
+        arrivedAt: managerAt,
+        branch: 'yes',
+        ...acted(pd, 'approve', pdAt),
+      },
+      { nodeId: 'paf-approved', arrivedAt: pdAt },
+      { nodeId: 'paf-end-ok', arrivedAt: pdAt },
     ],
   }
 }
 
-function pafRejectedWorkflow(company: string): WorkflowProgress {
-  const reviewNode = company === 'Fluor' ? 'paf-review-contractor' : 'paf-review-standard'
+function pafRejectedWorkflow(company: string, _phase: string): WorkflowProgress {
   const requestor = requestorForCompany(company)
   const manager = managerForCompany(company)
   const submitAt = submittedAt(11)
@@ -468,18 +498,8 @@ function pafRejectedWorkflow(company: string): WorkflowProgress {
       { nodeId: 'paf-start', arrivedAt: submitAt },
       { nodeId: 'paf-submit', arrivedAt: submitAt, ...acted(requestor, 'submit', submitAt) },
       {
-        nodeId: 'paf-class-gate',
+        nodeId: 'paf-manager-review',
         arrivedAt: submitAt,
-        branch: company === 'Fluor' ? 'yes' : 'no',
-      },
-      {
-        nodeId: reviewNode,
-        arrivedAt: submitAt,
-        ...acted(manager, 'reject', rejectAt),
-      },
-      {
-        nodeId: 'paf-decision',
-        arrivedAt: rejectAt,
         branch: 'no',
         ...acted(manager, 'reject', rejectAt),
       },
@@ -565,6 +585,7 @@ function pafForPosition(
     supersedesId: overrides.supersedesId,
     isCurrentRevision: overrides.isCurrentRevision ?? true,
     staffingPlanRequestId: position.id,
+    phase: overrides.phase ?? position.phase,
     functionalGroup: position.functionalGroup,
     dsg: position.dsg,
     approvedPositionLabel: formatApprovedPositionLabel(position),
@@ -958,7 +979,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
           lwp: firstEnd,
           submittedAt: submittedAt(30 + pafSeq),
           reviewedAt: reviewedAt(31 + pafSeq),
-          workflow: pafApprovedWorkflow(company),
+          workflow: pafApprovedWorkflow(company, position.phase),
         })
         const second = pafForPosition(position, {
           id: `${idPrefix}-paf-${company.toLowerCase()}-${pafSeq}-b`,
@@ -969,7 +990,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
           lwp: range.lwp,
           submittedAt: submittedAt(32 + pafSeq),
           reviewedAt: reviewedAt(33 + pafSeq),
-          workflow: pafApprovedWorkflow(company),
+          workflow: pafApprovedWorkflow(company, position.phase),
         })
         authorizations.push(first, second)
         workingAuthorizations.push(first, second)
@@ -990,7 +1011,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
           submittedAt: submittedAt(30 + pafSeq),
           reviewedAt: reviewedAt(31 + pafSeq),
           rejectionComment: 'Candidate does not meet minimum experience requirements.',
-          workflow: pafRejectedWorkflow(company),
+          workflow: pafRejectedWorkflow(company, position.phase),
         })
         const replacementName = candidateName(seed + 11)
         const replacement = pafForPosition(position, {
@@ -1002,7 +1023,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
           lwp: firstEnd,
           submittedAt: submittedAt(32 + pafSeq),
           reviewedAt: reviewedAt(33 + pafSeq),
-          workflow: pafApprovedWorkflow(company),
+          workflow: pafApprovedWorkflow(company, position.phase),
           eeIdSap: `SAP-${20000 + seed}`,
         })
         authorizations.push(rejected, replacement)
@@ -1037,7 +1058,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
           lwp: rev1End,
           submittedAt: submittedAt(40 + pafSeq),
           reviewedAt: reviewedAt(41 + pafSeq),
-          workflow: pafApprovedWorkflow(company),
+          workflow: pafApprovedWorkflow(company, position.phase),
         })
         const rev2 = pafForPosition(position, {
           id: `${group}-r2`,
@@ -1053,7 +1074,10 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
           lwp: rev2End,
           submittedAt: submittedAt(42 + pafSeq),
           reviewedAt: pattern === 5 ? undefined : reviewedAt(43 + pafSeq),
-          workflow: pattern === 5 ? pafPendingWorkflow(company) : pafApprovedWorkflow(company),
+          workflow:
+            pattern === 5
+              ? pafPendingAtPdWorkflow(company, position.phase)
+              : pafApprovedWorkflow(company, position.phase),
           totalHours: String(Number(position.totalHours) + 40),
           roster: pick(ROSTERS, seed + 1),
         })
@@ -1072,7 +1096,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
             startBiWeek: range.startBiWeek,
             lwp: rev2End,
             submittedAt: submittedAt(44 + pafSeq),
-            workflow: pafPendingWorkflow(company),
+            workflow: pafPendingWorkflow(company, position.phase),
             totalHours: String(Number(position.totalHours) + 80),
           })
           authorizations.push(rev1, rev2, rev3)
@@ -1098,7 +1122,10 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
         lwp: firstEnd,
         submittedAt: submittedAt(30 + pafSeq),
         reviewedAt: status === 'approved' ? reviewedAt(31 + pafSeq) : undefined,
-        workflow: status === 'approved' ? pafApprovedWorkflow(company) : pafPendingWorkflow(company),
+        workflow:
+          status === 'approved'
+            ? pafApprovedWorkflow(company, position.phase)
+            : pafPendingWorkflow(company, position.phase),
         eeIdSap: seed % 4 === 0 ? `SAP-${20000 + seed}` : '',
       })
       authorizations.push(single)
