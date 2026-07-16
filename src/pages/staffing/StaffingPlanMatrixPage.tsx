@@ -160,6 +160,7 @@ function renderMetadataCell(
     return value
   }
 
+  // Only offer create when the position has no active (pending/approved) PAF.
   if (!row.authorization) {
     return (
       <Button

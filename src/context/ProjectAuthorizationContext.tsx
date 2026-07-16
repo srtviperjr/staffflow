@@ -15,10 +15,15 @@ import {
   getCurrentAuthorizationRequests,
   getRevisionHistory,
   normalizeAuthorizationRequests,
+  positionHasActivePaf,
 } from '../utils/projectAuthorizationRevisions'
 import { SAMPLE_PROJECT_AUTHORIZATION_REQUESTS } from '../data/sampleData'
+import { useStaffingPlanRequests } from './StaffingPlanContext'
 import { useWorkflows } from './WorkflowContext'
 import { advanceWorkflow, startWorkflow } from '../utils/workflowEngine'
+
+const ACTIVE_PAF_OVERLAP_ERROR =
+  'This staffing plan position already has an active PAF. Only one PAF can be attached at a time.'
 
 const STORAGE_KEY = 'project-authorization-requests'
 
@@ -104,6 +109,7 @@ function requestAsFormRecord(request: ProjectAuthorizationRequest): Record<strin
 
 export function ProjectAuthorizationProvider({ children }: { children: ReactNode }) {
   const { getWorkflowByForm, getWorkflow } = useWorkflows()
+  const { requests: staffingRequests } = useStaffingPlanRequests()
   const [requests, setRequests] = useState<ProjectAuthorizationRequest[]>(loadRequests)
 
   const persist = useCallback((updated: ProjectAuthorizationRequest[]) => {
@@ -112,8 +118,23 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
     saveRequests(normalized)
   }, [])
 
+  const assertPositionAvailable = useCallback(
+    (positionId: string, exceptRevisionGroupId?: string) => {
+      if (
+        positionHasActivePaf(positionId, requests, staffingRequests, {
+          exceptRevisionGroupId,
+        })
+      ) {
+        throw new Error(ACTIVE_PAF_OVERLAP_ERROR)
+      }
+    },
+    [requests, staffingRequests],
+  )
+
   const addRequest = useCallback(
     (data: ProjectAuthorizationFormData, positionLabel: string, position: string) => {
+      assertPositionAvailable(data.staffingPlanRequestId)
+
       const id = crypto.randomUUID()
       const workflow = getWorkflowByForm('project-authorization')
       let status: ProjectAuthorizationRequest['status'] = 'pending'
@@ -141,7 +162,7 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
       persist([newRequest, ...requests])
       return newRequest
     },
-    [persist, requests, getWorkflowByForm],
+    [assertPositionAvailable, persist, requests, getWorkflowByForm],
   )
 
   const reviseRequest = useCallback(
@@ -153,6 +174,8 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
     ) => {
       const source = requests.find((request) => request.id === sourceId)
       if (!source) return
+
+      assertPositionAvailable(data.staffingPlanRequestId, source.revisionGroupId)
 
       const workflow = getWorkflowByForm('project-authorization')
       let status: ProjectAuthorizationRequest['status'] = 'pending'
@@ -186,7 +209,7 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
 
       persist([newRequest, ...updatedRequests])
     },
-    [persist, requests, getWorkflowByForm],
+    [assertPositionAvailable, persist, requests, getWorkflowByForm],
   )
 
   const rejectRequest = useCallback(

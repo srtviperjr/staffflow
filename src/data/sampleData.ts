@@ -444,9 +444,10 @@ function pafForPosition(
 ): ProjectAuthorizationRequest {
   return {
     id: overrides.id,
-    revisionGroupId: overrides.id,
-    revision: 1,
-    isCurrentRevision: true,
+    revisionGroupId: overrides.revisionGroupId ?? overrides.id,
+    revision: overrides.revision ?? 1,
+    supersedesId: overrides.supersedesId,
+    isCurrentRevision: overrides.isCurrentRevision ?? true,
     staffingPlanRequestId: position.id,
     functionalGroup: position.functionalGroup,
     dsg: position.dsg,
@@ -471,6 +472,7 @@ function pafForPosition(
   }
 }
 
+/** One active (pending/approved current) PAF per staffing position — no overlaps. */
 export const SAMPLE_PROJECT_AUTHORIZATION_REQUESTS: ProjectAuthorizationRequest[] = [
   pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[0], {
     id: 'sample-paf-01',
@@ -503,6 +505,7 @@ export const SAMPLE_PROJECT_AUTHORIZATION_REQUESTS: ProjectAuthorizationRequest[
     rejectionComment: 'Candidate does not meet minimum experience requirements.',
     workflow: pafRejectedWorkflow('Fluor'),
   }),
+  // Superseded approved revision — Noah (below) is the current active PAF on this position.
   pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[3], {
     id: 'sample-paf-04',
     candidateName: 'Carlos Mendez',
@@ -512,22 +515,28 @@ export const SAMPLE_PROJECT_AUTHORIZATION_REQUESTS: ProjectAuthorizationRequest[
     eeIdSap: 'SAP-99102',
     submittedAt: submittedAt(14),
     reviewedAt: reviewedAt(15),
+    isCurrentRevision: false,
     workflow: pafApprovedWorkflow('Hatch'),
   }),
-  pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[1], {
+  // New PAF on sp-03 after Tom was rejected — position is free once rejected.
+  pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[2], {
     id: 'sample-paf-05',
     candidateName: 'Elena Vasquez',
     pafNumber: 'PAF00005',
     status: 'approved',
-    company: 'Hatch',
+    company: 'Fluor',
     submittedAt: submittedAt(15),
     reviewedAt: reviewedAt(16),
-    workflow: pafApprovedWorkflow('Hatch'),
+    workflow: pafApprovedWorkflow('Fluor'),
   }),
+  // Revision of Carlos's PAF group — same position, same PAF number, only this revision is current.
   pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[3], {
     id: 'sample-paf-06',
+    revisionGroupId: 'sample-paf-04',
+    revision: 2,
+    supersedesId: 'sample-paf-04',
     candidateName: 'Noah Berger',
-    pafNumber: 'PAF00006',
+    pafNumber: 'PAF00004',
     status: 'pending',
     company: 'BHP',
     submittedAt: submittedAt(16),

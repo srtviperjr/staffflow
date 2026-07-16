@@ -1,8 +1,7 @@
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import type { StaffingPlanRequest } from '../types/staffingPlan'
 import { getApprovedStaffingRequests } from './approvedPositions'
-import { getLatestApprovedAuthorizationByPosition } from './projectAuthorizationRevisions'
-import { findAuthorizationForPosition } from './staffingPlanRevisions'
+import { getActiveAuthorizationForPosition } from './projectAuthorizationRevisions'
 import { generateBiWeeklyPeriods, parseDateInput } from './staffingPlanDates'
 
 export type LocationCategory = 'Site - Comm' | 'Site - Const' | 'Office'
@@ -154,10 +153,6 @@ export function getMatrixPeriods(count = 16): string[] {
   return generateBiWeeklyPeriods(new Date(2026, 8, 27), count)
 }
 
-function getApprovedAuthorizations(requests: ProjectAuthorizationRequest[]) {
-  return [...getLatestApprovedAuthorizationByPosition(requests).values()]
-}
-
 function toLocationCategory(locationType: string): LocationCategory {
   if (locationType === 'Site - Comm') return 'Site - Comm'
   if (locationType === 'Site - Const') return 'Site - Const'
@@ -199,17 +194,17 @@ function buildRow(
   authorization: ProjectAuthorizationRequest | undefined,
   periods: string[],
 ): StaffingMatrixRow {
-  const isAuthorized = Boolean(authorization)
+  const isApproved = authorization?.status === 'approved'
 
   const loads = Object.fromEntries(
     periods.map((period) => [
       period,
-      isAuthorized
+      isApproved
         ? generateDemoLoad(
-            authorization!.id,
+            authorization.id,
             period,
-            authorization!.startBiWeek,
-            authorization!.lwp,
+            authorization.startBiWeek,
+            authorization.lwp,
           )
         : null,
     ]),
@@ -249,13 +244,12 @@ export function buildStaffingMatrixRows(
   periods: string[],
 ): StaffingMatrixRow[] {
   const approvedPositions = getApprovedStaffingRequests(staffingRequests)
-  const approvedAuthorizations = getApprovedAuthorizations(authorizations)
 
   return approvedPositions
     .map((position) =>
       buildRow(
         position,
-        findAuthorizationForPosition(position, staffingRequests, approvedAuthorizations),
+        getActiveAuthorizationForPosition(position, authorizations, staffingRequests),
         periods,
       ),
     )
