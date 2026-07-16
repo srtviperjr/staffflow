@@ -50,8 +50,9 @@ import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
 import { canReviewRequests, canSubmitRequests } from '../../utils/permissions'
 import {
   formatRelatedItemCaption,
-  getRelatedItemsForStaffingPosition,
+  getGroupedRelatedItemsForStaffingPosition,
   type RelatedRegisterItem,
+  type StaffingPositionRelatedGroups,
 } from '../../utils/relatedRegisterItems'
 import type { ProjectAuthorizationRequest } from '../../types/projectAuthorization'
 import type { StaffingPlanRequest } from '../../types/staffingPlan'
@@ -116,6 +117,119 @@ function statusColor(status: string): 'default' | 'warning' | 'success' | 'error
   if (status === 'approved') return 'success'
   if (status === 'rejected') return 'error'
   return 'warning'
+}
+
+function RelatedExpandRow({
+  rowId,
+  item,
+  periods,
+  metadataColSpan,
+  canReview,
+  onView,
+  onApprove,
+  onReject,
+  sectionBg,
+}: {
+  rowId: string
+  item: RelatedRegisterItem
+  periods: string[]
+  metadataColSpan: number
+  canReview: boolean
+  onView: () => void
+  onApprove: () => void
+  onReject: () => void
+  sectionBg: string
+}) {
+  return (
+    <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
+      <TableCell colSpan={metadataColSpan} sx={{ ...cellSx, bgcolor: sectionBg, py: 1 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            justifyContent: 'space-between',
+            gap: 1.5,
+            flexWrap: 'wrap',
+            pl: 1,
+          }}
+        >
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+              {item.barColor ? (
+                <Box
+                  sx={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: '2px',
+                    bgcolor: item.barColor,
+                    flexShrink: 0,
+                  }}
+                />
+              ) : null}
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                {item.title}
+              </Typography>
+              <Chip
+                size="small"
+                label={item.kind === 'staffing-plan' ? 'Position' : 'PAF'}
+                variant="outlined"
+                color={item.kind === 'staffing-plan' ? 'primary' : 'secondary'}
+              />
+              <Chip size="small" label={`Rev ${item.revision}`} variant="outlined" />
+              <Chip size="small" label={item.status} color={statusColor(item.status)} />
+            </Box>
+            <Typography variant="caption" color="text.secondary">
+              {formatRelatedItemCaption(item)}
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+            <Button size="small" variant="outlined" startIcon={<VisibilityIcon />} onClick={onView}>
+              View
+            </Button>
+            {canReview && item.status === 'pending' ? (
+              <>
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="success"
+                  startIcon={<CheckCircleIcon />}
+                  onClick={onApprove}
+                >
+                  Approve
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="error"
+                  startIcon={<CancelIcon />}
+                  onClick={onReject}
+                >
+                  Reject
+                </Button>
+              </>
+            ) : null}
+          </Stack>
+        </Box>
+      </TableCell>
+      {periods.map((period) =>
+        item.startBiWeekRaw && item.lwpRaw ? (
+          <GanttBarCell
+            key={`${rowId}-${item.id}-${period}`}
+            period={period}
+            periods={periods}
+            startBiWeek={item.startBiWeekRaw}
+            lwp={item.lwpRaw}
+            color={item.barColor}
+            title={`${item.title}: ${item.startBiWeek} → ${item.lwp}`}
+            minWidth={58}
+            emptyBgcolor={sectionBg}
+          />
+        ) : (
+          <TableCell key={`${rowId}-${item.id}-${period}`} sx={{ ...cellSx, bgcolor: sectionBg }} />
+        ),
+      )}
+    </TableRow>
+  )
 }
 
 function loadColumnOrder(): MatrixColumnId[] {
@@ -305,17 +419,12 @@ export default function StaffingPlanMatrixPage() {
   )
 
   const relatedByRowId = useMemo(() => {
-    const map = new Map<string, RelatedRegisterItem[]>()
+    const map = new Map<string, StaffingPositionRelatedGroups>()
     for (const row of rows) {
-      const position = visibleStaffingRequests.find((request) => request.id === row.id)
-      if (!position) {
-        map.set(row.id, [])
-        continue
-      }
       map.set(
         row.id,
-        getRelatedItemsForStaffingPosition(
-          position,
+        getGroupedRelatedItemsForStaffingPosition(
+          row.positionRequest,
           visibleStaffingRequests,
           visibleAuthorizationRequests,
         ),
@@ -333,8 +442,11 @@ export default function StaffingPlanMatrixPage() {
     navigate(`/project-authorization?positionId=${positionId}`)
   }
 
-  const handleRevise = (positionId: string) => {
-    navigate(`/staffing-plan/revise/${positionId}`)
+  const handleRevise = (revisionGroupId: string) => {
+    const current = visibleStaffingRequests.find(
+      (request) => request.revisionGroupId === revisionGroupId && request.isCurrentRevision,
+    )
+    navigate(`/staffing-plan/revise/${current?.id ?? revisionGroupId}`)
   }
 
   const setFilterValue = (columnId: MatrixColumnId, value: string) => {
@@ -435,8 +547,8 @@ export default function StaffingPlanMatrixPage() {
               Staffing Plan
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Expand rows for revisions. Calendar bars use a per-person colour from start through last
-              working day.
+              Main rows are the latest approved position revision. Expand to see position revisions and
+              related PAFs (each person) with their own durations.
             </Typography>
           </Box>
         </Box>
@@ -738,7 +850,12 @@ export default function StaffingPlanMatrixPage() {
 
                 <TableBody>
                   {filteredRows.map((row) => {
-                    const related = relatedByRowId.get(row.id) ?? []
+                    const related = relatedByRowId.get(row.id) ?? {
+                      positionRevisions: [],
+                      relatedPafs: [],
+                    }
+                    const relatedCount =
+                      related.positionRevisions.length + related.relatedPafs.length
                     const expanded = Boolean(expandedRows[row.id])
                     return (
                       <Fragment key={row.id}>
@@ -759,7 +876,7 @@ export default function StaffingPlanMatrixPage() {
                               size="small"
                               aria-label={expanded ? 'Collapse related items' : 'Expand related items'}
                               onClick={() => toggleExpanded(row.id)}
-                              disabled={related.length === 0}
+                              disabled={relatedCount === 0}
                             >
                               {expanded ? <RemoveIcon fontSize="small" /> : <AddIcon fontSize="small" />}
                             </IconButton>
@@ -780,7 +897,7 @@ export default function StaffingPlanMatrixPage() {
                                 size="small"
                                 variant="outlined"
                                 startIcon={<EditIcon />}
-                                onClick={() => handleRevise(row.id)}
+                                onClick={() => handleRevise(row.revisionGroupId)}
                                 sx={{ textTransform: 'none', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
                               >
                                 Revise
@@ -813,117 +930,84 @@ export default function StaffingPlanMatrixPage() {
                               period={period}
                               periods={periods}
                               people={row.calendarPeople}
+                              positionRange={{
+                                startBiWeek: row.positionStartBiWeek,
+                                lwp: row.positionLwp,
+                              }}
                             />
                           ))}
                         </TableRow>
 
-                        {expanded
-                          ? related.map((item) => (
-                              <TableRow key={`${row.id}-related-${item.kind}-${item.id}`} sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
+                        {expanded ? (
+                          <>
+                            {related.positionRevisions.length > 0 ? (
+                              <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.03)' }}>
                                 <TableCell
-                                  colSpan={metadataColSpan}
-                                  sx={{ ...cellSx, bgcolor: 'rgba(245,245,245,0.9)', py: 1 }}
+                                  colSpan={metadataColSpan + periods.length}
+                                  sx={{
+                                    ...cellSx,
+                                    bgcolor: 'rgba(236,239,241,0.95)',
+                                    py: 0.75,
+                                    fontWeight: 700,
+                                    fontSize: '0.7rem',
+                                    letterSpacing: 0.3,
+                                    textTransform: 'uppercase',
+                                    color: 'text.secondary',
+                                  }}
                                 >
-                                  <Box
-                                    sx={{
-                                      display: 'flex',
-                                      alignItems: { xs: 'flex-start', sm: 'center' },
-                                      justifyContent: 'space-between',
-                                      gap: 1.5,
-                                      flexWrap: 'wrap',
-                                      pl: 1,
-                                    }}
-                                  >
-                                    <Box>
-                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                                        {item.barColor ? (
-                                          <Box
-                                            sx={{
-                                              width: 10,
-                                              height: 10,
-                                              borderRadius: '2px',
-                                              bgcolor: item.barColor,
-                                              flexShrink: 0,
-                                            }}
-                                          />
-                                        ) : null}
-                                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                          {item.title}
-                                        </Typography>
-                                        <Chip
-                                          size="small"
-                                          label={item.kind === 'staffing-plan' ? 'Position' : 'PAF'}
-                                          variant="outlined"
-                                          color={item.kind === 'staffing-plan' ? 'primary' : 'secondary'}
-                                        />
-                                        <Chip size="small" label={`Rev ${item.revision}`} variant="outlined" />
-                                        <Chip
-                                          size="small"
-                                          label={item.status}
-                                          color={statusColor(item.status)}
-                                        />
-                                      </Box>
-                                      <Typography variant="caption" color="text.secondary">
-                                        {formatRelatedItemCaption(item)}
-                                      </Typography>
-                                    </Box>
-                                    <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-                                      <Button
-                                        size="small"
-                                        variant="outlined"
-                                        startIcon={<VisibilityIcon />}
-                                        onClick={() => openRelatedItem(item)}
-                                      >
-                                        View
-                                      </Button>
-                                      {canReview && item.status === 'pending' ? (
-                                        <>
-                                          <Button
-                                            size="small"
-                                            variant="contained"
-                                            color="success"
-                                            startIcon={<CheckCircleIcon />}
-                                            onClick={() => handleApproveRelated(item)}
-                                          >
-                                            Approve
-                                          </Button>
-                                          <Button
-                                            size="small"
-                                            variant="outlined"
-                                            color="error"
-                                            startIcon={<CancelIcon />}
-                                            onClick={() => setRejectTarget(item)}
-                                          >
-                                            Reject
-                                          </Button>
-                                        </>
-                                      ) : null}
-                                    </Stack>
-                                  </Box>
+                                  Position revisions
                                 </TableCell>
-                                {periods.map((period) =>
-                                  item.startBiWeekRaw && item.lwpRaw ? (
-                                    <GanttBarCell
-                                      key={`${row.id}-${item.id}-${period}`}
-                                      period={period}
-                                      periods={periods}
-                                      startBiWeek={item.startBiWeekRaw}
-                                      lwp={item.lwpRaw}
-                                      color={item.barColor}
-                                      title={`${item.title}: ${item.startBiWeek} → ${item.lwp}`}
-                                      minWidth={58}
-                                      emptyBgcolor="rgba(245,245,245,0.9)"
-                                    />
-                                  ) : (
-                                    <TableCell
-                                      key={`${row.id}-${item.id}-${period}`}
-                                      sx={{ ...cellSx, bgcolor: 'rgba(245,245,245,0.9)' }}
-                                    />
-                                  ),
-                                )}
                               </TableRow>
-                            ))
-                          : null}
+                            ) : null}
+                            {related.positionRevisions.map((item) => (
+                              <RelatedExpandRow
+                                key={`${row.id}-position-${item.id}`}
+                                rowId={row.id}
+                                item={item}
+                                periods={periods}
+                                metadataColSpan={metadataColSpan}
+                                canReview={canReview}
+                                onView={() => openRelatedItem(item)}
+                                onApprove={() => handleApproveRelated(item)}
+                                onReject={() => setRejectTarget(item)}
+                                sectionBg="rgba(245,245,245,0.9)"
+                              />
+                            ))}
+                            {related.relatedPafs.length > 0 ? (
+                              <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.03)' }}>
+                                <TableCell
+                                  colSpan={metadataColSpan + periods.length}
+                                  sx={{
+                                    ...cellSx,
+                                    bgcolor: 'rgba(236,239,241,0.95)',
+                                    py: 0.75,
+                                    fontWeight: 700,
+                                    fontSize: '0.7rem',
+                                    letterSpacing: 0.3,
+                                    textTransform: 'uppercase',
+                                    color: 'text.secondary',
+                                  }}
+                                >
+                                  Related PAFs
+                                </TableCell>
+                              </TableRow>
+                            ) : null}
+                            {related.relatedPafs.map((item) => (
+                              <RelatedExpandRow
+                                key={`${row.id}-paf-${item.id}`}
+                                rowId={row.id}
+                                item={item}
+                                periods={periods}
+                                metadataColSpan={metadataColSpan}
+                                canReview={canReview}
+                                onView={() => openRelatedItem(item)}
+                                onApprove={() => handleApproveRelated(item)}
+                                onReject={() => setRejectTarget(item)}
+                                sectionBg="rgba(245,245,245,0.9)"
+                              />
+                            ))}
+                          </>
+                        ) : null}
                       </Fragment>
                     )
                   })}

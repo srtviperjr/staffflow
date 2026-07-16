@@ -373,11 +373,19 @@ function generateSampleData(): {
       const status: StaffingPlanRequest['status'] =
         statusRoll === 8 ? 'pending' : statusRoll === 9 ? 'rejected' : 'approved'
 
-      const hasStaffingRevision = status === 'approved' && index % 9 === 0
       const startBiWeek = addBiWeeks(POSITION_WINDOW_START, index % 3)
       const lwp = addBiWeeks(startBiWeek, POSITION_WINDOW_BIWEEKS)
+      // Approved → approved revision (different hours/duration particulars).
+      const approvedThenApproved = status === 'approved' && index % 9 === 0
+      // Approved position with a newer pending revision — matrix still shows the approved one.
+      const approvedThenPending = status === 'approved' && index % 9 === 3
 
-      if (hasStaffingRevision) {
+      if (approvedThenApproved || approvedThenPending) {
+        const revisionTwoStatus: StaffingPlanRequest['status'] = approvedThenPending
+          ? 'pending'
+          : 'approved'
+        const revisionTwoLwp = approvedThenApproved ? addBiWeeks(lwp, 2) : lwp
+
         staffing.push(
           buildStaffingPosition(company, index, {
             id: `${groupId}-r1`,
@@ -400,12 +408,16 @@ function generateSampleData(): {
             revision: 2,
             supersedesId: `${groupId}-r1`,
             isCurrentRevision: true,
-            status: 'approved',
+            status: revisionTwoStatus,
             startBiWeek,
-            lwp,
+            lwp: revisionTwoLwp,
             submittedAt: submittedAt(index + 2),
-            reviewedAt: reviewedAt(index + 3),
-            workflow: staffingApprovedWorkflow(company),
+            reviewedAt:
+              revisionTwoStatus === 'approved' ? reviewedAt(index + 3) : undefined,
+            workflow:
+              revisionTwoStatus === 'approved'
+                ? staffingApprovedWorkflow(company)
+                : staffingPendingWorkflow(company),
             totalHours: '1800',
             hoursToGo: '900',
           }),
@@ -435,10 +447,15 @@ function generateSampleData(): {
         )
       }
 
-      const currentPosition = staffing.find(
-        (request) => request.revisionGroupId === groupId && request.isCurrentRevision,
-      )
-      if (!currentPosition || currentPosition.status !== 'approved') continue
+      // PAFs attach to the latest approved revision of the position group.
+      const approvedForGroup = staffing
+        .filter(
+          (request) =>
+            request.revisionGroupId === groupId && request.status === 'approved',
+        )
+        .sort((a, b) => b.revision - a.revision)[0]
+      const currentPosition = approvedForGroup
+      if (!currentPosition) continue
 
       const pattern = index % 7
       const midEnd = addBiWeeks(currentPosition.startBiWeek, 12)

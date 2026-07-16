@@ -23,11 +23,16 @@ export interface MatrixCalendarPerson {
 export interface StaffingMatrixRow {
   id: string
   revisionGroupId: string
+  /** Latest approved staffing revision shown as the main plan record. */
+  positionRequest: StaffingPlanRequest
   authorization?: ProjectAuthorizationRequest
   /** True when another person can still be assigned without date overlap. */
   canAddPaf: boolean
-  /** Active people on this position for calendar highlighting. */
+  /** Active people (PAFs) on this position for calendar highlighting. */
   calendarPeople: MatrixCalendarPerson[]
+  /** Position availability window (owned by the staffing revision, not the PAF). */
+  positionStartBiWeek: string
+  positionLwp: string
   phase: string
   projectOffice: string
   functionalDsg: string
@@ -231,6 +236,7 @@ function buildRow(
   const approvedAssignments = activeAssignments.filter((request) => request.status === 'approved')
   const calendarPeople = toCalendarPeople(activeAssignments)
 
+  // Load demo values follow people filling the position; empty when unfilled.
   const loads = Object.fromEntries(
     periods.map((period) => {
       for (const assignment of approvedAssignments) {
@@ -249,28 +255,32 @@ function buildRow(
   return {
     id: position.id,
     revisionGroupId: position.revisionGroupId,
+    positionRequest: position,
     authorization,
     canAddPaf,
     calendarPeople,
+    positionStartBiWeek: position.startBiWeek,
+    positionLwp: position.lwp,
     phase: position.phase,
     projectOffice: position.locationType,
     functionalDsg: position.dsg,
     area: position.area,
     subArea: position.subArea,
-    country: authorization?.country ?? position.country,
+    // Position particulars come from the staffing revision; candidate/PAF from the person assignment.
+    country: position.country,
     discipline: position.discipline,
     position: position.position,
     candidate: authorization?.candidateName ?? 'None',
-    class: authorization?.class ?? position.class,
-    company: authorization?.company ?? position.company,
-    eeIdSap: authorization?.eeIdSap ?? position.eeIdSap,
+    class: position.class,
+    company: position.company,
+    eeIdSap: position.eeIdSap,
     paf: authorization?.pafNumber ?? 'None',
-    sortNumber: authorization?.sortNumber ?? position.sortNumber,
-    totalHours: authorization?.totalHours ?? position.totalHours,
+    sortNumber: position.sortNumber,
+    totalHours: position.totalHours,
     hoursToGo: position.hoursToGo,
-    roster: authorization?.roster ?? position.roster,
-    startBiWeek: formatMatrixDate(authorization?.startBiWeek ?? position.startBiWeek),
-    lwp: formatMatrixDate(authorization?.lwp ?? position.lwp),
+    roster: position.roster,
+    startBiWeek: formatMatrixDate(position.startBiWeek),
+    lwp: formatMatrixDate(position.lwp),
     locationCategory: toLocationCategory(position.locationType),
     loads,
   }

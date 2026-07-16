@@ -255,7 +255,8 @@ export default function PafRegisterPage() {
               PAF Register
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              PAF requests and revisions with a Gantt-style duration calendar on the right.
+              Each PAF is one person filling a staffing position. Expand for that person&apos;s PAF
+              revisions; calendar colour shows their duration.
             </Typography>
           </Box>
         </Box>

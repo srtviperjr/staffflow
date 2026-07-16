@@ -77,11 +77,12 @@ export default function GanttBarCell({
   )
 }
 
-/** Stacked/single bars when multiple people can appear in one period cell. */
+/** Person bars over an optional muted position-availability track. */
 export function MultiPersonGanttCell({
   period,
   periods,
   people,
+  positionRange,
   minWidth = 58,
 }: {
   period: string
@@ -93,13 +94,18 @@ export function MultiPersonGanttCell({
     lwp: string
     color: string
   }>
+  /** Staffing position availability window (separate from each person's PAF duration). */
+  positionRange?: { startBiWeek: string; lwp: string }
   minWidth?: number
 }) {
   const covering = people.filter(
     (person) => ganttBarRole(period, periods, person.startBiWeek, person.lwp) !== 'none',
   )
+  const inPositionWindow = positionRange
+    ? ganttBarRole(period, periods, positionRange.startBiWeek, positionRange.lwp) !== 'none'
+    : false
 
-  if (covering.length === 0) {
+  if (covering.length === 0 && !inPositionWindow) {
     return (
       <TableCell
         sx={{
@@ -118,25 +124,39 @@ export function MultiPersonGanttCell({
         ...cellSx,
         minWidth,
         p: 0.25,
+        bgcolor: inPositionWindow && covering.length === 0 ? 'rgba(100, 116, 139, 0.12)' : undefined,
       }}
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-        {covering.map((person) => {
-          const role = ganttBarRole(period, periods, person.startBiWeek, person.lwp)
-          return (
-            <Box
-              key={person.id}
-              sx={{
-                height: covering.length > 1 ? 8 : 18,
-                bgcolor: person.color,
-                borderRadius: ganttBarRadius(role),
-                opacity: 0.92,
-              }}
-              title={`${person.candidateName}: ${person.startBiWeek} → ${person.lwp}`}
-            />
-          )
-        })}
-      </Box>
+      {covering.length === 0 ? (
+        <Box
+          sx={{
+            height: 18,
+            bgcolor: 'rgba(100, 116, 139, 0.35)',
+            borderRadius: ganttBarRadius(
+              ganttBarRole(period, periods, positionRange!.startBiWeek, positionRange!.lwp),
+            ),
+          }}
+          title={`Position available: ${positionRange!.startBiWeek} → ${positionRange!.lwp}`}
+        />
+      ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+          {covering.map((person) => {
+            const role = ganttBarRole(period, periods, person.startBiWeek, person.lwp)
+            return (
+              <Box
+                key={person.id}
+                sx={{
+                  height: covering.length > 1 ? 8 : 18,
+                  bgcolor: person.color,
+                  borderRadius: ganttBarRadius(role),
+                  opacity: 0.92,
+                }}
+                title={`${person.candidateName}: ${person.startBiWeek} → ${person.lwp}`}
+              />
+            )
+          })}
+        </Box>
+      )}
     </TableCell>
   )
 }

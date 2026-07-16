@@ -1,9 +1,26 @@
 import type { StaffingPlanRequest } from '../types/staffingPlan'
 import { sortAlpha } from '../constants/staffingPlanOptions'
-import { getCurrentStaffingPlanRequests } from './staffingPlanRevisions'
 
+/**
+ * Latest approved revision per position group.
+ * A newer pending/rejected revision does not remove the position from the plan.
+ */
 export function getApprovedStaffingRequests(requests: StaffingPlanRequest[]) {
-  return getCurrentStaffingPlanRequests(requests).filter((request) => request.status === 'approved')
+  const latestApprovedByGroup = new Map<string, StaffingPlanRequest>()
+
+  for (const request of requests) {
+    if (request.status !== 'approved') continue
+    const existing = latestApprovedByGroup.get(request.revisionGroupId)
+    if (
+      !existing ||
+      request.revision > existing.revision ||
+      (request.revision === existing.revision && request.submittedAt > existing.submittedAt)
+    ) {
+      latestApprovedByGroup.set(request.revisionGroupId, request)
+    }
+  }
+
+  return [...latestApprovedByGroup.values()]
 }
 
 export function getApprovedFunctionalGroups(requests: StaffingPlanRequest[]) {
