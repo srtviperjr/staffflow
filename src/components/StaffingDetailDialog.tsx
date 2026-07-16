@@ -22,6 +22,7 @@ import {
 } from '../utils/positionCost'
 import type { StaffingApprovalStep } from '../utils/staffingApprovalSteps'
 import StaffingApprovalSteps from './StaffingApprovalSteps'
+import StaffingApprovalTrail from './StaffingApprovalTrail'
 
 interface StaffingDetailDialogProps {
   request: StaffingPlanRequest | null
@@ -115,6 +116,12 @@ export default function StaffingDetailDialog({
             <Detail label="Last Working Day" value={formatDisplayDate(request.lwp)} />
           </Box>
         )}
+        {approvalSteps.length > 0 ? (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <StaffingApprovalTrail steps={approvalSteps} />
+          </>
+        ) : null}
         <Divider sx={{ my: 2 }} />
         <Typography variant="caption" color="text.secondary">
           Submitted {request ? new Date(request.submittedAt).toLocaleString() : ''}

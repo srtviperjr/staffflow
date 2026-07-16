@@ -184,15 +184,59 @@ function managerNodeForCompany(company: string): 'sp-review-bantrel' | 'sp-revie
   return company === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
 }
 
+type SampleActor = { userId: string; name: string }
+
+function requestorForCompany(company: string): SampleActor {
+  if (company === 'Bantrel') return { userId: 'user-005', name: 'Morgan Chen' }
+  if (company === 'Fluor') return { userId: 'user-007', name: 'Casey Brooks' }
+  if (company === 'Hatch') return { userId: 'user-003', name: 'Sam Patel' }
+  return { userId: 'user-003', name: 'Sam Patel' }
+}
+
+function managerForCompany(company: string): SampleActor {
+  if (company === 'Bantrel') return { userId: 'user-006', name: 'Avery Kim' }
+  if (company === 'Fluor') return { userId: 'user-008', name: 'Dana Ortiz' }
+  if (company === 'Hatch') return { userId: 'user-004', name: 'Riley Quinn' }
+  return { userId: 'user-002', name: 'Jordan Lee' }
+}
+
+function costEngineerActor(): SampleActor {
+  return { userId: 'user-009', name: 'Taylor Brooks' }
+}
+
+function pdForPhase(phase: string): SampleActor {
+  return phase === 'JS2'
+    ? { userId: 'user-013', name: 'Quinn Sato' }
+    : { userId: 'user-012', name: 'Pat Okonkwo' }
+}
+
+function acted(
+  actor: SampleActor,
+  action: 'submit' | 'approve' | 'reject',
+  at: string,
+): Pick<
+  NonNullable<WorkflowProgress['history']>[number],
+  'actedAt' | 'actedByUserId' | 'actedByName' | 'action'
+> {
+  return {
+    actedAt: at,
+    actedByUserId: actor.userId,
+    actedByName: actor.name,
+    action,
+  }
+}
+
 /** Waiting on Cost Engineer (after requestor submit). */
-function staffingPendingAtCostWorkflow(): WorkflowProgress {
+function staffingPendingAtCostWorkflow(company: string): WorkflowProgress {
+  const requestor = requestorForCompany(company)
+  const at = submittedAt(0)
   return {
     workflowId: 'workflow-staffing-plan-approval',
     currentNodeId: 'sp-cost-review',
     history: [
-      { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
-      { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
-      { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-start', arrivedAt: at },
+      { nodeId: 'sp-submit', arrivedAt: at, ...acted(requestor, 'submit', at) },
+      { nodeId: 'sp-cost-review', arrivedAt: at },
     ],
   }
 }
@@ -200,19 +244,28 @@ function staffingPendingAtCostWorkflow(): WorkflowProgress {
 /** Waiting on Manager after Cost Engineer. */
 function staffingPendingWorkflow(company: string, _phase: string): WorkflowProgress {
   const reviewNode = managerNodeForCompany(company)
+  const requestor = requestorForCompany(company)
+  const cost = costEngineerActor()
+  const submitAt = submittedAt(0)
+  const costAt = reviewedAt(0)
   return {
     workflowId: 'workflow-staffing-plan-approval',
     currentNodeId: reviewNode,
     history: [
-      { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
-      { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
-      { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
+      { nodeId: 'sp-start', arrivedAt: submitAt },
+      { nodeId: 'sp-submit', arrivedAt: submitAt, ...acted(requestor, 'submit', submitAt) },
+      {
+        nodeId: 'sp-cost-review',
+        arrivedAt: submitAt,
+        branch: 'yes',
+        ...acted(cost, 'approve', costAt),
+      },
       {
         nodeId: 'sp-hiring-gate',
-        arrivedAt: submittedAt(0),
+        arrivedAt: costAt,
         branch: company === 'Bantrel' ? 'yes' : 'no',
       },
-      { nodeId: reviewNode, arrivedAt: submittedAt(0) },
+      { nodeId: reviewNode, arrivedAt: costAt },
     ],
   }
 }
@@ -221,25 +274,41 @@ function staffingPendingWorkflow(company: string, _phase: string): WorkflowProgr
 function staffingPendingAtPdWorkflow(company: string, phase: string): WorkflowProgress {
   const reviewNode = managerNodeForCompany(company)
   const pdNode = pdNodeForPhase(phase)
+  const requestor = requestorForCompany(company)
+  const cost = costEngineerActor()
+  const manager = managerForCompany(company)
+  const submitAt = submittedAt(0)
+  const costAt = reviewedAt(0)
+  const managerAt = reviewedAt(1)
   return {
     workflowId: 'workflow-staffing-plan-approval',
     currentNodeId: pdNode,
     history: [
-      { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
-      { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
-      { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
+      { nodeId: 'sp-start', arrivedAt: submitAt },
+      { nodeId: 'sp-submit', arrivedAt: submitAt, ...acted(requestor, 'submit', submitAt) },
+      {
+        nodeId: 'sp-cost-review',
+        arrivedAt: submitAt,
+        branch: 'yes',
+        ...acted(cost, 'approve', costAt),
+      },
       {
         nodeId: 'sp-hiring-gate',
-        arrivedAt: submittedAt(0),
+        arrivedAt: costAt,
         branch: company === 'Bantrel' ? 'yes' : 'no',
       },
-      { nodeId: reviewNode, arrivedAt: submittedAt(0), branch: 'yes' },
+      {
+        nodeId: reviewNode,
+        arrivedAt: costAt,
+        branch: 'yes',
+        ...acted(manager, 'approve', managerAt),
+      },
       {
         nodeId: 'sp-project-gate',
-        arrivedAt: submittedAt(0),
+        arrivedAt: managerAt,
         branch: phase === 'JS1' ? 'yes' : 'no',
       },
-      { nodeId: pdNode, arrivedAt: submittedAt(0) },
+      { nodeId: pdNode, arrivedAt: managerAt },
     ],
   }
 }
@@ -247,108 +316,175 @@ function staffingPendingAtPdWorkflow(company: string, phase: string): WorkflowPr
 function staffingApprovedWorkflow(company: string, phase: string): WorkflowProgress {
   const reviewNode = managerNodeForCompany(company)
   const pdNode = pdNodeForPhase(phase)
+  const requestor = requestorForCompany(company)
+  const cost = costEngineerActor()
+  const manager = managerForCompany(company)
+  const pd = pdForPhase(phase)
+  const submitAt = submittedAt(0)
+  const costAt = reviewedAt(0)
+  const managerAt = reviewedAt(1)
+  const pdAt = reviewedAt(2)
   return {
     workflowId: 'workflow-staffing-plan-approval',
     currentNodeId: 'sp-end-ok',
     history: [
-      { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
-      { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
-      { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
+      { nodeId: 'sp-start', arrivedAt: submitAt },
+      { nodeId: 'sp-submit', arrivedAt: submitAt, ...acted(requestor, 'submit', submitAt) },
+      {
+        nodeId: 'sp-cost-review',
+        arrivedAt: submitAt,
+        branch: 'yes',
+        ...acted(cost, 'approve', costAt),
+      },
       {
         nodeId: 'sp-hiring-gate',
-        arrivedAt: submittedAt(0),
+        arrivedAt: costAt,
         branch: company === 'Bantrel' ? 'yes' : 'no',
       },
-      { nodeId: reviewNode, arrivedAt: submittedAt(0), branch: 'yes' },
+      {
+        nodeId: reviewNode,
+        arrivedAt: costAt,
+        branch: 'yes',
+        ...acted(manager, 'approve', managerAt),
+      },
       {
         nodeId: 'sp-project-gate',
-        arrivedAt: submittedAt(0),
+        arrivedAt: managerAt,
         branch: phase === 'JS1' ? 'yes' : 'no',
       },
-      { nodeId: pdNode, arrivedAt: submittedAt(1), branch: 'yes' },
-      { nodeId: 'sp-approved', arrivedAt: submittedAt(1) },
-      { nodeId: 'sp-end-ok', arrivedAt: submittedAt(1) },
+      {
+        nodeId: pdNode,
+        arrivedAt: managerAt,
+        branch: 'yes',
+        ...acted(pd, 'approve', pdAt),
+      },
+      { nodeId: 'sp-approved', arrivedAt: pdAt },
+      { nodeId: 'sp-end-ok', arrivedAt: pdAt },
     ],
   }
 }
 
 function staffingRejectedWorkflow(company: string, _phase: string): WorkflowProgress {
   const reviewNode = managerNodeForCompany(company)
+  const requestor = requestorForCompany(company)
+  const cost = costEngineerActor()
+  const manager = managerForCompany(company)
+  const submitAt = submittedAt(0)
+  const costAt = reviewedAt(0)
+  const rejectAt = reviewedAt(1)
   return {
     workflowId: 'workflow-staffing-plan-approval',
     currentNodeId: 'sp-end-reject',
     history: [
-      { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
-      { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
-      { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
+      { nodeId: 'sp-start', arrivedAt: submitAt },
+      { nodeId: 'sp-submit', arrivedAt: submitAt, ...acted(requestor, 'submit', submitAt) },
+      {
+        nodeId: 'sp-cost-review',
+        arrivedAt: submitAt,
+        branch: 'yes',
+        ...acted(cost, 'approve', costAt),
+      },
       {
         nodeId: 'sp-hiring-gate',
-        arrivedAt: submittedAt(0),
+        arrivedAt: costAt,
         branch: company === 'Bantrel' ? 'yes' : 'no',
       },
-      { nodeId: reviewNode, arrivedAt: submittedAt(0), branch: 'no' },
-      { nodeId: 'sp-rejected', arrivedAt: submittedAt(1) },
-      { nodeId: 'sp-end-reject', arrivedAt: submittedAt(1) },
+      {
+        nodeId: reviewNode,
+        arrivedAt: costAt,
+        branch: 'no',
+        ...acted(manager, 'reject', rejectAt),
+      },
+      { nodeId: 'sp-rejected', arrivedAt: rejectAt },
+      { nodeId: 'sp-end-reject', arrivedAt: rejectAt },
     ],
   }
 }
 
 function pafPendingWorkflow(company: string): WorkflowProgress {
   const reviewNode = company === 'Fluor' ? 'paf-review-contractor' : 'paf-review-standard'
+  const requestor = requestorForCompany(company)
+  const at = submittedAt(11)
   return {
     workflowId: 'workflow-paf-approval',
     currentNodeId: reviewNode,
     history: [
-      { nodeId: 'paf-start', arrivedAt: submittedAt(11) },
-      { nodeId: 'paf-submit', arrivedAt: submittedAt(11) },
+      { nodeId: 'paf-start', arrivedAt: at },
+      { nodeId: 'paf-submit', arrivedAt: at, ...acted(requestor, 'submit', at) },
       {
         nodeId: 'paf-class-gate',
-        arrivedAt: submittedAt(11),
+        arrivedAt: at,
         branch: company === 'Fluor' ? 'yes' : 'no',
       },
-      { nodeId: reviewNode, arrivedAt: submittedAt(11) },
+      { nodeId: reviewNode, arrivedAt: at },
     ],
   }
 }
 
 function pafApprovedWorkflow(company: string): WorkflowProgress {
   const reviewNode = company === 'Fluor' ? 'paf-review-contractor' : 'paf-review-standard'
+  const requestor = requestorForCompany(company)
+  const manager = managerForCompany(company)
+  const submitAt = submittedAt(11)
+  const approveAt = submittedAt(12)
   return {
     workflowId: 'workflow-paf-approval',
     currentNodeId: 'paf-end-ok',
     history: [
-      { nodeId: 'paf-start', arrivedAt: submittedAt(11) },
-      { nodeId: 'paf-submit', arrivedAt: submittedAt(11) },
+      { nodeId: 'paf-start', arrivedAt: submitAt },
+      { nodeId: 'paf-submit', arrivedAt: submitAt, ...acted(requestor, 'submit', submitAt) },
       {
         nodeId: 'paf-class-gate',
-        arrivedAt: submittedAt(11),
+        arrivedAt: submitAt,
         branch: company === 'Fluor' ? 'yes' : 'no',
       },
-      { nodeId: reviewNode, arrivedAt: submittedAt(11) },
-      { nodeId: 'paf-decision', arrivedAt: submittedAt(12), branch: 'yes' },
-      { nodeId: 'paf-approved', arrivedAt: submittedAt(12) },
-      { nodeId: 'paf-end-ok', arrivedAt: submittedAt(12) },
+      {
+        nodeId: reviewNode,
+        arrivedAt: submitAt,
+        ...acted(manager, 'approve', approveAt),
+      },
+      {
+        nodeId: 'paf-decision',
+        arrivedAt: approveAt,
+        branch: 'yes',
+        ...acted(manager, 'approve', approveAt),
+      },
+      { nodeId: 'paf-approved', arrivedAt: approveAt },
+      { nodeId: 'paf-end-ok', arrivedAt: approveAt },
     ],
   }
 }
 
 function pafRejectedWorkflow(company: string): WorkflowProgress {
   const reviewNode = company === 'Fluor' ? 'paf-review-contractor' : 'paf-review-standard'
+  const requestor = requestorForCompany(company)
+  const manager = managerForCompany(company)
+  const submitAt = submittedAt(11)
+  const rejectAt = submittedAt(12)
   return {
     workflowId: 'workflow-paf-approval',
     currentNodeId: 'paf-end-reject',
     history: [
-      { nodeId: 'paf-start', arrivedAt: submittedAt(11) },
-      { nodeId: 'paf-submit', arrivedAt: submittedAt(11) },
+      { nodeId: 'paf-start', arrivedAt: submitAt },
+      { nodeId: 'paf-submit', arrivedAt: submitAt, ...acted(requestor, 'submit', submitAt) },
       {
         nodeId: 'paf-class-gate',
-        arrivedAt: submittedAt(11),
+        arrivedAt: submitAt,
         branch: company === 'Fluor' ? 'yes' : 'no',
       },
-      { nodeId: reviewNode, arrivedAt: submittedAt(11) },
-      { nodeId: 'paf-decision', arrivedAt: submittedAt(12), branch: 'no' },
-      { nodeId: 'paf-rejected', arrivedAt: submittedAt(12) },
-      { nodeId: 'paf-end-reject', arrivedAt: submittedAt(12) },
+      {
+        nodeId: reviewNode,
+        arrivedAt: submitAt,
+        ...acted(manager, 'reject', rejectAt),
+      },
+      {
+        nodeId: 'paf-decision',
+        arrivedAt: rejectAt,
+        branch: 'no',
+        ...acted(manager, 'reject', rejectAt),
+      },
+      { nodeId: 'paf-rejected', arrivedAt: rejectAt },
+      { nodeId: 'paf-end-reject', arrivedAt: rejectAt },
     ],
   }
 }
@@ -727,7 +863,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
                   : status === 'rejected'
                     ? staffingRejectedWorkflow(company, phase)
                     : awaitingCost
-                      ? staffingPendingAtCostWorkflow()
+                      ? staffingPendingAtCostWorkflow(company)
                       : awaitingPd
                         ? staffingPendingAtPdWorkflow(company, phase)
                         : staffingPendingWorkflow(company, phase),

@@ -29,11 +29,11 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <WorkflowProvider>
-        <OnboardingProvider>
-          <LabourChangeProvider>
-            <StaffingPlanProvider>
-              <ProjectAuthorizationProvider>
-                <RolesProvider>
+        <RolesProvider>
+          <OnboardingProvider>
+            <LabourChangeProvider>
+              <StaffingPlanProvider>
+                <ProjectAuthorizationProvider>
                   <BrowserRouter>
                     <RequestFormsProvider>
                       <Routes>
@@ -118,11 +118,11 @@ function App() {
                       </Routes>
                     </RequestFormsProvider>
                   </BrowserRouter>
-                </RolesProvider>
-              </ProjectAuthorizationProvider>
-            </StaffingPlanProvider>
-          </LabourChangeProvider>
-        </OnboardingProvider>
+                </ProjectAuthorizationProvider>
+              </StaffingPlanProvider>
+            </LabourChangeProvider>
+          </OnboardingProvider>
+        </RolesProvider>
       </WorkflowProvider>
     </ThemeProvider>
   )

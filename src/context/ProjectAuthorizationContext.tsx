@@ -20,9 +20,18 @@ import {
   validatePafSchedule,
 } from '../utils/projectAuthorizationRevisions'
 import { SAMPLE_PROJECT_AUTHORIZATION_REQUESTS } from '../data/sampleData'
+import type { WorkflowActor } from '../types/workflow'
+import { useRoles } from './RolesContext'
 import { useStaffingPlanRequests } from './StaffingPlanContext'
 import { useWorkflows } from './WorkflowContext'
 import { advanceWorkflow, startWorkflow } from '../utils/workflowEngine'
+
+function toWorkflowActor(
+  user: { id: string; name: string } | null | undefined,
+): WorkflowActor | undefined {
+  if (!user) return undefined
+  return { userId: user.id, name: user.name }
+}
 
 const STORAGE_KEY = 'project-authorization-requests'
 
@@ -114,6 +123,7 @@ function requestAsFormRecord(request: ProjectAuthorizationRequest): Record<strin
 
 export function ProjectAuthorizationProvider({ children }: { children: ReactNode }) {
   const { getWorkflowByForm, getWorkflow } = useWorkflows()
+  const { currentUser } = useRoles()
   const { requests: staffingRequests } = useStaffingPlanRequests()
   const [requests, setRequests] = useState<ProjectAuthorizationRequest[]>(loadRequests)
 
@@ -155,11 +165,16 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
       let workflowProgress: ProjectAuthorizationRequest['workflow']
 
       if (workflow) {
-        const result = startWorkflow(workflow, {
-          ...data,
-          position,
-          approvedPositionLabel: positionLabel,
-        })
+        const result = startWorkflow(
+          workflow,
+          {
+            ...data,
+            position,
+            approvedPositionLabel: positionLabel,
+          },
+          undefined,
+          toWorkflowActor(currentUser),
+        )
         status = result.status
         workflowProgress = result.progress
       }
@@ -176,7 +191,7 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
       persist([newRequest, ...requests])
       return newRequest
     },
-    [assertPafSchedule, persist, requests, getWorkflowByForm],
+    [assertPafSchedule, persist, requests, getWorkflowByForm, currentUser],
   )
 
   const reviseRequest = useCallback(
@@ -209,6 +224,7 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
             approvedPositionLabel: positionLabel,
           },
           previousFormData,
+          toWorkflowActor(currentUser),
         )
         status = result.status
         workflowProgress = result.progress
@@ -232,11 +248,12 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
 
       persist([newRequest, ...updatedRequests])
     },
-    [assertPafSchedule, persist, requests, getWorkflowByForm],
+    [assertPafSchedule, persist, requests, getWorkflowByForm, currentUser],
   )
 
   const rejectRequest = useCallback(
     (id: string, comment: string) => {
+      const actor = toWorkflowActor(currentUser)
       persist(
         requests.map((request) => {
           if (request.id !== id) return request
@@ -249,6 +266,8 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
                 request.workflow,
                 requestAsFormRecord(request),
                 'reject',
+                undefined,
+                actor,
               )
               return {
                 ...request,
@@ -269,11 +288,12 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
         }),
       )
     },
-    [persist, requests, getWorkflow],
+    [persist, requests, getWorkflow, currentUser],
   )
 
   const approveRequest = useCallback(
     (id: string) => {
+      const actor = toWorkflowActor(currentUser)
       persist(
         requests.map((request) => {
           if (request.id !== id) return request
@@ -286,6 +306,8 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
                 request.workflow,
                 requestAsFormRecord(request),
                 'approve',
+                undefined,
+                actor,
               )
               return {
                 ...request,
@@ -305,7 +327,7 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
         }),
       )
     },
-    [persist, requests, getWorkflow],
+    [persist, requests, getWorkflow, currentUser],
   )
 
   const currentRequests = useMemo(() => getCurrentAuthorizationRequests(requests), [requests])

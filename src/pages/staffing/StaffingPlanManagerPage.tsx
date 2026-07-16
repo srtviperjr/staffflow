@@ -43,6 +43,7 @@ import {
 import { canEditHourlyCost, canViewCostInfo } from '../../utils/permissions'
 import { getStaffingApprovalSteps } from '../../utils/staffingApprovalSteps'
 import StaffingApprovalSteps from '../../components/StaffingApprovalSteps'
+import StaffingApprovalTrail from '../../components/StaffingApprovalTrail'
 import {
   computePositionCost,
   formatCostAmount,
@@ -400,6 +401,13 @@ export default function StaffingPlanManagerPage() {
                         changedFields={changedFields}
                         showCost={showCost}
                       />
+
+                      {approvalSteps.length > 0 ? (
+                        <Box sx={{ mt: 2 }}>
+                          <Divider sx={{ mb: 2 }} />
+                          <StaffingApprovalTrail steps={approvalSteps} />
+                        </Box>
+                      ) : null}
 
                       {atCostStep && canAct && canEditCost ? (
                         <Box sx={{ mt: 2, maxWidth: 360 }}>
