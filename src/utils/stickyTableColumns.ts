@@ -16,7 +16,8 @@ export type StickyColumnLike = {
 
 /**
  * Freeze Expand + Actions, then any user-selected sticky metadata columns
- * (in current visible order). Expand-detail sticks after that block.
+ * (in current visible order). Expand-detail content sits in that sticky
+ * metadata block (not after it) so revision text aligns with the frozen panes.
  */
 export function buildStickyColumnLayout(
   expandWidth: number,
@@ -29,13 +30,21 @@ export function buildStickyColumnLayout(
   const stickyVisible = visibleColumns.filter((column) => stickySet.has(column.id))
 
   const offsets = new Map<string, number>()
-  let left = expandWidth + actionsWidth
+  const detailLeft = expandWidth + actionsWidth
+  let left = detailLeft
+  let stickyMetaWidth = 0
   for (const column of stickyVisible) {
     offsets.set(column.id, left)
-    left += columnWidth(column.minWidth, fallback)
+    const width = columnWidth(column.minWidth, fallback)
+    left += width
+    stickyMetaWidth += width
   }
 
   const lastStickyId = stickyVisible.length > 0 ? stickyVisible[stickyVisible.length - 1].id : null
+  const stickyMetaColSpan = Math.max(stickyVisible.length, 1)
+  /** Expand detail fills the sticky metadata columns when present. */
+  const detailWidth =
+    stickyVisible.length > 0 ? stickyMetaWidth : STICKY_EXPAND_DETAIL_WIDTH
 
   return {
     offsets,
@@ -43,8 +52,15 @@ export function buildStickyColumnLayout(
     lastStickyId,
     isSticky: (columnId: string) => offsets.has(columnId),
     leftFor: (columnId: string) => offsets.get(columnId),
-    /** Sticky left for expand-detail content (after Expand + Actions + sticky cols). */
-    detailLeft: left,
+    /** Sticky left for expand-detail content (start of sticky metadata block). */
+    detailLeft,
+    /** Width of the expand-detail sticky pane (covers sticky metadata columns). */
+    detailWidth,
+    /** Table colspan for expand-detail over sticky metadata columns (min 1). */
+    stickyMetaColSpan,
+    stickyMetaCount: stickyVisible.length,
+    /** Right edge of the full sticky freeze (Expand + Actions + sticky meta). */
+    stickyBlockRight: left,
     actionsHaveEdgeShadow: stickyVisible.length === 0,
   }
 }

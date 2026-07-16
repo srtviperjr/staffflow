@@ -53,7 +53,6 @@ import {
 } from '../../utils/relatedRegisterItems'
 import { formatDisplayDate } from '../../utils/staffingPlanDates'
 import {
-  STICKY_EXPAND_DETAIL_WIDTH,
   buildStickyColumnLayout,
   columnWidth,
   groupStickyColumnsFirst,
@@ -199,19 +198,6 @@ export default function PafRegisterPage() {
         META_WIDTH_FALLBACK,
       ),
     [visibleColumnDefs, stickyColumns],
-  )
-
-  const stickyPlaceholders = useMemo(
-    () =>
-      stickyLayout.stickyVisibleIds.map((id) => {
-        const column = visibleColumnDefs.find((item) => item.id === id)
-        return {
-          id,
-          left: stickyLayout.leftFor(id) ?? EXPAND_COL_WIDTH + ACTIONS_COL_WIDTH,
-          width: columnWidth(column?.minWidth, META_WIDTH_FALLBACK),
-        }
-      }),
-    [stickyLayout, visibleColumnDefs],
   )
 
   const relatedByRowId = useMemo(() => {
@@ -852,37 +838,23 @@ export default function PafRegisterPage() {
                                     ) : null}
                                   </Stack>
                                 </TableCell>
-                                {stickyPlaceholders.map((placeholder) => (
-                                  <TableCell
-                                    key={`${row.id}-${item.id}-sticky-${placeholder.id}`}
-                                    sx={{
-                                      ...cellSx,
-                                      position: 'sticky',
-                                      left: placeholder.left,
-                                      zIndex: 2,
-                                      bgcolor: 'rgba(243,229,245,0.95)',
-                                      minWidth: placeholder.width,
-                                      width: placeholder.width,
-                                    }}
-                                  />
-                                ))}
                                 <TableCell
-                                  colSpan={Math.max(detailColSpan - stickyPlaceholders.length, 1)}
+                                  colSpan={stickyLayout.stickyMetaColSpan}
                                   sx={{
                                     ...cellSx,
                                     position: 'sticky',
                                     left: stickyLayout.detailLeft,
-                                    zIndex: 1,
+                                    zIndex: 2,
                                     bgcolor: 'rgba(243,229,245,0.95)',
                                     py: 1,
                                     whiteSpace: 'normal',
-                                    minWidth: STICKY_EXPAND_DETAIL_WIDTH,
-                                    width: STICKY_EXPAND_DETAIL_WIDTH,
-                                    maxWidth: STICKY_EXPAND_DETAIL_WIDTH,
+                                    minWidth: stickyLayout.detailWidth,
+                                    width: stickyLayout.detailWidth,
+                                    maxWidth: stickyLayout.detailWidth,
                                     boxShadow: stickyEdgeShadow,
                                   }}
                                 >
-                                  <Box sx={{ pl: 1 }}>
+                                  <Box>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                                       {item.barColor ? (
                                         <Box
@@ -910,6 +882,12 @@ export default function PafRegisterPage() {
                                     </Typography>
                                   </Box>
                                 </TableCell>
+                                {detailColSpan > stickyLayout.stickyMetaColSpan ? (
+                                  <TableCell
+                                    colSpan={detailColSpan - stickyLayout.stickyMetaColSpan}
+                                    sx={{ ...cellSx, bgcolor: 'rgba(243,229,245,0.95)' }}
+                                  />
+                                ) : null}
                                 {periods.map((period) =>
                                   item.startBiWeekRaw && item.lwpRaw ? (
                                     <GanttBarCell

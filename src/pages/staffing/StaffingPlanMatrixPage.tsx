@@ -57,7 +57,6 @@ import {
 } from '../../utils/relatedRegisterItems'
 import { formatDisplayDate } from '../../utils/staffingPlanDates'
 import {
-  STICKY_EXPAND_DETAIL_WIDTH,
   buildStickyColumnLayout,
   columnWidth,
   groupStickyColumnsFirst,
@@ -138,8 +137,9 @@ function RelatedExpandRow({
   item,
   periods,
   detailColSpan,
-  stickyPlaceholders,
+  stickyMetaColSpan,
   detailLeft,
+  detailWidth,
   canReview,
   onView,
   onApprove,
@@ -150,15 +150,16 @@ function RelatedExpandRow({
   item: RelatedRegisterItem
   periods: string[]
   detailColSpan: number
-  stickyPlaceholders: Array<{ id: string; left: number; width: number }>
+  stickyMetaColSpan: number
   detailLeft: number
+  detailWidth: number
   canReview: boolean
   onView: () => void
   onApprove: () => void
   onReject: () => void
   sectionBg: string
 }) {
-  const nonStickyColSpan = Math.max(detailColSpan - stickyPlaceholders.length, 1)
+  const trailingMetaColSpan = Math.max(detailColSpan - stickyMetaColSpan, 0)
 
   return (
     <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
@@ -222,37 +223,23 @@ function RelatedExpandRow({
           ) : null}
         </Stack>
       </TableCell>
-      {stickyPlaceholders.map((placeholder) => (
-        <TableCell
-          key={`${rowId}-${item.id}-sticky-${placeholder.id}`}
-          sx={{
-            ...cellSx,
-            position: 'sticky',
-            left: placeholder.left,
-            zIndex: 2,
-            bgcolor: sectionBg,
-            minWidth: placeholder.width,
-            width: placeholder.width,
-          }}
-        />
-      ))}
       <TableCell
-        colSpan={nonStickyColSpan}
+        colSpan={stickyMetaColSpan}
         sx={{
           ...cellSx,
           position: 'sticky',
           left: detailLeft,
-          zIndex: 1,
+          zIndex: 2,
           bgcolor: sectionBg,
           py: 1,
           whiteSpace: 'normal',
-          minWidth: STICKY_EXPAND_DETAIL_WIDTH,
-          width: STICKY_EXPAND_DETAIL_WIDTH,
-          maxWidth: STICKY_EXPAND_DETAIL_WIDTH,
+          minWidth: detailWidth,
+          width: detailWidth,
+          maxWidth: detailWidth,
           boxShadow: stickyEdgeShadow,
         }}
       >
-        <Box sx={{ pl: 1 }}>
+        <Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
             {item.barColor ? (
               <Box
@@ -282,6 +269,9 @@ function RelatedExpandRow({
           </Typography>
         </Box>
       </TableCell>
+      {trailingMetaColSpan > 0 ? (
+        <TableCell colSpan={trailingMetaColSpan} sx={{ ...cellSx, bgcolor: sectionBg }} />
+      ) : null}
       {periods.map((period) =>
         item.startBiWeekRaw && item.lwpRaw ? (
           <GanttBarCell
@@ -489,19 +479,6 @@ export default function StaffingPlanMatrixPage() {
         META_WIDTH_FALLBACK,
       ),
     [visibleColumnDefs, stickyColumns],
-  )
-
-  const stickyPlaceholders = useMemo(
-    () =>
-      stickyLayout.stickyVisibleIds.map((id) => {
-        const column = visibleColumnDefs.find((item) => item.id === id)
-        return {
-          id,
-          left: stickyLayout.leftFor(id) ?? EXPAND_COL_WIDTH + ACTIONS_COL_WIDTH,
-          width: columnWidth(column?.minWidth, META_WIDTH_FALLBACK),
-        }
-      }),
-    [stickyLayout, visibleColumnDefs],
   )
 
   const relatedByRowId = useMemo(() => {
@@ -1109,27 +1086,13 @@ export default function StaffingPlanMatrixPage() {
                                     width: EXPAND_COL_WIDTH + ACTIONS_COL_WIDTH,
                                   }}
                                 />
-                                {stickyPlaceholders.map((placeholder) => (
-                                  <TableCell
-                                    key={`${row.id}-pos-section-sticky-${placeholder.id}`}
-                                    sx={{
-                                      ...cellSx,
-                                      position: 'sticky',
-                                      left: placeholder.left,
-                                      zIndex: 2,
-                                      bgcolor: 'rgba(236,239,241,0.95)',
-                                      minWidth: placeholder.width,
-                                      width: placeholder.width,
-                                    }}
-                                  />
-                                ))}
                                 <TableCell
-                                  colSpan={Math.max(detailColSpan - stickyPlaceholders.length, 1)}
+                                  colSpan={stickyLayout.stickyMetaColSpan}
                                   sx={{
                                     ...cellSx,
                                     position: 'sticky',
                                     left: stickyLayout.detailLeft,
-                                    zIndex: 1,
+                                    zIndex: 2,
                                     bgcolor: 'rgba(236,239,241,0.95)',
                                     py: 0.75,
                                     fontWeight: 700,
@@ -1137,14 +1100,20 @@ export default function StaffingPlanMatrixPage() {
                                     letterSpacing: 0.3,
                                     textTransform: 'uppercase',
                                     color: 'text.secondary',
-                                    minWidth: STICKY_EXPAND_DETAIL_WIDTH,
-                                    width: STICKY_EXPAND_DETAIL_WIDTH,
-                                    maxWidth: STICKY_EXPAND_DETAIL_WIDTH,
+                                    minWidth: stickyLayout.detailWidth,
+                                    width: stickyLayout.detailWidth,
+                                    maxWidth: stickyLayout.detailWidth,
                                     boxShadow: stickyEdgeShadow,
                                   }}
                                 >
                                   Position revisions
                                 </TableCell>
+                                {detailColSpan > stickyLayout.stickyMetaColSpan ? (
+                                  <TableCell
+                                    colSpan={detailColSpan - stickyLayout.stickyMetaColSpan}
+                                    sx={{ ...cellSx, bgcolor: 'rgba(236,239,241,0.95)' }}
+                                  />
+                                ) : null}
                                 {periods.map((period) => (
                                   <TableCell
                                     key={`${row.id}-pos-section-${period}`}
@@ -1160,8 +1129,9 @@ export default function StaffingPlanMatrixPage() {
                                 item={item}
                                 periods={periods}
                                 detailColSpan={detailColSpan}
-                                stickyPlaceholders={stickyPlaceholders}
+                                stickyMetaColSpan={stickyLayout.stickyMetaColSpan}
                                 detailLeft={stickyLayout.detailLeft}
+                                detailWidth={stickyLayout.detailWidth}
                                 canReview={canReview}
                                 onView={() => openRelatedItem(item)}
                                 onApprove={() => handleApproveRelated(item)}
@@ -1184,27 +1154,13 @@ export default function StaffingPlanMatrixPage() {
                                     width: EXPAND_COL_WIDTH + ACTIONS_COL_WIDTH,
                                   }}
                                 />
-                                {stickyPlaceholders.map((placeholder) => (
-                                  <TableCell
-                                    key={`${row.id}-paf-section-sticky-${placeholder.id}`}
-                                    sx={{
-                                      ...cellSx,
-                                      position: 'sticky',
-                                      left: placeholder.left,
-                                      zIndex: 2,
-                                      bgcolor: 'rgba(236,239,241,0.95)',
-                                      minWidth: placeholder.width,
-                                      width: placeholder.width,
-                                    }}
-                                  />
-                                ))}
                                 <TableCell
-                                  colSpan={Math.max(detailColSpan - stickyPlaceholders.length, 1)}
+                                  colSpan={stickyLayout.stickyMetaColSpan}
                                   sx={{
                                     ...cellSx,
                                     position: 'sticky',
                                     left: stickyLayout.detailLeft,
-                                    zIndex: 1,
+                                    zIndex: 2,
                                     bgcolor: 'rgba(236,239,241,0.95)',
                                     py: 0.75,
                                     fontWeight: 700,
@@ -1212,14 +1168,20 @@ export default function StaffingPlanMatrixPage() {
                                     letterSpacing: 0.3,
                                     textTransform: 'uppercase',
                                     color: 'text.secondary',
-                                    minWidth: STICKY_EXPAND_DETAIL_WIDTH,
-                                    width: STICKY_EXPAND_DETAIL_WIDTH,
-                                    maxWidth: STICKY_EXPAND_DETAIL_WIDTH,
+                                    minWidth: stickyLayout.detailWidth,
+                                    width: stickyLayout.detailWidth,
+                                    maxWidth: stickyLayout.detailWidth,
                                     boxShadow: stickyEdgeShadow,
                                   }}
                                 >
                                   Related PAFs
                                 </TableCell>
+                                {detailColSpan > stickyLayout.stickyMetaColSpan ? (
+                                  <TableCell
+                                    colSpan={detailColSpan - stickyLayout.stickyMetaColSpan}
+                                    sx={{ ...cellSx, bgcolor: 'rgba(236,239,241,0.95)' }}
+                                  />
+                                ) : null}
                                 {periods.map((period) => (
                                   <TableCell
                                     key={`${row.id}-paf-section-${period}`}
@@ -1235,8 +1197,9 @@ export default function StaffingPlanMatrixPage() {
                                 item={item}
                                 periods={periods}
                                 detailColSpan={detailColSpan}
-                                stickyPlaceholders={stickyPlaceholders}
+                                stickyMetaColSpan={stickyLayout.stickyMetaColSpan}
                                 detailLeft={stickyLayout.detailLeft}
+                                detailWidth={stickyLayout.detailWidth}
                                 canReview={canReview}
                                 onView={() => openRelatedItem(item)}
                                 onApprove={() => handleApproveRelated(item)}
