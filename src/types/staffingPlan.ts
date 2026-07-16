@@ -48,6 +48,8 @@ export interface StaffingPlanRequest {
   sortNumber: string
   totalHours: string
   hoursToGo: string
+  /** Hourly cost rate for the position (currency units per hour). */
+  hourlyCost: string
   roster: Roster
   startBiWeek: string
   lwp: string
@@ -75,6 +77,7 @@ export interface StaffingPlanFormData {
   sortNumber: string
   totalHours: string
   hoursToGo: string
+  hourlyCost: string
   roster: Roster | ''
   startBiWeek: string
   lwp: string

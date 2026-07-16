@@ -67,14 +67,19 @@ function followBranch(
   return labeled?.target ?? null
 }
 
+function normalizeConditionValue(raw: unknown): string {
+  if (raw == null) return ''
+  return String(raw).trim()
+}
+
 export function evaluateFieldCondition(
   formData: FormRecord,
   condition: FieldCondition | undefined,
+  previousFormData?: FormRecord | null,
 ): boolean {
   if (!condition?.field) return false
 
-  const raw = formData[condition.field]
-  const value = raw == null ? '' : String(raw).trim()
+  const value = normalizeConditionValue(formData[condition.field])
   const expected = (condition.value ?? '').trim()
   const operator = condition.operator || 'equals'
 
@@ -83,6 +88,16 @@ export function evaluateFieldCondition(
       return value.length === 0
     case 'isNotEmpty':
       return value.length > 0
+    case 'hasChanged': {
+      if (!previousFormData) return false
+      const previous = normalizeConditionValue(previousFormData[condition.field])
+      return value !== previous
+    }
+    case 'hasNotChanged': {
+      if (!previousFormData) return true
+      const previous = normalizeConditionValue(previousFormData[condition.field])
+      return value === previous
+    }
     case 'contains':
       return value.toLowerCase().includes(expected.toLowerCase())
     case 'greaterThan': {
@@ -164,12 +179,14 @@ export function advanceWorkflow(
   progress: WorkflowProgress,
   formData: FormRecord,
   action?: WorkflowAction,
+  previousFormData?: FormRecord | null,
 ): WorkflowRunResult {
   let current = getNode(workflow, progress.currentNodeId)
   if (!current) {
     throw new Error(`Workflow node "${progress.currentNodeId}" not found`)
   }
 
+  const priorForm = previousFormData ?? progress.previousFormData ?? null
   let nextProgress = progress
   let pendingAction = action
   let safety = 0
@@ -190,7 +207,7 @@ export function advanceWorkflow(
       const mode = data.decisionMode || 'manual'
 
       if (mode === 'field') {
-        const yes = evaluateFieldCondition(formData, data.fieldCondition)
+        const yes = evaluateFieldCondition(formData, data.fieldCondition, priorForm)
         const branch: 'yes' | 'no' = yes ? 'yes' : 'no'
         const target = followBranch(workflow, current.id, branch)
         if (!target) {
@@ -287,6 +304,7 @@ export function advanceWorkflow(
 export function startWorkflow(
   workflow: WorkflowDefinition,
   formData: FormRecord,
+  previousFormData?: FormRecord | null,
 ): WorkflowRunResult {
   const startNode =
     workflow.nodes.find((node) => node.type === 'start') ?? workflow.nodes[0]
@@ -303,9 +321,10 @@ export function startWorkflow(
         arrivedAt: new Date().toISOString(),
       },
     ],
+    ...(previousFormData ? { previousFormData } : {}),
   }
 
-  return advanceWorkflow(workflow, progress, formData)
+  return advanceWorkflow(workflow, progress, formData, undefined, previousFormData)
 }
 
 export function getWorkflowForForm(
@@ -318,7 +337,11 @@ export function getWorkflowForForm(
 export function describeDecision(data: WorkflowNodeData, _formType?: WorkflowFormType | null): string {
   if ((data.decisionMode || 'manual') === 'field' && data.fieldCondition?.field) {
     const { field, operator, value } = data.fieldCondition
-    const needsValue = operator !== 'isEmpty' && operator !== 'isNotEmpty'
+    const needsValue =
+      operator !== 'isEmpty' &&
+      operator !== 'isNotEmpty' &&
+      operator !== 'hasChanged' &&
+      operator !== 'hasNotChanged'
     return `If ${field} ${operator}${needsValue ? ` "${value}"` : ''}`
   }
   return data.decisionQuestion || data.label

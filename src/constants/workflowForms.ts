@@ -47,6 +47,7 @@ export const WORKFLOW_FORMS: WorkflowFormMeta[] = [
       { key: 'sortNumber', label: 'Sort Number' },
       { key: 'totalHours', label: 'Total Hours' },
       { key: 'hoursToGo', label: 'Hours To Go' },
+      { key: 'hourlyCost', label: 'Hourly Cost' },
       { key: 'roster', label: 'Roster', options: ROSTERS },
       { key: 'startBiWeek', label: 'Start Bi-Week' },
       { key: 'lwp', label: 'Last Working Day' },
@@ -84,6 +85,8 @@ export const CONDITION_OPERATORS: Array<{ value: import('../types/workflow').Con
     { value: 'lessThan', label: 'is less than' },
     { value: 'isEmpty', label: 'is empty' },
     { value: 'isNotEmpty', label: 'is not empty' },
+    { value: 'hasChanged', label: 'has changed' },
+    { value: 'hasNotChanged', label: 'has not changed' },
   ]
 
 export function getWorkflowFormMeta(formType: WorkflowFormType | null | undefined) {

@@ -63,6 +63,7 @@ function createEmptyForm(company: StaffingPlanFormData['company'] = ''): Staffin
     sortNumber: '',
     totalHours: '',
     hoursToGo: '',
+    hourlyCost: '',
     roster: '',
     startBiWeek: '',
     lwp: '',
@@ -431,6 +432,16 @@ export default function StaffingPlanFormPage({
                   value={form.hoursToGo}
                   onChange={(e) => updateField('hoursToGo', e.target.value)}
                   fullWidth
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                <TextField
+                  label="Hourly Cost"
+                  value={form.hourlyCost}
+                  onChange={(e) => updateField('hourlyCost', e.target.value)}
+                  fullWidth
+                  helperText="Cost rate per hour"
+                  slotProps={{ htmlInput: { inputMode: 'decimal' } }}
                 />
               </Grid>
             </Grid>

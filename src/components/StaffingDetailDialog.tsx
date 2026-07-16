@@ -84,6 +84,7 @@ export default function StaffingDetailDialog({
             <Detail label="Sort Number" value={request.sortNumber} />
             <Detail label="Total Hours" value={request.totalHours} />
             <Detail label="Hours To Go" value={request.hoursToGo} />
+            <Detail label="Hourly Cost" value={request.hourlyCost} />
             <Detail label="Start Bi-Week" value={formatDisplayDate(request.startBiWeek)} />
             <Detail label="Last Working Day" value={formatDisplayDate(request.lwp)} />
           </Box>

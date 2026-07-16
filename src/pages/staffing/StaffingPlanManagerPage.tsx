@@ -119,6 +119,11 @@ function RequestDetails({
         changed={changed('hoursToGo')}
       />
       <ChangedFieldDetail
+        label="Hourly Cost"
+        value={request.hourlyCost}
+        changed={changed('hourlyCost')}
+      />
+      <ChangedFieldDetail
         label="Start Bi-Week"
         value={formatDisplayDate(request.startBiWeek)}
         changed={changed('startBiWeek')}

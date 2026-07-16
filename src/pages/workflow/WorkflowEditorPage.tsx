@@ -72,7 +72,11 @@ function conditionSummary(
   const opLabel =
     CONDITION_OPERATORS.find((item) => item.value === condition.operator)?.label ||
     condition.operator
-  const needsValue = condition.operator !== 'isEmpty' && condition.operator !== 'isNotEmpty'
+  const needsValue =
+    condition.operator !== 'isEmpty' &&
+    condition.operator !== 'isNotEmpty' &&
+    condition.operator !== 'hasChanged' &&
+    condition.operator !== 'hasNotChanged'
   return needsValue ? `${fieldLabel} ${opLabel} "${condition.value}"` : `${fieldLabel} ${opLabel}`
 }
 
@@ -394,9 +398,12 @@ function WorkflowEditorCanvas() {
     setShowSuccess(true)
   }
 
+  const conditionOperator = selectedNode?.data.fieldCondition?.operator
   const needsConditionValue =
-    selectedNode?.data.fieldCondition?.operator !== 'isEmpty' &&
-    selectedNode?.data.fieldCondition?.operator !== 'isNotEmpty'
+    conditionOperator !== 'isEmpty' &&
+    conditionOperator !== 'isNotEmpty' &&
+    conditionOperator !== 'hasChanged' &&
+    conditionOperator !== 'hasNotChanged'
 
   return (
     <Box>
@@ -721,6 +728,10 @@ function WorkflowEditorCanvas() {
                             <Typography variant="caption" color="text.secondary">
                               Yes path runs when the condition is true; No path when false.
                               Evaluated automatically on submit and when advancing.
+                              {conditionOperator === 'hasChanged' ||
+                              conditionOperator === 'hasNotChanged'
+                                ? ' Change operators compare against the previous revision when a request is revised.'
+                                : ''}
                             </Typography>
                           </>
                         )}

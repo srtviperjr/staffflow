@@ -12,6 +12,7 @@ import {
   getStaffingRevisionHistory,
   nextPositionNumber,
   normalizeStaffingPlanRequests,
+  requestToStaffingFormData,
   staffingPositionNumbersChanged,
 } from '../utils/staffingPlanRevisions'
 import { SAMPLE_STAFFING_PLAN_REQUESTS } from '../data/sampleData'
@@ -87,6 +88,7 @@ function buildRequestFromForm(
     sortNumber: data.sortNumber.trim(),
     totalHours: data.totalHours.trim(),
     hoursToGo: data.hoursToGo.trim(),
+    hourlyCost: data.hourlyCost.trim(),
     roster: data.roster as StaffingPlanRequest['roster'],
     startBiWeek: data.startBiWeek,
     lwp: data.lwp,
@@ -154,7 +156,15 @@ export function StaffingPlanProvider({ children }: { children: ReactNode }) {
       let workflowProgress: StaffingPlanRequest['workflow']
 
       if (workflow) {
-        const result = startWorkflow(workflow, data as unknown as Record<string, unknown>)
+        const previousFormData = requestToStaffingFormData(source) as unknown as Record<
+          string,
+          unknown
+        >
+        const result = startWorkflow(
+          workflow,
+          data as unknown as Record<string, unknown>,
+          previousFormData,
+        )
         status = result.status
         workflowProgress = result.progress
       }

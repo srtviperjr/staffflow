@@ -84,9 +84,9 @@ import {
   type StaffingMatrixRow,
 } from '../../utils/staffingPlanMatrix'
 
-const COLUMN_ORDER_KEY = 'staffing-matrix-column-order-v3'
-const COLUMN_VISIBLE_KEY = 'staffing-matrix-visible-columns-v3'
-const COLUMN_STICKY_KEY = 'staffing-matrix-sticky-columns-v3'
+const COLUMN_ORDER_KEY = 'staffing-matrix-column-order-v4'
+const COLUMN_VISIBLE_KEY = 'staffing-matrix-visible-columns-v4'
+const COLUMN_STICKY_KEY = 'staffing-matrix-sticky-columns-v4'
 const EXPAND_COL_WIDTH = 100
 const ACTIONS_COL_WIDTH = 118
 const META_WIDTH_FALLBACK = 110

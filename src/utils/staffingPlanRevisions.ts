@@ -55,6 +55,7 @@ export function normalizeStaffingPlanRequest(request: StaffingPlanRequest): Staf
     revision: request.revision ?? 1,
     isCurrentRevision: request.isCurrentRevision ?? true,
     positionNumber: request.positionNumber ?? '',
+    hourlyCost: request.hourlyCost ?? '',
   }
 }
 
@@ -183,6 +184,7 @@ export function requestToStaffingFormData(
     sortNumber: request.sortNumber,
     totalHours: request.totalHours,
     hoursToGo: request.hoursToGo,
+    hourlyCost: request.hourlyCost ?? '',
     roster: request.roster,
     startBiWeek: request.startBiWeek,
     lwp: request.lwp,

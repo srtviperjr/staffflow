@@ -302,6 +302,7 @@ function buildStaffingPosition(
     sortNumber: overrides.sortNumber ?? String(1000 + seed),
     totalHours: overrides.totalHours ?? String(1600 + (seed % 8) * 80),
     hoursToGo: overrides.hoursToGo ?? String(800 + (seed % 6) * 40),
+    hourlyCost: overrides.hourlyCost ?? String(85 + (seed % 10) * 5),
     roster: overrides.roster ?? pick(ROSTERS, seed),
     startBiWeek,
     lwp,
