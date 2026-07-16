@@ -956,8 +956,8 @@ export default function PafRegisterPage() {
                 ? ` · ${activeFilterCount} filter${activeFilterCount === 1 ? '' : 's'} applied`
                 : ''}
               {' · '}
-              Expand a row to see pending/rejected revisions · pin columns in Columns; Expand/Actions
-              and expand details stay fixed while the calendar scrolls
+              + expands additional revisions · pending icon marks updates below · pin columns in
+              Columns; Expand/Actions and expand details stay fixed while scrolling
             </Typography>
           ) : null}
         </CardContent>
