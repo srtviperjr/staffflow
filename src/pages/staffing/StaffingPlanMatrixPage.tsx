@@ -436,6 +436,35 @@ export default function StaffingPlanMatrixPage() {
   const canRevise = canSubmitRequests(currentUserRoles)
   const canReview = canReviewRequests(currentUserRoles)
   const showCost = canViewCostInfo(currentUserRoles)
+
+  const canActOnRequest = (request: {
+    workflow?: ProjectAuthorizationRequest['workflow']
+    status: string
+    phase?: ProjectAuthorizationRequest['phase']
+    company?: string
+  }) =>
+    canActOnWorkflowRequest(request, currentUserRoles, getWorkflow, {
+      userProject: currentUser?.project,
+    })
+
+  const canActOnRelated = (item: RelatedRegisterItem) => {
+    if (item.kind === 'staffing-plan' && item.staffingRequest) {
+      return canActOnRequest(item.staffingRequest)
+    }
+    if (item.kind === 'project-authorization' && item.pafRequest) {
+      return canActOnRequest(item.pafRequest)
+    }
+    return false
+  }
+
+  const pafApprovalSteps = (request: ProjectAuthorizationRequest) =>
+    getStaffingApprovalSteps({
+      workflow: request.workflow ? getWorkflow(request.workflow.workflowId) : undefined,
+      progress: request.workflow,
+      phase: request.phase,
+      company: request.company,
+      requestStatus: request.status,
+    })
   const allowedColumnOrder = useMemo(
     () =>
       showCost
@@ -1250,7 +1279,7 @@ export default function StaffingPlanMatrixPage() {
                                 stickyMetaColSpan={stickyLayout.stickyMetaColSpan}
                                 detailLeft={stickyLayout.detailLeft}
                                 detailWidth={stickyLayout.detailWidth}
-                                canReview={canReview}
+                                canReview={canReview && canActOnRelated(item)}
                                 onView={() => openRelatedItem(item)}
                                 onApprove={() => handleApproveRelated(item)}
                                 onReject={() => setRejectTarget(item)}
@@ -1318,7 +1347,7 @@ export default function StaffingPlanMatrixPage() {
                                 stickyMetaColSpan={stickyLayout.stickyMetaColSpan}
                                 detailLeft={stickyLayout.detailLeft}
                                 detailWidth={stickyLayout.detailWidth}
-                                canReview={canReview}
+                                canReview={canReview && canActOnRelated(item)}
                                 onView={() => openRelatedItem(item)}
                                 onApprove={() => handleApproveRelated(item)}
                                 onReject={() => setRejectTarget(item)}
@@ -1351,7 +1380,8 @@ export default function StaffingPlanMatrixPage() {
       <PafDetailDialog
         authorization={selectedPaf}
         onClose={() => setSelectedPaf(null)}
-        canReview={canReview}
+        canReview={Boolean(selectedPaf && canActOnRequest(selectedPaf))}
+        approvalSteps={selectedPaf ? pafApprovalSteps(selectedPaf) : []}
         onApprove={() => {
           if (!selectedPaf) return
           approvePaf(selectedPaf.id)

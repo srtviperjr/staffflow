@@ -1,6 +1,21 @@
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
-import type { StaffingPlanRequest } from '../types/staffingPlan'
+import type { Phase, StaffingPlanRequest } from '../types/staffingPlan'
 import { findOverlappingActivePaf } from './pafDateRules'
+
+/** Resolve JS1/JS2 for PD routing from the linked staffing position when available. */
+export function resolveAuthorizationPhase(
+  request: Pick<ProjectAuthorizationRequest, 'staffingPlanRequestId'> & {
+    phase?: Phase
+  },
+  staffingRequests: StaffingPlanRequest[] = [],
+): Phase {
+  const linked = staffingRequests.find(
+    (position) => position.id === request.staffingPlanRequestId,
+  )
+  if (linked?.phase === 'JS1' || linked?.phase === 'JS2') return linked.phase
+  if (request.phase === 'JS1' || request.phase === 'JS2') return request.phase
+  return 'JS1'
+}
 
 /** Canonical PAF number format used by sample data and new submissions: PAF00001 */
 export const PAF_NUMBER_PATTERN = /^PAF\d{5}$/
@@ -34,6 +49,7 @@ export function generatePafNumber(existing: Array<{ pafNumber?: string }> = []):
 
 export function normalizeAuthorizationRequest(
   request: ProjectAuthorizationRequest,
+  staffingRequests: StaffingPlanRequest[] = [],
 ): ProjectAuthorizationRequest {
   return {
     ...request,
@@ -41,6 +57,7 @@ export function normalizeAuthorizationRequest(
     revision: request.revision ?? 1,
     isCurrentRevision: request.isCurrentRevision ?? true,
     pafNumber: request.pafNumber ?? '',
+    phase: resolveAuthorizationPhase(request, staffingRequests),
   }
 }
 
@@ -50,8 +67,11 @@ export function normalizeAuthorizationRequest(
  */
 export function normalizeAuthorizationRequests(
   requests: ProjectAuthorizationRequest[],
+  staffingRequests: StaffingPlanRequest[] = [],
 ): ProjectAuthorizationRequest[] {
-  const normalized = requests.map(normalizeAuthorizationRequest)
+  const normalized = requests.map((request) =>
+    normalizeAuthorizationRequest(request, staffingRequests),
+  )
   let nextSequence = maxPafSequence(normalized) + 1
   const pafByGroup = new Map<string, string>()
 

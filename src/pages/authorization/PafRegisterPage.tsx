@@ -47,7 +47,10 @@ import { filterByCompanyVisibility } from '../../constants/companies'
 import { useProjectAuthorizationRequests } from '../../context/ProjectAuthorizationContext'
 import { useRequestForms } from '../../context/RequestFormsContext'
 import { useRoles } from '../../context/RolesContext'
+import { useWorkflows } from '../../context/WorkflowContext'
+import { canActOnWorkflowRequest } from '../../utils/pendingApprovals'
 import { canReviewRequests, canSubmitRequests } from '../../utils/permissions'
+import { getStaffingApprovalSteps } from '../../utils/staffingApprovalSteps'
 import {
   formatRelatedItemCaption,
   getRelatedItemsForPafRequest,
@@ -159,9 +162,24 @@ function loadStickyColumns(): PafRegisterColumnId[] {
 export default function PafRegisterPage() {
   const { openRequestForm } = useRequestForms()
   const { currentUser, currentUserRoles } = useRoles()
+  const { getWorkflow } = useWorkflows()
   const { requests, approveRequest, rejectRequest } = useProjectAuthorizationRequests()
   const canRevise = canSubmitRequests(currentUserRoles)
   const canReview = canReviewRequests(currentUserRoles)
+
+  const canActOnPaf = (request: ProjectAuthorizationRequest) =>
+    canActOnWorkflowRequest(request, currentUserRoles, getWorkflow, {
+      userProject: currentUser?.project,
+    })
+
+  const approvalStepsFor = (request: ProjectAuthorizationRequest) =>
+    getStaffingApprovalSteps({
+      workflow: request.workflow ? getWorkflow(request.workflow.workflowId) : undefined,
+      progress: request.workflow,
+      phase: request.phase,
+      company: request.company,
+      requestStatus: request.status,
+    })
 
   const [selectedPaf, setSelectedPaf] = useState<ProjectAuthorizationRequest | null>(null)
   const [rejectTarget, setRejectTarget] = useState<RelatedRegisterItem | null>(null)
@@ -744,7 +762,9 @@ export default function PafRegisterPage() {
                                 : undefined,
                             }}
                           >
-                            {canReview && row.status === 'pending' ? (
+                            {canReview &&
+                            row.status === 'pending' &&
+                            canActOnPaf(row.request) ? (
                               <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
                                 <Button
                                   size="small"
@@ -888,7 +908,10 @@ export default function PafRegisterPage() {
                                     >
                                       View
                                     </Button>
-                                    {canReview && item.status === 'pending' ? (
+                                    {canReview &&
+                                    item.status === 'pending' &&
+                                    item.pafRequest &&
+                                    canActOnPaf(item.pafRequest) ? (
                                       <>
                                         <Button
                                           size="small"
@@ -1015,7 +1038,8 @@ export default function PafRegisterPage() {
       <PafDetailDialog
         authorization={selectedPaf}
         onClose={() => setSelectedPaf(null)}
-        canReview={canReview}
+        canReview={Boolean(selectedPaf && canActOnPaf(selectedPaf))}
+        approvalSteps={selectedPaf ? approvalStepsFor(selectedPaf) : []}
         onApprove={() => {
           if (!selectedPaf) return
           approveRequest(selectedPaf.id)

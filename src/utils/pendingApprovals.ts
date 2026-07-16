@@ -131,8 +131,6 @@ export function getPendingApprovalsForUser(options: {
   getWorkflow: (workflowId: string) => WorkflowDefinition | undefined
 }): PendingApprovalItem[] {
   const { staffingRequests, pafRequests, roles, company, userProject, getWorkflow } = options
-  const userRoleIds = roleIdsOf(roles)
-  const adminBypass = isAdmin(roles)
 
   const visibleStaffing = filterByCompanyVisibility(staffingRequests, company).filter(
     (request) => request.isCurrentRevision && request.status === 'pending',
@@ -173,30 +171,33 @@ export function getPendingApprovalsForUser(options: {
     })
 
   const pafItems: PendingApprovalItem[] = visiblePaf
-    .filter((request) => {
-      const workflow = request.workflow
-        ? getWorkflow(request.workflow.workflowId)
-        : undefined
-      const node = currentNode(workflow, request)
-      if (!request.workflow) {
-        return adminBypass || userRoleIds.includes('role-manager')
-      }
-      return isWaitingForUserRole(node, userRoleIds, adminBypass)
-    })
+    .filter((request) =>
+      canActOnWorkflowRequest(request, roles, getWorkflow, { userProject }),
+    )
     .map((request) => {
       const workflow = request.workflow
         ? getWorkflow(request.workflow.workflowId)
         : undefined
       const node = currentNode(workflow, request)
+      const approvalSteps = workflow
+        ? getStaffingApprovalSteps({
+            workflow,
+            progress: request.workflow,
+            phase: request.phase,
+            company: request.company,
+            requestStatus: request.status,
+          })
+        : undefined
       return {
         id: request.id,
         kind: 'project-authorization' as const,
         title: request.candidateName,
-        subtitle: `${request.pafNumber} · ${request.position}`,
+        subtitle: `${request.pafNumber} · ${request.phase} · ${request.position}`,
         company: request.company,
         submittedAt: request.submittedAt,
         workflowStepLabel: node?.data.label,
         reviewPath: '/project-authorization/manager',
+        approvalSteps,
       }
     })
 

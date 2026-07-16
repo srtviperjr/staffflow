@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -94,6 +95,7 @@ function buildRequestFromForm(
     supersedesId: overrides.supersedesId,
     isCurrentRevision: overrides.isCurrentRevision ?? true,
     staffingPlanRequestId: data.staffingPlanRequestId,
+    phase: overrides.phase ?? 'JS1',
     functionalGroup: data.functionalGroup,
     dsg: data.dsg.trim(),
     approvedPositionLabel: positionLabel,
@@ -127,11 +129,37 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
   const { requests: staffingRequests } = useStaffingPlanRequests()
   const [requests, setRequests] = useState<ProjectAuthorizationRequest[]>(loadRequests)
 
-  const persist = useCallback((updated: ProjectAuthorizationRequest[]) => {
-    const normalized = normalizeAuthorizationRequests(updated)
-    setRequests(normalized)
-    saveRequests(normalized)
-  }, [])
+  const persist = useCallback(
+    (updated: ProjectAuthorizationRequest[]) => {
+      const normalized = normalizeAuthorizationRequests(updated, staffingRequests)
+      setRequests(normalized)
+      saveRequests(normalized)
+    },
+    [staffingRequests],
+  )
+
+  // Backfill phase from linked staffing positions once staffing data is available.
+  useEffect(() => {
+    if (staffingRequests.length === 0) return
+    setRequests((previous) => {
+      const normalized = normalizeAuthorizationRequests(previous, staffingRequests)
+      const changed = normalized.some(
+        (request, index) => request.phase !== previous[index]?.phase,
+      )
+      if (!changed) return previous
+      saveRequests(normalized)
+      return normalized
+    })
+  }, [staffingRequests])
+
+  const resolvePhase = useCallback(
+    (staffingPlanRequestId: string, fallback?: ProjectAuthorizationRequest['phase']) => {
+      const linked = staffingRequests.find((request) => request.id === staffingPlanRequestId)
+      if (linked?.phase === 'JS1' || linked?.phase === 'JS2') return linked.phase
+      return fallback === 'JS2' ? 'JS2' : 'JS1'
+    },
+    [staffingRequests],
+  )
 
   const assertPafSchedule = useCallback(
     (data: ProjectAuthorizationFormData, exceptRevisionGroupId?: string) => {
@@ -160,6 +188,7 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
       assertPafSchedule(data)
 
       const id = crypto.randomUUID()
+      const phase = resolvePhase(data.staffingPlanRequestId)
       const workflow = getWorkflowByForm('project-authorization')
       let status: ProjectAuthorizationRequest['status'] = 'pending'
       let workflowProgress: ProjectAuthorizationRequest['workflow']
@@ -171,6 +200,8 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
             ...data,
             position,
             approvedPositionLabel: positionLabel,
+            phase,
+            company: data.company,
           },
           undefined,
           toWorkflowActor(currentUser),
@@ -185,13 +216,14 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
         revision: 1,
         isCurrentRevision: true,
         pafNumber: nextPafNumber(requests),
+        phase,
         status,
         workflow: workflowProgress,
       })
       persist([newRequest, ...requests])
       return newRequest
     },
-    [assertPafSchedule, persist, requests, getWorkflowByForm, currentUser],
+    [assertPafSchedule, persist, requests, getWorkflowByForm, currentUser, resolvePhase],
   )
 
   const reviseRequest = useCallback(
@@ -206,6 +238,7 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
 
       assertPafSchedule(data, source.revisionGroupId)
 
+      const phase = resolvePhase(data.staffingPlanRequestId, source.phase)
       const workflow = getWorkflowByForm('project-authorization')
       let status: ProjectAuthorizationRequest['status'] = 'pending'
       let workflowProgress: ProjectAuthorizationRequest['workflow']
@@ -215,6 +248,8 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
           ...requestToFormData(source),
           position: source.position,
           approvedPositionLabel: source.approvedPositionLabel,
+          phase: source.phase,
+          company: source.company,
         } as Record<string, unknown>
         const result = startWorkflow(
           workflow,
@@ -222,6 +257,8 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
             ...data,
             position,
             approvedPositionLabel: positionLabel,
+            phase,
+            company: data.company,
           },
           previousFormData,
           toWorkflowActor(currentUser),
@@ -236,6 +273,7 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
         supersedesId: source.id,
         isCurrentRevision: true,
         pafNumber: source.pafNumber,
+        phase,
         status,
         workflow: workflowProgress,
       })
@@ -248,7 +286,7 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
 
       persist([newRequest, ...updatedRequests])
     },
-    [assertPafSchedule, persist, requests, getWorkflowByForm, currentUser],
+    [assertPafSchedule, persist, requests, getWorkflowByForm, currentUser, resolvePhase],
   )
 
   const rejectRequest = useCallback(

@@ -1,4 +1,5 @@
 import type { Company } from '../constants/companies'
+import type { Phase } from './staffingPlan'
 import type { WorkflowProgress } from './workflow'
 
 export type ProjectAuthorizationStatus = 'pending' | 'approved' | 'rejected'
@@ -10,6 +11,11 @@ export interface ProjectAuthorizationRequest {
   supersedesId?: string
   isCurrentRevision: boolean
   staffingPlanRequestId: string
+  /**
+   * Project (JS1 / JS2) from the linked staffing plan position.
+   * Used to route Project Director final approval.
+   */
+  phase: Phase
   functionalGroup: string
   dsg: string
   approvedPositionLabel: string

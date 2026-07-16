@@ -15,11 +15,15 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import { formatDisplayDate } from '../utils/staffingPlanDates'
+import type { StaffingApprovalStep } from '../utils/staffingApprovalSteps'
+import StaffingApprovalSteps from './StaffingApprovalSteps'
+import StaffingApprovalTrail from './StaffingApprovalTrail'
 
 interface PafDetailDialogProps {
   authorization: ProjectAuthorizationRequest | null
   onClose: () => void
   canReview?: boolean
+  approvalSteps?: StaffingApprovalStep[]
   onApprove?: () => void
   onReject?: () => void
 }
@@ -42,6 +46,7 @@ export default function PafDetailDialog({
   authorization,
   onClose,
   canReview = false,
+  approvalSteps = [],
   onApprove,
   onReject,
 }: PafDetailDialogProps) {
@@ -50,7 +55,7 @@ export default function PafDetailDialog({
   )
 
   return (
-    <Dialog open={Boolean(authorization)} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={Boolean(authorization)} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <VerifiedIcon color="primary" />
         {authorization?.pafNumber}
@@ -66,15 +71,21 @@ export default function PafDetailDialog({
         ) : null}
       </DialogTitle>
       <DialogContent>
+        {approvalSteps.length > 0 ? (
+          <Box sx={{ mb: 2 }}>
+            <StaffingApprovalSteps steps={approvalSteps} />
+          </Box>
+        ) : null}
         {authorization && (
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
               gap: 1.5,
             }}
           >
             <Detail label="Candidate" value={authorization.candidateName} />
+            <Detail label="Phase" value={authorization.phase} />
             <Detail label="Position" value={authorization.position} />
             <Detail label="Approved Position" value={authorization.approvedPositionLabel} />
             <Detail label="Functional Group" value={authorization.functionalGroup} />
@@ -90,6 +101,12 @@ export default function PafDetailDialog({
             <Detail label="Last Working Day" value={formatDisplayDate(authorization.lwp)} />
           </Box>
         )}
+        {approvalSteps.length > 0 ? (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <StaffingApprovalTrail steps={approvalSteps} />
+          </>
+        ) : null}
         <Divider sx={{ my: 2 }} />
         <Typography variant="caption" color="text.secondary">
           Submitted {authorization ? new Date(authorization.submittedAt).toLocaleString() : ''}
