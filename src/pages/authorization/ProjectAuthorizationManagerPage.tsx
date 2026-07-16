@@ -95,11 +95,6 @@ function RequestDetails({
       <ChangedFieldDetail label="Country" value={request.country} changed={changed('country')} />
       <ChangedFieldDetail label="Class" value={request.class} changed={changed('class')} />
       <ChangedFieldDetail
-        label="Hiring Source"
-        value={request.hiringSource}
-        changed={changed('hiringSource')}
-      />
-      <ChangedFieldDetail
         label="Company"
         value={request.company}
         changed={changed('company')}
@@ -184,10 +179,10 @@ export default function ProjectAuthorizationManagerPage() {
             <ManageAccountsIcon color="primary" sx={{ fontSize: 36 }} />
             <Box>
               <Typography variant="h4" color="primary">
-                PAF Approvals Review
+                PAF Requests Review
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Review current revisions of PAF approval requests
+                Review current revisions of PAF requests
               </Typography>
             </Box>
           </Box>
@@ -213,7 +208,7 @@ export default function ProjectAuthorizationManagerPage() {
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 {filter === 'all'
-                  ? 'Submitted PAF approval requests will appear here for review.'
+                  ? 'Submitted PAF requests will appear here for review.'
                   : `No ${filter} requests at this time.`}
               </Typography>
             </Box>
@@ -402,7 +397,7 @@ export default function ProjectAuthorizationManagerPage() {
         open={Boolean(rejectTarget)}
         message={
           <>
-            You are rejecting revision {rejectTarget?.revision ?? ''} of the PAF approval
+            You are rejecting revision {rejectTarget?.revision ?? ''} of the PAF request
             request for <strong>{rejectTarget?.candidateName ?? ''}</strong> (
             {rejectTarget?.approvedPositionLabel}). Please provide a comment explaining the
             rejection.

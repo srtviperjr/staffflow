@@ -33,7 +33,6 @@ import {
   DISCIPLINES,
   DSG_OPTIONS,
   FUNCTIONAL_GROUPS,
-  HIRING_SOURCES,
   LOCATION_TYPES,
   PHASES,
   ROSTERS,
@@ -59,7 +58,6 @@ function createEmptyForm(company: StaffingPlanFormData['company'] = ''): Staffin
     discipline: '',
     position: '',
     class: '',
-    hiringSource: '',
     company,
     eeIdSap: '',
     sortNumber: '',
@@ -160,7 +158,6 @@ export default function StaffingPlanFormPage() {
     if (!form.discipline) nextErrors.discipline = 'Discipline is required'
     if (!form.position.trim()) nextErrors.position = 'Position is required'
     if (!form.class) nextErrors.class = 'Class is required'
-    if (!form.hiringSource) nextErrors.hiringSource = 'Hiring source is required'
     if (!form.company) nextErrors.company = 'Company is required'
     if (!form.roster) nextErrors.roster = 'Roster is required'
 
@@ -353,18 +350,6 @@ export default function StaffingPlanFormPage() {
                   onChange={(value) => updateField('class', value as StaffingPlanFormData['class'])}
                   required
                   error={errors.class}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <SearchableSelect
-                  label="Hiring Source"
-                  options={HIRING_SOURCES}
-                  value={form.hiringSource}
-                  onChange={(value) =>
-                    updateField('hiringSource', value as StaffingPlanFormData['hiringSource'])
-                  }
-                  required
-                  error={errors.hiringSource}
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>

@@ -411,7 +411,6 @@ export const CLASSES = [
   'E00 - Principal',
 ] as const
 
-export const HIRING_SOURCES = ['Hatch', 'Bantrel', 'Bechtel'] as const
 
 export const ROSTERS = [
   'None',

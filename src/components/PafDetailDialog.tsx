@@ -48,7 +48,6 @@ export default function PafDetailDialog({ authorization, onClose }: PafDetailDia
             <Detail label="DSG" value={authorization.dsg} />
             <Detail label="Country" value={authorization.country} />
             <Detail label="Class" value={authorization.class} />
-            <Detail label="Hiring Source" value={authorization.hiringSource} />
             <Detail label="Company" value={authorization.company} />
             <Detail label="Roster" value={authorization.roster} />
             <Detail label="EE Id / SAP" value={authorization.eeIdSap} />

@@ -1,5 +1,5 @@
 /** Bump when sample data shape or content must replace stored localStorage. */
-export const APP_SEED_VERSION = 'phase-matrix-v1'
+export const APP_SEED_VERSION = 'company-not-hiring-source-v1'
 export const APP_SEED_VERSION_KEY = 'app-seed-version'
 
 export function isSeedCurrent(): boolean {

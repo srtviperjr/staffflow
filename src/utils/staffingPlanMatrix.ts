@@ -20,7 +20,7 @@ export interface StaffingMatrixRow {
   position: string
   candidate: string
   class: string
-  hiringSource: string
+  company: string
   eeIdSap: string
   paf: string
   sortNumber: string
@@ -49,7 +49,7 @@ export type MatrixColumnId =
   | 'position'
   | 'candidate'
   | 'class'
-  | 'hiringSource'
+  | 'company'
   | 'eeIdSap'
   | 'paf'
   | 'sortNumber'
@@ -77,7 +77,7 @@ export const MATRIX_COLUMN_DEFS: MatrixColumnDef[] = [
   { id: 'position', label: 'Position', getValue: (row) => row.position, minWidth: 140 },
   { id: 'candidate', label: 'Candidate', getValue: (row) => row.candidate, minWidth: 140 },
   { id: 'class', label: 'Class', getValue: (row) => row.class, minWidth: 140 },
-  { id: 'hiringSource', label: 'Hiring Source', getValue: (row) => row.hiringSource },
+  { id: 'company', label: 'Company', getValue: (row) => row.company },
   { id: 'eeIdSap', label: 'EE Id # / SAP', getValue: (row) => row.eeIdSap },
   { id: 'paf', label: 'PAF', getValue: (row) => row.paf },
   { id: 'sortNumber', label: 'Sort Number', getValue: (row) => row.sortNumber },
@@ -227,7 +227,7 @@ function buildRow(
     position: position.position,
     candidate: authorization?.candidateName ?? 'None',
     class: authorization?.class ?? position.class,
-    hiringSource: authorization?.hiringSource ?? position.hiringSource,
+    company: authorization?.company ?? position.company,
     eeIdSap: authorization?.eeIdSap ?? position.eeIdSap,
     paf: authorization?.pafNumber ?? 'None',
     sortNumber: authorization?.sortNumber ?? position.sortNumber,

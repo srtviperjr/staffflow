@@ -32,11 +32,13 @@ import FilterAltOffIcon from '@mui/icons-material/FilterAltOff'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import RestartAltIcon from '@mui/icons-material/RestartAlt'
+import EditIcon from '@mui/icons-material/Edit'
 import PafDetailDialog from '../../components/PafDetailDialog'
 import { filterByCompanyVisibility } from '../../constants/companies'
 import { useProjectAuthorizationRequests } from '../../context/ProjectAuthorizationContext'
 import { useRoles } from '../../context/RolesContext'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
+import { canSubmitRequests } from '../../utils/permissions'
 import type { ProjectAuthorizationRequest } from '../../types/projectAuthorization'
 import {
   DEFAULT_COLUMN_ORDER,
@@ -184,9 +186,10 @@ function renderMetadataCell(
 
 export default function StaffingPlanMatrixPage() {
   const navigate = useNavigate()
-  const { currentUser } = useRoles()
+  const { currentUser, currentUserRoles } = useRoles()
   const { requests: staffingRequests } = useStaffingPlanRequests()
   const { requests: authorizationRequests } = useProjectAuthorizationRequests()
+  const canRevise = canSubmitRequests(currentUserRoles)
   const [selectedPaf, setSelectedPaf] = useState<ProjectAuthorizationRequest | null>(null)
   const [columnOrder, setColumnOrder] = useState<MatrixColumnId[]>(loadColumnOrder)
   const [visibleColumns, setVisibleColumns] = useState<MatrixColumnId[]>(loadVisibleColumns)
@@ -230,6 +233,12 @@ export default function StaffingPlanMatrixPage() {
   const handleCreatePaf = (positionId: string) => {
     navigate(`/project-authorization?positionId=${positionId}`)
   }
+
+  const handleRevise = (positionId: string) => {
+    navigate(`/staffing-plan/revise/${positionId}`)
+  }
+
+  const metadataColSpan = visibleColumnDefs.length + (canRevise ? 1 : 0)
 
   const setFilterValue = (columnId: MatrixColumnId, value: string) => {
     setFilters((prev) => {
@@ -402,7 +411,7 @@ export default function StaffingPlanMatrixPage() {
                 No approved positions yet
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Approve position requests to populate the staffing plan matrix. PAF approvals are
+                Approve position requests to populate the staffing plan matrix. PAF requests are
                 optional and can be linked later.
               </Typography>
             </Box>
@@ -422,7 +431,7 @@ export default function StaffingPlanMatrixPage() {
                   {summaryRows.map((summary) => (
                     <TableRow key={summary.label}>
                       <TableCell
-                        colSpan={Math.max(visibleColumnDefs.length, 1)}
+                        colSpan={Math.max(metadataColSpan, 1)}
                         sx={{
                           ...stickyMetaSx,
                           left: 0,
@@ -472,6 +481,22 @@ export default function StaffingPlanMatrixPage() {
                         {column.label}
                       </TableCell>
                     ))}
+                    {canRevise ? (
+                      <TableCell
+                        sx={{
+                          ...cellSx,
+                          position: 'sticky',
+                          top: 0,
+                          zIndex: 5,
+                          bgcolor: '#9e9e9e',
+                          color: 'white',
+                          fontWeight: 700,
+                          minWidth: 96,
+                        }}
+                      >
+                        Actions
+                      </TableCell>
+                    ) : null}
                     {periods.map((period) => (
                       <TableCell
                         key={period}
@@ -527,6 +552,18 @@ export default function StaffingPlanMatrixPage() {
                         </TableCell>
                       )
                     })}
+                    {canRevise ? (
+                      <TableCell
+                        sx={{
+                          ...cellSx,
+                          position: 'sticky',
+                          top: 40,
+                          zIndex: 5,
+                          bgcolor: '#eceff1',
+                          minWidth: 96,
+                        }}
+                      />
+                    ) : null}
                     {periods.map((period) => (
                       <TableCell
                         key={`filter-period-${period}`}
@@ -570,6 +607,19 @@ export default function StaffingPlanMatrixPage() {
                           </TableCell>
                         )
                       })}
+                      {canRevise ? (
+                        <TableCell sx={{ ...cellSx, minWidth: 96 }}>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<EditIcon />}
+                            onClick={() => handleRevise(row.id)}
+                            sx={{ textTransform: 'none', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                          >
+                            Revise
+                          </Button>
+                        </TableCell>
+                      ) : null}
                       {periods.map((period) => (
                         <TableCell
                           key={`${row.id}-${period}`}

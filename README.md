@@ -20,8 +20,8 @@ React + TypeScript + Material UI app with multiple request workflows for submitt
 - Manager review page with approve/reject (rejection requires a comment)
 - Excel-like staffing plan matrix (`/staffing-plan/matrix`) showing approved positions and authorized candidates with bi-weekly load
 
-### PAF Approvals (`/project-authorization`)
-- PAF approval request form linked to approved staffing plan positions (cascading Functional Group → DSG → Position)
+### PAF Requests (`/project-authorization`)
+- PAF request form linked to approved staffing plan positions (cascading Functional Group → DSG → Position)
 - Candidate details, roster, hours, and calendar date fields
 - Manager review page with review status and approve/reject workflow
 
@@ -37,8 +37,8 @@ React + TypeScript + Material UI app with multiple request workflows for submitt
 | `/staffing-plan` | New staffing plan position request |
 | `/staffing-plan/manager` | Staffing plan manager review |
 | `/staffing-plan/matrix` | Staffing plan matrix view |
-| `/project-authorization` | New PAF approval request |
-| `/project-authorization/manager` | PAF approvals manager review |
+| `/project-authorization` | New PAF request |
+| `/project-authorization/manager` | PAF requests manager review |
 
 ## Data Storage
 

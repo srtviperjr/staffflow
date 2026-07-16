@@ -78,7 +78,7 @@ export default function Layout() {
   const pafItems = [
     canSubmit
       ? {
-          label: 'PAF Approval',
+          label: 'PAF Request',
           to: '/project-authorization',
           icon: <VerifiedIcon fontSize="small" />,
           active:
@@ -88,7 +88,7 @@ export default function Layout() {
       : null,
     canReview
       ? {
-          label: 'PAF Approvals Review',
+          label: 'PAF Requests Review',
           to: '/project-authorization/manager',
           icon: <ManageAccountsIcon fontSize="small" />,
           active: path === '/project-authorization/manager',

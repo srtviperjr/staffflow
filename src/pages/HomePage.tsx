@@ -89,8 +89,8 @@ export default function HomePage() {
     canSubmit
       ? {
           key: 'paf',
-          title: 'PAF Approval',
-          description: 'Authorize a candidate against an approved staffing position.',
+          title: 'PAF Request',
+          description: 'Submit a PAF request for a candidate against an approved staffing position.',
           icon: <VerifiedIcon color="secondary" sx={{ fontSize: 40 }} />,
           color: 'secondary' as const,
           primary: { label: 'Start request', to: '/project-authorization' },
