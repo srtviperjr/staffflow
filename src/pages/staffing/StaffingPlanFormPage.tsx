@@ -20,7 +20,11 @@ import EditIcon from '@mui/icons-material/Edit'
 import HistoryIcon from '@mui/icons-material/History'
 import SearchableSelect from '../../components/SearchableSelect'
 import SundayWeekDatePicker from '../../components/SundayWeekDatePicker'
-import { COMPANIES, filterByCompanyVisibility } from '../../constants/companies'
+import {
+  COMPANIES,
+  defaultPhaseForCompany,
+  filterByCompanyVisibility,
+} from '../../constants/companies'
 import { useRoles } from '../../context/RolesContext'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
 import {
@@ -45,7 +49,7 @@ import { requestToStaffingFormData } from '../../utils/staffingPlanRevisions'
 
 function createEmptyForm(company: StaffingPlanFormData['company'] = ''): StaffingPlanFormData {
   return {
-    phase: 'Jansen',
+    phase: defaultPhaseForCompany(company),
     locationType: '',
     functionalGroup: '',
     dsg: '',
@@ -105,6 +109,7 @@ export default function StaffingPlanFormPage() {
   const isRevisionMode = Boolean(requestId && revisionSource)
   const invalidRevisionId = Boolean(requestId && !revisionSource)
   const companyLocked = Boolean(currentUser && currentUser.company !== 'BHP')
+  const phaseLocked = companyLocked
 
   useEffect(() => {
     if (revisionSource) {
@@ -115,13 +120,13 @@ export default function StaffingPlanFormPage() {
 
     if (!currentUser?.company) return
 
+    const expectedPhase = defaultPhaseForCompany(currentUser.company)
     setForm((prev) => {
       if (currentUser.company !== 'BHP') {
-        return prev.company === currentUser.company
-          ? prev
-          : { ...prev, company: currentUser.company }
+        if (prev.company === currentUser.company && prev.phase === expectedPhase) return prev
+        return { ...prev, company: currentUser.company, phase: expectedPhase }
       }
-      return prev.company ? prev : { ...prev, company: currentUser.company }
+      return prev.company ? prev : { ...prev, company: currentUser.company, phase: expectedPhase }
     })
   }, [revisionSource, currentUser?.company])
 
@@ -129,7 +134,17 @@ export default function StaffingPlanFormPage() {
     field: K,
     value: StaffingPlanFormData[K],
   ) => {
-    setForm((prev) => ({ ...prev, [field]: value }))
+    setForm((prev) => {
+      if (field === 'company') {
+        const company = value as StaffingPlanFormData['company']
+        return {
+          ...prev,
+          company,
+          phase: defaultPhaseForCompany(company),
+        }
+      }
+      return { ...prev, [field]: value }
+    })
     setErrors((prev) => ({ ...prev, [field]: undefined }))
   }
 
@@ -225,6 +240,14 @@ export default function StaffingPlanFormPage() {
                   options={PHASES}
                   value={form.phase}
                   onChange={(value) => updateField('phase', value as StaffingPlanFormData['phase'])}
+                  disabled={phaseLocked}
+                  helperText={
+                    phaseLocked
+                      ? form.phase === 'JS2'
+                        ? 'JS2 for Fluor'
+                        : 'JS1 for Hatch and Bantrel'
+                      : 'JS1 (Hatch/Bantrel) or JS2 (Fluor)'
+                  }
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>

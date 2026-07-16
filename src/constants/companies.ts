@@ -17,3 +17,9 @@ export function filterByCompanyVisibility<T extends { company: string }>(
   if (viewerCompany === 'BHP') return items
   return items.filter((item) => item.company === viewerCompany)
 }
+
+/** Hatch/Bantrel use JS1; Fluor uses JS2; BHP defaults to JS1. */
+export function defaultPhaseForCompany(company: Company | '' | undefined | null): 'JS1' | 'JS2' {
+  if (company === 'Fluor') return 'JS2'
+  return 'JS1'
+}
