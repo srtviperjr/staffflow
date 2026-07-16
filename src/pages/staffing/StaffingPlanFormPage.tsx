@@ -83,8 +83,23 @@ function statusColor(status: string): 'default' | 'warning' | 'success' | 'error
   return 'warning'
 }
 
-export default function StaffingPlanFormPage() {
-  const { requestId } = useParams()
+export type StaffingPlanFormPageProps = {
+  dialogMode?: boolean
+  reviseRequestId?: string
+  onClose?: () => void
+  onSubmitted?: (message: string) => void
+  onOpenRevise?: (requestId: string) => void
+}
+
+export default function StaffingPlanFormPage({
+  dialogMode = false,
+  reviseRequestId: reviseRequestIdProp,
+  onClose,
+  onSubmitted,
+  onOpenRevise,
+}: StaffingPlanFormPageProps = {}) {
+  const { requestId: requestIdParam } = useParams()
+  const requestId = reviseRequestIdProp ?? requestIdParam
   const navigate = useNavigate()
   const { currentUser } = useRoles()
   const { currentRequests, addRequest, reviseRequest } = useStaffingPlanRequests()
@@ -171,50 +186,62 @@ export default function StaffingPlanFormPage() {
     return Object.keys(nextErrors).length === 0
   }
 
+  const finish = (message: string, options?: { resetForm?: boolean; leavePage?: boolean }) => {
+    if (options?.resetForm) {
+      setForm(createEmptyForm(currentUser?.company ?? ''))
+    }
+    if (onSubmitted) {
+      onSubmitted(message)
+      return
+    }
+    setSuccessMessage(message)
+    setShowSuccess(true)
+    if (options?.leavePage && !dialogMode) {
+      navigate('/staffing-plan/matrix')
+    }
+  }
+
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
     if (!validate()) return
 
     if (isRevisionMode && revisionSource) {
       reviseRequest(revisionSource.id, form)
-      setSuccessMessage(
+      finish(
         `Revision ${revisionSource.revision + 1} submitted for ${revisionSource.position} (Position ${revisionSource.positionNumber}).`,
+        { leavePage: true },
       )
-      navigate('/staffing-plan')
     } else {
       const created = addRequest(form)
-      setSuccessMessage(`Position request submitted successfully. Position: ${created.positionNumber}.`)
-      setForm(createEmptyForm(currentUser?.company ?? ''))
+      finish(`Position request submitted successfully. Position: ${created.positionNumber}.`, {
+        resetForm: true,
+      })
     }
-
-    setShowSuccess(true)
   }
 
-  return (
-    <>
-      <Card sx={{ mb: 3 }}>
-        <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-            <AssignmentIcon color="primary" sx={{ fontSize: 36 }} />
-            <Box>
-              <Typography variant="h4" color="primary">
-                {isRevisionMode ? 'Revise Position Request' : 'Staffing Plan Position Request'}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {isRevisionMode
-                  ? `Creating revision ${revisionSource!.revision + 1} from revision ${revisionSource!.revision}. Each update is saved as a new revision for review.`
-                  : 'Submit a new position request for the staffing plan'}
-              </Typography>
-            </Box>
-          </Box>
+  const handleCancel = () => {
+    if (onClose) {
+      onClose()
+      return
+    }
+    navigate('/staffing-plan/matrix')
+  }
 
+  const formBody = (
+          <>
           {invalidRevisionId && (
             <Alert severity="error" sx={{ mb: 2 }}>
               The position request could not be found. It may have been superseded by a newer
               revision.{' '}
-              <Button component={RouterLink} to="/staffing-plan" size="small">
-                Back to requests
-              </Button>
+              {onClose ? (
+                <Button onClick={onClose} size="small">
+                  Close
+                </Button>
+              ) : (
+                <Button component={RouterLink} to="/staffing-plan/matrix" size="small">
+                  Back to staffing plan
+                </Button>
+              )}
             </Alert>
           )}
 
@@ -226,7 +253,7 @@ export default function StaffingPlanFormPage() {
             </Alert>
           )}
 
-          <Divider sx={{ mb: 4 }} />
+          {!dialogMode ? <Divider sx={{ mb: 4 }} /> : null}
 
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <SectionTitle>Project &amp; Organization</SectionTitle>
@@ -445,9 +472,9 @@ export default function StaffingPlanFormPage() {
             </Grid>
 
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 4, flexWrap: 'wrap' }}>
-              {isRevisionMode && (
-                <Button component={RouterLink} to="/staffing-plan" variant="outlined">
-                  Cancel Revision
+              {(isRevisionMode || dialogMode) && (
+                <Button onClick={handleCancel} variant="outlined">
+                  {isRevisionMode ? 'Cancel Revision' : 'Cancel'}
                 </Button>
               )}
               <Button
@@ -463,6 +490,31 @@ export default function StaffingPlanFormPage() {
               </Button>
             </Box>
           </Box>
+          </>
+  )
+
+  if (dialogMode) {
+    return formBody
+  }
+
+  return (
+    <>
+      <Card sx={{ mb: 3 }}>
+        <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+            <AssignmentIcon color="primary" sx={{ fontSize: 36 }} />
+            <Box>
+              <Typography variant="h4" color="primary">
+                {isRevisionMode ? 'Revise Position Request' : 'Staffing Plan Position Request'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {isRevisionMode
+                  ? `Creating revision ${revisionSource!.revision + 1} from revision ${revisionSource!.revision}. Each update is saved as a new revision for review.`
+                  : 'Submit a new position request for the staffing plan'}
+              </Typography>
+            </Box>
+          </Box>
+          {formBody}
         </CardContent>
       </Card>
 
@@ -510,14 +562,24 @@ export default function StaffingPlanFormPage() {
                       {request.area} / {request.subArea}
                     </Typography>
                   </Box>
-                  <Button
-                    component={RouterLink}
-                    to={`/staffing-plan/revise/${request.id}`}
-                    variant="outlined"
-                    startIcon={<EditIcon />}
-                  >
-                    Revise
-                  </Button>
+                  {onOpenRevise ? (
+                    <Button
+                      onClick={() => onOpenRevise(request.id)}
+                      variant="outlined"
+                      startIcon={<EditIcon />}
+                    >
+                      Revise
+                    </Button>
+                  ) : (
+                    <Button
+                      component={RouterLink}
+                      to={`/staffing-plan/revise/${request.id}`}
+                      variant="outlined"
+                      startIcon={<EditIcon />}
+                    >
+                      Revise
+                    </Button>
+                  )}
                 </Box>
               ))}
             </Stack>

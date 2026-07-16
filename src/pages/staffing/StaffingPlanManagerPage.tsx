@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
 import {
   Box,
   Button,
@@ -22,6 +21,7 @@ import EditIcon from '@mui/icons-material/Edit'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import { filterByCompanyVisibility } from '../../constants/companies'
+import { useRequestForms } from '../../context/RequestFormsContext'
 import { useRoles } from '../../context/RolesContext'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
 import { useWorkflows } from '../../context/WorkflowContext'
@@ -138,6 +138,7 @@ function RequestDetails({
 
 export default function StaffingPlanManagerPage() {
   const { currentUser } = useRoles()
+  const { openRequestForm } = useRequestForms()
   const { currentRequests, rejectRequest, approveRequest, getHistory } = useStaffingPlanRequests()
   const { getWorkflow } = useWorkflows()
   const [filter, setFilter] = useState<FilterTab>('all')
@@ -383,8 +384,9 @@ export default function StaffingPlanManagerPage() {
                         </>
                       )}
                       <Button
-                        component={RouterLink}
-                        to={`/staffing-plan/revise/${request.id}`}
+                        onClick={() =>
+                          openRequestForm('staffing-plan', { reviseRequestId: request.id })
+                        }
                         variant="outlined"
                         startIcon={<EditIcon />}
                       >

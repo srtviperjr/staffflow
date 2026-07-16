@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
 import {
   Box,
   Button,
@@ -23,6 +22,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import { filterByCompanyVisibility } from '../../constants/companies'
 import { useProjectAuthorizationRequests } from '../../context/ProjectAuthorizationContext'
+import { useRequestForms } from '../../context/RequestFormsContext'
 import { useRoles } from '../../context/RolesContext'
 import { useWorkflows } from '../../context/WorkflowContext'
 import RejectDialog from '../../components/RejectDialog'
@@ -131,6 +131,7 @@ function RequestDetails({
 
 export default function ProjectAuthorizationManagerPage() {
   const { currentUser } = useRoles()
+  const { openRequestForm } = useRequestForms()
   const { currentRequests, rejectRequest, approveRequest, getHistory } =
     useProjectAuthorizationRequests()
   const { getWorkflow } = useWorkflows()
@@ -377,8 +378,11 @@ export default function ProjectAuthorizationManagerPage() {
                         </>
                       )}
                       <Button
-                        component={RouterLink}
-                        to={`/project-authorization/revise/${request.id}`}
+                        onClick={() =>
+                          openRequestForm('project-authorization', {
+                            reviseRequestId: request.id,
+                          })
+                        }
                         variant="outlined"
                         startIcon={<EditIcon />}
                       >

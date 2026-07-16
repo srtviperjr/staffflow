@@ -11,12 +11,19 @@ import {
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import type { ReactNode } from 'react'
 
-export interface NavMenuItem {
-  label: string
-  to: string
-  icon?: ReactNode
-  active?: boolean
-}
+export type NavMenuItem =
+  | {
+      label: string
+      to: string
+      icon?: ReactNode
+      active?: boolean
+    }
+  | {
+      label: string
+      onClick: () => void
+      icon?: ReactNode
+      active?: boolean
+    }
 
 interface NavMenuGroupProps {
   label: string
@@ -30,6 +37,10 @@ function navButtonSx(active: boolean) {
     opacity: active ? 1 : 0.75,
     bgcolor: active ? 'rgba(255,255,255,0.15)' : 'transparent',
   }
+}
+
+function itemKey(item: NavMenuItem) {
+  return 'to' in item ? item.to : `action:${item.label}`
 }
 
 export default function NavMenuGroup({ label, icon, active = false, items }: NavMenuGroupProps) {
@@ -67,18 +78,32 @@ export default function NavMenuGroup({ label, icon, active = false, items }: Nav
           },
         }}
       >
-        {items.map((item) => (
-          <MenuItem
-            key={item.to}
-            component={RouterLink}
-            to={item.to}
-            selected={Boolean(item.active)}
-            onClick={() => setAnchorEl(null)}
-          >
-            {item.icon ? <ListItemIcon>{item.icon}</ListItemIcon> : null}
-            <ListItemText>{item.label}</ListItemText>
-          </MenuItem>
-        ))}
+        {items.map((item) =>
+          'to' in item ? (
+            <MenuItem
+              key={itemKey(item)}
+              component={RouterLink}
+              to={item.to}
+              selected={Boolean(item.active)}
+              onClick={() => setAnchorEl(null)}
+            >
+              {item.icon ? <ListItemIcon>{item.icon}</ListItemIcon> : null}
+              <ListItemText>{item.label}</ListItemText>
+            </MenuItem>
+          ) : (
+            <MenuItem
+              key={itemKey(item)}
+              selected={Boolean(item.active)}
+              onClick={() => {
+                setAnchorEl(null)
+                item.onClick()
+              }}
+            >
+              {item.icon ? <ListItemIcon>{item.icon}</ListItemIcon> : null}
+              <ListItemText>{item.label}</ListItemText>
+            </MenuItem>
+          ),
+        )}
       </Menu>
     </Box>
   )

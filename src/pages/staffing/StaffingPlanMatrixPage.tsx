@@ -1,5 +1,4 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   Box,
   Button,
@@ -45,6 +44,7 @@ import StaffingDetailDialog from '../../components/StaffingDetailDialog'
 import RejectDialog from '../../components/RejectDialog'
 import { filterByCompanyVisibility } from '../../constants/companies'
 import { useProjectAuthorizationRequests } from '../../context/ProjectAuthorizationContext'
+import { useRequestForms } from '../../context/RequestFormsContext'
 import { useRoles } from '../../context/RolesContext'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
 import { canReviewRequests, canSubmitRequests } from '../../utils/permissions'
@@ -375,7 +375,7 @@ function renderMetadataCell(
 }
 
 export default function StaffingPlanMatrixPage() {
-  const navigate = useNavigate()
+  const { openRequestForm } = useRequestForms()
   const { currentUser, currentUserRoles } = useRoles()
   const {
     requests: staffingRequests,
@@ -452,14 +452,16 @@ export default function StaffingPlanMatrixPage() {
   )
 
   const handleCreatePaf = (positionId: string) => {
-    navigate(`/project-authorization?positionId=${positionId}`)
+    openRequestForm('project-authorization', { positionId })
   }
 
   const handleRevise = (revisionGroupId: string) => {
     const current = visibleStaffingRequests.find(
       (request) => request.revisionGroupId === revisionGroupId && request.isCurrentRevision,
     )
-    navigate(`/staffing-plan/revise/${current?.id ?? revisionGroupId}`)
+    openRequestForm('staffing-plan', {
+      reviseRequestId: current?.id ?? revisionGroupId,
+    })
   }
 
   const setFilterValue = (columnId: MatrixColumnId, value: string) => {

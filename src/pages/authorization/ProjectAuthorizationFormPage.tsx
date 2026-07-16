@@ -77,10 +77,27 @@ function statusColor(status: string): 'default' | 'warning' | 'success' | 'error
   return 'warning'
 }
 
-export default function ProjectAuthorizationFormPage() {
-  const { requestId } = useParams()
+export type ProjectAuthorizationFormPageProps = {
+  dialogMode?: boolean
+  reviseRequestId?: string
+  positionId?: string
+  onClose?: () => void
+  onSubmitted?: (message: string) => void
+  onOpenRevise?: (requestId: string) => void
+}
+
+export default function ProjectAuthorizationFormPage({
+  dialogMode = false,
+  reviseRequestId: reviseRequestIdProp,
+  positionId: positionIdProp,
+  onClose,
+  onSubmitted,
+  onOpenRevise,
+}: ProjectAuthorizationFormPageProps = {}) {
+  const { requestId: requestIdParam } = useParams()
   const [searchParams] = useSearchParams()
-  const positionId = searchParams.get('positionId')
+  const requestId = reviseRequestIdProp ?? requestIdParam
+  const positionId = positionIdProp ?? searchParams.get('positionId') ?? undefined
   const navigate = useNavigate()
   const { currentUser } = useRoles()
   const { requests: staffingRequests } = useStaffingPlanRequests()
@@ -286,6 +303,21 @@ export default function ProjectAuthorizationFormPage() {
     return Object.keys(nextErrors).length === 0
   }
 
+  const finish = (message: string, options?: { resetForm?: boolean; leavePage?: boolean }) => {
+    if (options?.resetForm) {
+      setForm(createEmptyForm(currentUser?.company ?? ''))
+    }
+    if (onSubmitted) {
+      onSubmitted(message)
+      return
+    }
+    setSuccessMessage(message)
+    setShowSuccess(true)
+    if (options?.leavePage && !dialogMode) {
+      navigate('/project-authorization/register')
+    }
+  }
+
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
     if (!validate()) return
@@ -297,46 +329,44 @@ export default function ProjectAuthorizationFormPage() {
     try {
       if (isRevisionMode && revisionSource) {
         reviseRequest(revisionSource.id, form, positionLabel, position)
-        setSuccessMessage(
+        finish(
           `Revision ${revisionSource.revision + 1} submitted for ${revisionSource.candidateName} (PAF ${revisionSource.pafNumber}).`,
+          { leavePage: true },
         )
-        navigate('/project-authorization')
       } else {
         const created = addRequest(form, positionLabel, position)
-        setSuccessMessage(`PAF request submitted successfully. PAF: ${created.pafNumber}.`)
-        setForm(createEmptyForm(currentUser?.company ?? ''))
+        finish(`PAF request submitted successfully. PAF: ${created.pafNumber}.`, {
+          resetForm: true,
+        })
       }
-      setShowSuccess(true)
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Unable to submit PAF request.')
     }
   }
 
-  return (
-    <>
-      <Card sx={{ mb: 3 }}>
-        <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-            <VerifiedIcon color="primary" sx={{ fontSize: 36 }} />
-            <Box>
-              <Typography variant="h4" color="primary">
-                {isRevisionMode ? 'Revise PAF Request' : 'PAF Request'}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {isRevisionMode
-                  ? `Creating revision ${revisionSource!.revision + 1} from revision ${revisionSource!.revision}. Each update is saved as a new revision for review.`
-                  : 'Assign one person to an approved position. Multiple people can fill it if dates do not overlap.'}
-              </Typography>
-            </Box>
-          </Box>
+  const handleCancel = () => {
+    if (onClose) {
+      onClose()
+      return
+    }
+    navigate('/project-authorization/register')
+  }
 
+  const formBody = (
+          <>
           {invalidRevisionId && (
             <Alert severity="error" sx={{ mb: 2 }}>
               The PAF request could not be found. It may have been superseded by a newer
               revision.{' '}
-              <Button component={RouterLink} to="/project-authorization" size="small">
-                Back to requests
-              </Button>
+              {onClose ? (
+                <Button onClick={onClose} size="small">
+                  Close
+                </Button>
+              ) : (
+                <Button component={RouterLink} to="/project-authorization/register" size="small">
+                  Back to PAF Register
+                </Button>
+              )}
             </Alert>
           )}
 
@@ -377,7 +407,7 @@ export default function ProjectAuthorizationFormPage() {
             </Alert>
           )}
 
-          <Divider sx={{ mb: 4 }} />
+          {!dialogMode ? <Divider sx={{ mb: 4 }} /> : null}
 
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <SectionTitle>Approved Position Selection</SectionTitle>
@@ -546,9 +576,9 @@ export default function ProjectAuthorizationFormPage() {
             </Grid>
 
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 4, flexWrap: 'wrap' }}>
-              {isRevisionMode && (
-                <Button component={RouterLink} to="/project-authorization" variant="outlined">
-                  Cancel Revision
+              {(isRevisionMode || dialogMode) && (
+                <Button onClick={handleCancel} variant="outlined">
+                  {isRevisionMode ? 'Cancel Revision' : 'Cancel'}
                 </Button>
               )}
               <Button
@@ -562,6 +592,31 @@ export default function ProjectAuthorizationFormPage() {
               </Button>
             </Box>
           </Box>
+          </>
+  )
+
+  if (dialogMode) {
+    return formBody
+  }
+
+  return (
+    <>
+      <Card sx={{ mb: 3 }}>
+        <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+            <VerifiedIcon color="primary" sx={{ fontSize: 36 }} />
+            <Box>
+              <Typography variant="h4" color="primary">
+                {isRevisionMode ? 'Revise PAF Request' : 'PAF Request'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {isRevisionMode
+                  ? `Creating revision ${revisionSource!.revision + 1} from revision ${revisionSource!.revision}. Each update is saved as a new revision for review.`
+                  : 'Assign one person to an approved position. Multiple people can fill it if dates do not overlap.'}
+              </Typography>
+            </Box>
+          </Box>
+          {formBody}
         </CardContent>
       </Card>
 
@@ -604,14 +659,24 @@ export default function ProjectAuthorizationFormPage() {
                       {request.approvedPositionLabel}
                     </Typography>
                   </Box>
-                  <Button
-                    component={RouterLink}
-                    to={`/project-authorization/revise/${request.id}`}
-                    variant="outlined"
-                    startIcon={<EditIcon />}
-                  >
-                    Revise
-                  </Button>
+                  {onOpenRevise ? (
+                    <Button
+                      onClick={() => onOpenRevise(request.id)}
+                      variant="outlined"
+                      startIcon={<EditIcon />}
+                    >
+                      Revise
+                    </Button>
+                  ) : (
+                    <Button
+                      component={RouterLink}
+                      to={`/project-authorization/revise/${request.id}`}
+                      variant="outlined"
+                      startIcon={<EditIcon />}
+                    >
+                      Revise
+                    </Button>
+                  )}
                 </Box>
               ))}
             </Stack>

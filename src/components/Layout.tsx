@@ -16,7 +16,8 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import AccountTreeIcon from '@mui/icons-material/AccountTree'
 import GroupIcon from '@mui/icons-material/Group'
 import ActingAsUserSwitcher from './ActingAsUserSwitcher'
-import NavMenuGroup, { navButtonSx } from './NavMenuGroup'
+import NavMenuGroup, { navButtonSx, type NavMenuItem } from './NavMenuGroup'
+import { useRequestForms } from '../context/RequestFormsContext'
 import { useRoles } from '../context/RolesContext'
 import {
   canReviewRequests,
@@ -29,6 +30,7 @@ export default function Layout() {
   const location = useLocation()
   const path = location.pathname
   const { currentUserRoles } = useRoles()
+  const { openRequestForm, activeForm } = useRequestForms()
 
   const admin = isAdmin(currentUserRoles)
   const canSubmit = canSubmitRequests(currentUserRoles)
@@ -36,8 +38,9 @@ export default function Layout() {
   const canViewMatrix = canViewStaffingMatrix(currentUserRoles)
 
   const isHome = path === '/'
-  const isStaffManagement = path.startsWith('/staffing-plan')
-  const isPafManagement = path.startsWith('/project-authorization')
+  const isStaffManagement = path.startsWith('/staffing-plan') || activeForm?.kind === 'staffing-plan'
+  const isPafManagement =
+    path.startsWith('/project-authorization') || activeForm?.kind === 'project-authorization'
   const isApplicationAdmin =
     path.startsWith('/roles') || path.startsWith('/users') || path.startsWith('/workflows')
   const wideLayout =
@@ -49,9 +52,9 @@ export default function Layout() {
     canSubmit
       ? {
           label: 'Position Request',
-          to: '/staffing-plan',
+          onClick: () => openRequestForm('staffing-plan'),
           icon: <AssignmentIcon fontSize="small" />,
-          active: path === '/staffing-plan' || path.startsWith('/staffing-plan/revise'),
+          active: activeForm?.kind === 'staffing-plan',
         }
       : null,
     canReview
@@ -70,22 +73,15 @@ export default function Layout() {
           active: path === '/staffing-plan/matrix',
         }
       : null,
-  ].filter(Boolean) as Array<{
-    label: string
-    to: string
-    icon: React.ReactNode
-    active: boolean
-  }>
+  ].filter(Boolean) as NavMenuItem[]
 
   const pafItems = [
     canSubmit
       ? {
           label: 'PAF Request',
-          to: '/project-authorization',
+          onClick: () => openRequestForm('project-authorization'),
           icon: <VerifiedIcon fontSize="small" />,
-          active:
-            path === '/project-authorization' ||
-            path.startsWith('/project-authorization/revise'),
+          active: activeForm?.kind === 'project-authorization',
         }
       : null,
     canReview
@@ -104,12 +100,7 @@ export default function Layout() {
           active: path === '/project-authorization/register',
         }
       : null,
-  ].filter(Boolean) as Array<{
-    label: string
-    to: string
-    icon: React.ReactNode
-    active: boolean
-  }>
+  ].filter(Boolean) as NavMenuItem[]
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>

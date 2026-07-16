@@ -1,5 +1,4 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   Box,
   Button,
@@ -43,6 +42,7 @@ import PafDetailDialog from '../../components/PafDetailDialog'
 import RejectDialog from '../../components/RejectDialog'
 import { filterByCompanyVisibility } from '../../constants/companies'
 import { useProjectAuthorizationRequests } from '../../context/ProjectAuthorizationContext'
+import { useRequestForms } from '../../context/RequestFormsContext'
 import { useRoles } from '../../context/RolesContext'
 import { canReviewRequests, canSubmitRequests } from '../../utils/permissions'
 import {
@@ -131,7 +131,7 @@ function loadVisibleColumns(): PafRegisterColumnId[] {
 }
 
 export default function PafRegisterPage() {
-  const navigate = useNavigate()
+  const { openRequestForm } = useRequestForms()
   const { currentUser, currentUserRoles } = useRoles()
   const { requests, approveRequest, rejectRequest } = useProjectAuthorizationRequests()
   const canRevise = canSubmitRequests(currentUserRoles)
@@ -563,7 +563,11 @@ export default function PafRegisterPage() {
                                 variant="outlined"
                                 color="secondary"
                                 startIcon={<EditIcon />}
-                                onClick={() => navigate(`/project-authorization/revise/${row.id}`)}
+                                onClick={() =>
+                                  openRequestForm('project-authorization', {
+                                    reviseRequestId: row.id,
+                                  })
+                                }
                                 sx={{ textTransform: 'none', fontSize: '0.75rem' }}
                               >
                                 Revise

@@ -21,6 +21,7 @@ import PendingActionsIcon from '@mui/icons-material/PendingActions'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import { APP_SEED_VERSION_KEY } from '../data/seedVersion'
 import { ensureLatestSeedData } from '../data/seedAppData'
+import { useRequestForms } from '../context/RequestFormsContext'
 import { useRoles } from '../context/RolesContext'
 import { useStaffingPlanRequests } from '../context/StaffingPlanContext'
 import { useProjectAuthorizationRequests } from '../context/ProjectAuthorizationContext'
@@ -48,6 +49,7 @@ export default function HomePage() {
   const { currentRequests: staffingRequests } = useStaffingPlanRequests()
   const { currentRequests: pafRequests } = useProjectAuthorizationRequests()
   const { getWorkflow } = useWorkflows()
+  const { openRequestForm } = useRequestForms()
 
   const admin = isAdmin(currentUserRoles)
   const canSubmit = canSubmitRequests(currentUserRoles)
@@ -80,7 +82,10 @@ export default function HomePage() {
           description: 'Submit a staffing plan position for manager approval.',
           icon: <AssignmentIcon color="primary" sx={{ fontSize: 40 }} />,
           color: 'primary' as const,
-          primary: { label: 'Start request', to: '/staffing-plan' },
+          primary: {
+            label: 'Start request',
+            onClick: () => openRequestForm('staffing-plan'),
+          },
           secondary: canViewMatrix
             ? { label: 'View staffing plan', to: '/staffing-plan/matrix' }
             : undefined,
@@ -94,7 +99,10 @@ export default function HomePage() {
             'Assign one person per PAF to an approved position. Multiple people can fill a position if their dates do not overlap.',
           icon: <VerifiedIcon color="secondary" sx={{ fontSize: 40 }} />,
           color: 'secondary' as const,
-          primary: { label: 'Start request', to: '/project-authorization' },
+          primary: {
+            label: 'Start request',
+            onClick: () => openRequestForm('project-authorization'),
+          },
           secondary: canViewMatrix
             ? { label: 'Open PAF Register', to: '/project-authorization/register' }
             : undefined,
@@ -120,7 +128,7 @@ export default function HomePage() {
     description: string
     icon: React.ReactNode
     color: 'primary' | 'secondary'
-    primary: { label: string; to: string }
+    primary: { label: string; to?: string; onClick?: () => void }
     secondary?: { label: string; to: string }
   }>
 
@@ -189,15 +197,26 @@ export default function HomePage() {
                   </Typography>
                 </CardContent>
                 <CardActions sx={{ px: 3, pb: 3, gap: 1, flexWrap: 'wrap' }}>
-                  <Button
-                    component={RouterLink}
-                    to={workflow.primary.to}
-                    variant="contained"
-                    color={workflow.color}
-                    endIcon={<ArrowForwardIcon />}
-                  >
-                    {workflow.primary.label}
-                  </Button>
+                  {workflow.primary.onClick ? (
+                    <Button
+                      onClick={workflow.primary.onClick}
+                      variant="contained"
+                      color={workflow.color}
+                      endIcon={<ArrowForwardIcon />}
+                    >
+                      {workflow.primary.label}
+                    </Button>
+                  ) : (
+                    <Button
+                      component={RouterLink}
+                      to={workflow.primary.to!}
+                      variant="contained"
+                      color={workflow.color}
+                      endIcon={<ArrowForwardIcon />}
+                    >
+                      {workflow.primary.label}
+                    </Button>
+                  )}
                   {workflow.secondary ? (
                     <Button
                       component={RouterLink}
