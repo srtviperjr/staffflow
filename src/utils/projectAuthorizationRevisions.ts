@@ -132,13 +132,15 @@ export function getApprovedAuthorizationRequests(requests: ProjectAuthorizationR
 
 /**
  * Main PAF Register rows: latest approved per person/PAF group.
- * Groups that only have pending/rejected still appear so they can be reviewed.
+ * Groups with only a first pending revision still appear; first/only rejected
+ * revisions stay hidden (they surface under expand when a main row exists).
  */
 export function getPafRegisterMainRequests(requests: ProjectAuthorizationRequest[]) {
   const approved = getApprovedAuthorizationRequests(requests)
   const approvedGroups = new Set(approved.map((request) => request.revisionGroupId))
   const pendingOnly = getCurrentAuthorizationRequests(requests).filter(
-    (request) => !approvedGroups.has(request.revisionGroupId),
+    (request) =>
+      !approvedGroups.has(request.revisionGroupId) && request.status === 'pending',
   )
   return [...approved, ...pendingOnly]
 }
