@@ -1,162 +1,316 @@
 import { Link as RouterLink } from 'react-router-dom'
+import { useMemo, useState } from 'react'
 import {
   Box,
   Button,
   Card,
   CardActions,
   CardContent,
+  Chip,
+  Divider,
   Grid,
+  Stack,
   Typography,
 } from '@mui/material'
-import PersonAddIcon from '@mui/icons-material/PersonAdd'
-import DescriptionIcon from '@mui/icons-material/Description'
 import AssignmentIcon from '@mui/icons-material/Assignment'
 import VerifiedIcon from '@mui/icons-material/Verified'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import ScienceIcon from '@mui/icons-material/Science'
+import TableChartIcon from '@mui/icons-material/TableChart'
+import PendingActionsIcon from '@mui/icons-material/PendingActions'
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
+import LoadSampleDataDialog from '../components/LoadSampleDataDialog'
+import { useRequestForms } from '../context/RequestFormsContext'
+import { useRoles } from '../context/RolesContext'
+import { useStaffingPlanRequests } from '../context/StaffingPlanContext'
+import { useProjectAuthorizationRequests } from '../context/ProjectAuthorizationContext'
+import { useWorkflows } from '../context/WorkflowContext'
+import {
+  canReviewRequests,
+  canSubmitRequests,
+  canViewStaffingMatrix,
+  isAdmin,
+} from '../utils/permissions'
+import { getPendingApprovalsForUser } from '../utils/pendingApprovals'
+
+function formatSubmittedAt(value: string) {
+  return new Date(value).toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
 
 export default function HomePage() {
+  const { currentUser, currentUserRoles } = useRoles()
+  const { currentRequests: staffingRequests } = useStaffingPlanRequests()
+  const { currentRequests: pafRequests } = useProjectAuthorizationRequests()
+  const { getWorkflow } = useWorkflows()
+  const { openRequestForm } = useRequestForms()
+  const [sampleDataOpen, setSampleDataOpen] = useState(false)
+
+  const admin = isAdmin(currentUserRoles)
+  const canSubmit = canSubmitRequests(currentUserRoles)
+  const canReview = canReviewRequests(currentUserRoles)
+  const canViewMatrix = canViewStaffingMatrix(currentUserRoles)
+
+  const pendingApprovals = useMemo(
+    () =>
+      getPendingApprovalsForUser({
+        staffingRequests,
+        pafRequests,
+        roles: currentUserRoles,
+        company: currentUser?.company,
+        getWorkflow,
+      }),
+    [staffingRequests, pafRequests, currentUserRoles, currentUser?.company, getWorkflow],
+  )
+
+  const availableWorkflows = [
+    canSubmit
+      ? {
+          key: 'staffing',
+          title: 'Position Request',
+          description: 'Submit a staffing plan position for manager approval.',
+          icon: <AssignmentIcon color="primary" sx={{ fontSize: 40 }} />,
+          color: 'primary' as const,
+          primary: {
+            label: 'Start request',
+            onClick: () => openRequestForm('staffing-plan'),
+          },
+          secondary: canViewMatrix
+            ? { label: 'View staffing plan', to: '/staffing-plan/matrix' }
+            : undefined,
+        }
+      : null,
+    canSubmit
+      ? {
+          key: 'paf',
+          title: 'PAF Request',
+          description:
+            'Assign one person per PAF to an approved position. Multiple people can fill a position if their dates do not overlap.',
+          icon: <VerifiedIcon color="secondary" sx={{ fontSize: 40 }} />,
+          color: 'secondary' as const,
+          primary: {
+            label: 'Start request',
+            onClick: () => openRequestForm('project-authorization'),
+          },
+          secondary: canViewMatrix
+            ? { label: 'Open PAF Register', to: '/project-authorization/register' }
+            : undefined,
+        }
+      : null,
+    !canSubmit && canViewMatrix
+      ? {
+          key: 'matrix',
+          title: 'Staffing Plan',
+          description: 'View approved positions and bi-weekly staffing load.',
+          icon: <TableChartIcon color="primary" sx={{ fontSize: 40 }} />,
+          color: 'primary' as const,
+          primary: { label: 'Open staffing plan', to: '/staffing-plan/matrix' },
+          secondary: {
+            label: 'Open PAF Register',
+            to: '/project-authorization/register',
+          },
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    key: string
+    title: string
+    description: string
+    icon: React.ReactNode
+    color: 'primary' | 'secondary'
+    primary: { label: string; to?: string; onClick?: () => void }
+    secondary?: { label: string; to: string }
+  }>
+
   return (
     <Box>
-      <Typography variant="h4" color="primary" gutterBottom sx={{ fontWeight: 700 }}>
-        Jansen StaffFlow
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          gap: 2,
+          flexWrap: 'wrap',
+          mb: 1,
+        }}
+      >
+        <Box>
+          <Typography variant="h4" color="primary" gutterBottom sx={{ fontWeight: 700, mb: 0.5 }}>
+            Jansen Workflows
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            {currentUser
+              ? `Welcome, ${currentUser.name} (${currentUser.company})`
+              : 'Select a user to get started.'}
+          </Typography>
+        </Box>
+        {admin ? (
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<ScienceIcon />}
+            onClick={() => setSampleDataOpen(true)}
+          >
+            Load Sample Data
+          </Button>
+        ) : null}
+      </Box>
+
+      <LoadSampleDataDialog open={sampleDataOpen} onClose={() => setSampleDataOpen(false)} />
+
+      <Typography variant="h5" color="primary" sx={{ mt: 4, mb: 2, fontWeight: 700 }}>
+        Available workflows
       </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-        Choose a workflow to submit a new request or review submitted requests.
-      </Typography>
-
-      <Grid container spacing={3}>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                <PersonAddIcon color="primary" sx={{ fontSize: 40 }} />
-                <Typography variant="h5" color="primary">
-                  Employee Onboarding
-                </Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Submit new hire onboarding requests and complete approval details including buddy
-                assignment, machine setup, and department-specific tools.
-              </Typography>
-            </CardContent>
-            <CardActions sx={{ px: 3, pb: 3, gap: 1, flexWrap: 'wrap' }}>
-              <Button
-                component={RouterLink}
-                to="/onboarding"
-                variant="contained"
-                endIcon={<ArrowForwardIcon />}
-              >
-                New Request
-              </Button>
-              <Button component={RouterLink} to="/onboarding/manager" variant="outlined">
-                Manager Review
-              </Button>
-            </CardActions>
-          </Card>
+      {availableWorkflows.length === 0 ? (
+        <Card variant="outlined" sx={{ mb: 4 }}>
+          <CardContent sx={{ py: 4, textAlign: 'center' }}>
+            <Typography variant="body1" color="text.secondary">
+              No request workflows are available for your roles.
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Contact an administrator if you need access to submit or review requests.
+            </Typography>
+          </CardContent>
+        </Card>
+      ) : (
+        <Grid container spacing={3} sx={{ mb: 5 }}>
+          {availableWorkflows.map((workflow) => (
+            <Grid key={workflow.key} size={{ xs: 12, md: 6 }}>
+              <Card sx={{ height: '100%' }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                    {workflow.icon}
+                    <Typography variant="h5" color={workflow.color}>
+                      {workflow.title}
+                    </Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary">
+                    {workflow.description}
+                  </Typography>
+                </CardContent>
+                <CardActions sx={{ px: 3, pb: 3, gap: 1, flexWrap: 'wrap' }}>
+                  {workflow.primary.onClick ? (
+                    <Button
+                      onClick={workflow.primary.onClick}
+                      variant="contained"
+                      color={workflow.color}
+                      endIcon={<ArrowForwardIcon />}
+                    >
+                      {workflow.primary.label}
+                    </Button>
+                  ) : (
+                    <Button
+                      component={RouterLink}
+                      to={workflow.primary.to!}
+                      variant="contained"
+                      color={workflow.color}
+                      endIcon={<ArrowForwardIcon />}
+                    >
+                      {workflow.primary.label}
+                    </Button>
+                  )}
+                  {workflow.secondary ? (
+                    <Button
+                      component={RouterLink}
+                      to={workflow.secondary.to}
+                      variant="outlined"
+                      color={workflow.color}
+                    >
+                      {workflow.secondary.label}
+                    </Button>
+                  ) : null}
+                </CardActions>
+              </Card>
+            </Grid>
+          ))}
         </Grid>
+      )}
 
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                <DescriptionIcon color="secondary" sx={{ fontSize: 40 }} />
-                <Typography variant="h5" color="secondary">
-                  Labour Change Request
-                </Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Submit labour change requests for projects JS1 and JS2, including urgency, project
-                details, and reason for change.
-              </Typography>
-            </CardContent>
-            <CardActions sx={{ px: 3, pb: 3, gap: 1, flexWrap: 'wrap' }}>
-              <Button
-                component={RouterLink}
-                to="/labour-change"
-                variant="contained"
-                color="secondary"
-                endIcon={<ArrowForwardIcon />}
-              >
-                New Request
-              </Button>
-              <Button
-                component={RouterLink}
-                to="/labour-change/manager"
-                variant="outlined"
-                color="secondary"
-              >
-                Review Requests
-              </Button>
-            </CardActions>
-          </Card>
-        </Grid>
+      <Divider sx={{ mb: 4 }} />
 
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                <AssignmentIcon color="primary" sx={{ fontSize: 40 }} />
-                <Typography variant="h5" color="primary">
-                  Staffing Plan
-                </Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Submit position requests for manager approval. Approved positions can be used for
-                project authorization.
-              </Typography>
-            </CardContent>
-            <CardActions sx={{ px: 3, pb: 3, gap: 1, flexWrap: 'wrap' }}>
-              <Button
-                component={RouterLink}
-                to="/staffing-plan"
-                variant="contained"
-                endIcon={<ArrowForwardIcon />}
-              >
-                New Position Request
-              </Button>
-              <Button component={RouterLink} to="/staffing-plan/manager" variant="outlined">
-                Manager Review
-              </Button>
-            </CardActions>
-          </Card>
-        </Grid>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+        <PendingActionsIcon color="warning" />
+        <Box>
+          <Typography variant="h5" color="primary" sx={{ fontWeight: 700 }}>
+            Pending your approval
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Requests waiting on a workflow step assigned to your roles
+          </Typography>
+        </Box>
+      </Box>
 
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                <VerifiedIcon color="secondary" sx={{ fontSize: 40 }} />
-                <Typography variant="h5" color="secondary">
-                  Project Authorization
-                </Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Request authorization for a candidate against an approved staffing plan position.
-                Managers can approve or reject with comments.
-              </Typography>
-            </CardContent>
-            <CardActions sx={{ px: 3, pb: 3, gap: 1, flexWrap: 'wrap' }}>
-              <Button
-                component={RouterLink}
-                to="/project-authorization"
-                variant="contained"
-                color="secondary"
-                endIcon={<ArrowForwardIcon />}
+      {!canReview && pendingApprovals.length === 0 ? (
+        <Card variant="outlined">
+          <CardContent sx={{ py: 4, textAlign: 'center' }}>
+            <Typography variant="body1" color="text.secondary">
+              You do not have an approval role, so there are no items awaiting your review.
+            </Typography>
+          </CardContent>
+        </Card>
+      ) : pendingApprovals.length === 0 ? (
+        <Card variant="outlined">
+          <CardContent sx={{ py: 4, textAlign: 'center' }}>
+            <PendingActionsIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+            <Typography variant="body1" color="text.secondary">
+              No requests are currently pending your approval.
+            </Typography>
+          </CardContent>
+        </Card>
+      ) : (
+        <Stack spacing={2}>
+          {pendingApprovals.map((item) => (
+            <Card key={`${item.kind}-${item.id}`} variant="outlined">
+              <CardContent
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: { xs: 'flex-start', sm: 'center' },
+                  gap: 2,
+                  flexWrap: 'wrap',
+                }}
               >
-                New Authorization Request
-              </Button>
-              <Button
-                component={RouterLink}
-                to="/project-authorization/manager"
-                variant="outlined"
-                color="secondary"
-              >
-                Manager Review
-              </Button>
-            </CardActions>
-          </Card>
-        </Grid>
-      </Grid>
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 0.5 }}>
+                    <Typography variant="h6">{item.title}</Typography>
+                    <Chip
+                      size="small"
+                      color={item.kind === 'staffing-plan' ? 'primary' : 'secondary'}
+                      label={item.kind === 'staffing-plan' ? 'Position Request' : 'PAF'}
+                      variant="outlined"
+                    />
+                    <Chip size="small" label={item.company} variant="outlined" />
+                    <Chip size="small" color="warning" label="Pending" />
+                  </Box>
+                  <Typography variant="body2" color="text.secondary">
+                    {item.subtitle}
+                  </Typography>
+                  {item.workflowStepLabel ? (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                      Waiting at: {item.workflowStepLabel}
+                    </Typography>
+                  ) : null}
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                    Submitted {formatSubmittedAt(item.submittedAt)}
+                  </Typography>
+                </Box>
+                <Button
+                  component={RouterLink}
+                  to={item.reviewPath}
+                  variant="contained"
+                  startIcon={<ManageAccountsIcon />}
+                >
+                  Review
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </Stack>
+      )}
     </Box>
   )
 }

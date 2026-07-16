@@ -1,3 +1,4 @@
+import type { Company } from '../constants/companies'
 import {
   AREAS,
   CLASSES,
@@ -5,7 +6,6 @@ import {
   DISCIPLINES,
   DSG_OPTIONS,
   FUNCTIONAL_GROUPS,
-  HIRING_SOURCES,
   LOCATION_TYPES,
   PHASES,
   POSITIONS,
@@ -13,6 +13,7 @@ import {
   SUB_AREAS,
   sortAlpha,
 } from '../constants/staffingPlanOptions'
+import type { WorkflowProgress } from './workflow'
 
 export type Phase = (typeof PHASES)[number]
 export type LocationType = (typeof LOCATION_TYPES)[number]
@@ -22,12 +23,16 @@ export type Area = (typeof AREAS)[number]
 export type SubArea = (typeof SUB_AREAS)[number]
 export type Discipline = (typeof DISCIPLINES)[number]
 export type PositionClass = (typeof CLASSES)[number]
-export type HiringSource = (typeof HIRING_SOURCES)[number]
 export type Roster = (typeof ROSTERS)[number]
 export type RequestStatus = 'pending' | 'approved' | 'rejected'
 
 export interface StaffingPlanRequest {
   id: string
+  revisionGroupId: string
+  revision: number
+  supersedesId?: string
+  isCurrentRevision: boolean
+  positionNumber: string
   phase: Phase
   locationType: LocationType
   functionalGroup: FunctionalGroup
@@ -38,7 +43,7 @@ export interface StaffingPlanRequest {
   discipline: Discipline
   position: string
   class: PositionClass
-  hiringSource: HiringSource
+  company: Company
   eeIdSap: string
   sortNumber: string
   totalHours: string
@@ -50,6 +55,8 @@ export interface StaffingPlanRequest {
   submittedAt: string
   rejectionComment?: string
   reviewedAt?: string
+  /** Progress through the staffing-plan workflow definition, when attached */
+  workflow?: WorkflowProgress
 }
 
 export interface StaffingPlanFormData {
@@ -63,7 +70,7 @@ export interface StaffingPlanFormData {
   discipline: Discipline | ''
   position: string
   class: PositionClass | ''
-  hiringSource: HiringSource | ''
+  company: Company | ''
   eeIdSap: string
   sortNumber: string
   totalHours: string

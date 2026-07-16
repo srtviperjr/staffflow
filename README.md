@@ -1,4 +1,4 @@
-# Jansen StaffFlow
+# Jansen Workflows
 
 React + TypeScript + Material UI app with multiple request workflows for submitting and reviewing requests. Built with Vite and React Router.
 
@@ -18,9 +18,10 @@ React + TypeScript + Material UI app with multiple request workflows for submitt
 ### Staffing Plan (`/staffing-plan`)
 - Position request form with searchable dropdowns, date pickers, and validation
 - Manager review page with approve/reject (rejection requires a comment)
+- Excel-like staffing plan matrix (`/staffing-plan/matrix`) showing approved positions and authorized candidates with bi-weekly load
 
-### Project Authorization (`/project-authorization`)
-- Authorization request form linked to approved staffing plan positions (cascading Functional Group → DSG → Position)
+### PAF Requests (`/project-authorization`)
+- PAF request form linked to approved staffing plan positions (cascading Functional Group → DSG → Position)
 - Candidate details, roster, hours, and calendar date fields
 - Manager review page with review status and approve/reject workflow
 
@@ -35,8 +36,9 @@ React + TypeScript + Material UI app with multiple request workflows for submitt
 | `/labour-change/manager` | Review labour change requests |
 | `/staffing-plan` | New staffing plan position request |
 | `/staffing-plan/manager` | Staffing plan manager review |
-| `/project-authorization` | New project authorization request |
-| `/project-authorization/manager` | Project authorization manager review |
+| `/staffing-plan/matrix` | Staffing plan matrix view |
+| `/project-authorization` | New PAF request |
+| `/project-authorization/manager` | PAF requests manager review |
 
 ## Data Storage
 

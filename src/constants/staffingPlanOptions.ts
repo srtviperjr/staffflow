@@ -1,4 +1,4 @@
-export const PHASES = ['Jansen'] as const
+export const PHASES = ['JS1', 'JS2'] as const
 
 export const LOCATION_TYPES = ['Project Office', 'Site - Comm', 'Site - Const'] as const
 
@@ -411,7 +411,6 @@ export const CLASSES = [
   'E00 - Principal',
 ] as const
 
-export const HIRING_SOURCES = ['Hatch', 'Bantrel', 'Bechtel'] as const
 
 export const ROSTERS = [
   'None',

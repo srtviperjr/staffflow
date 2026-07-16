@@ -1,19 +1,31 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import {
   Alert,
   Box,
   Button,
   Card,
   CardContent,
+  Chip,
   Divider,
   Grid,
   Snackbar,
+  Stack,
   TextField,
   Typography,
 } from '@mui/material'
 import SendIcon from '@mui/icons-material/Send'
 import AssignmentIcon from '@mui/icons-material/Assignment'
+import EditIcon from '@mui/icons-material/Edit'
+import HistoryIcon from '@mui/icons-material/History'
 import SearchableSelect from '../../components/SearchableSelect'
+import SundayWeekDatePicker from '../../components/SundayWeekDatePicker'
+import {
+  COMPANIES,
+  defaultPhaseForCompany,
+  filterByCompanyVisibility,
+} from '../../constants/companies'
+import { useRoles } from '../../context/RolesContext'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
 import {
   AREAS,
@@ -21,7 +33,6 @@ import {
   DISCIPLINES,
   DSG_OPTIONS,
   FUNCTIONAL_GROUPS,
-  HIRING_SOURCES,
   LOCATION_TYPES,
   PHASES,
   ROSTERS,
@@ -33,26 +44,29 @@ import {
   type StaffingPlanFormData,
 } from '../../types/staffingPlan'
 import { validateBiWeekDate, validateLwpDate } from '../../utils/staffingPlanDates'
+import { requestToStaffingFormData } from '../../utils/staffingPlanRevisions'
 
-const initialForm: StaffingPlanFormData = {
-  phase: 'Jansen',
-  locationType: '',
-  functionalGroup: '',
-  dsg: '',
-  area: '',
-  subArea: '',
-  country: '',
-  discipline: '',
-  position: '',
-  class: '',
-  hiringSource: '',
-  eeIdSap: '',
-  sortNumber: '',
-  totalHours: '',
-  hoursToGo: '',
-  roster: '',
-  startBiWeek: '',
-  lwp: '',
+function createEmptyForm(company: StaffingPlanFormData['company'] = ''): StaffingPlanFormData {
+  return {
+    phase: defaultPhaseForCompany(company),
+    locationType: '',
+    functionalGroup: '',
+    dsg: '',
+    area: '',
+    subArea: '',
+    country: '',
+    discipline: '',
+    position: '',
+    class: '',
+    company,
+    eeIdSap: '',
+    sortNumber: '',
+    totalHours: '',
+    hoursToGo: '',
+    roster: '',
+    startBiWeek: '',
+    lwp: '',
+  }
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -63,17 +77,87 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   )
 }
 
-export default function StaffingPlanFormPage() {
-  const { addRequest } = useStaffingPlanRequests()
-  const [form, setForm] = useState<StaffingPlanFormData>(initialForm)
+function statusColor(status: string): 'default' | 'warning' | 'success' | 'error' {
+  if (status === 'approved') return 'success'
+  if (status === 'rejected') return 'error'
+  return 'warning'
+}
+
+export type StaffingPlanFormPageProps = {
+  dialogMode?: boolean
+  reviseRequestId?: string
+  onClose?: () => void
+  onSubmitted?: (message: string) => void
+  onOpenRevise?: (requestId: string) => void
+}
+
+export default function StaffingPlanFormPage({
+  dialogMode = false,
+  reviseRequestId: reviseRequestIdProp,
+  onClose,
+  onSubmitted,
+  onOpenRevise,
+}: StaffingPlanFormPageProps = {}) {
+  const { requestId: requestIdParam } = useParams()
+  const requestId = reviseRequestIdProp ?? requestIdParam
+  const navigate = useNavigate()
+  const { currentUser } = useRoles()
+  const { currentRequests, addRequest, reviseRequest } = useStaffingPlanRequests()
+  const [form, setForm] = useState<StaffingPlanFormData>(() =>
+    createEmptyForm(currentUser?.company ?? ''),
+  )
   const [errors, setErrors] = useState<Partial<Record<keyof StaffingPlanFormData, string>>>({})
   const [showSuccess, setShowSuccess] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
+
+  const visibleRequests = useMemo(
+    () => filterByCompanyVisibility(currentRequests, currentUser?.company),
+    [currentRequests, currentUser?.company],
+  )
+
+  const revisionSource = useMemo(
+    () => visibleRequests.find((request) => request.id === requestId),
+    [visibleRequests, requestId],
+  )
+  const isRevisionMode = Boolean(requestId && revisionSource)
+  const invalidRevisionId = Boolean(requestId && !revisionSource)
+  const companyLocked = Boolean(currentUser && currentUser.company !== 'BHP')
+  const phaseLocked = companyLocked
+
+  useEffect(() => {
+    if (revisionSource) {
+      setForm(requestToStaffingFormData(revisionSource))
+      setErrors({})
+      return
+    }
+
+    if (!currentUser?.company) return
+
+    const expectedPhase = defaultPhaseForCompany(currentUser.company)
+    setForm((prev) => {
+      if (currentUser.company !== 'BHP') {
+        if (prev.company === currentUser.company && prev.phase === expectedPhase) return prev
+        return { ...prev, company: currentUser.company, phase: expectedPhase }
+      }
+      return prev.company ? prev : { ...prev, company: currentUser.company, phase: expectedPhase }
+    })
+  }, [revisionSource, currentUser?.company])
 
   const updateField = <K extends keyof StaffingPlanFormData>(
     field: K,
     value: StaffingPlanFormData[K],
   ) => {
-    setForm((prev) => ({ ...prev, [field]: value }))
+    setForm((prev) => {
+      if (field === 'company') {
+        const company = value as StaffingPlanFormData['company']
+        return {
+          ...prev,
+          company,
+          phase: defaultPhaseForCompany(company),
+        }
+      }
+      return { ...prev, [field]: value }
+    })
     setErrors((prev) => ({ ...prev, [field]: undefined }))
   }
 
@@ -89,7 +173,7 @@ export default function StaffingPlanFormPage() {
     if (!form.discipline) nextErrors.discipline = 'Discipline is required'
     if (!form.position.trim()) nextErrors.position = 'Position is required'
     if (!form.class) nextErrors.class = 'Class is required'
-    if (!form.hiringSource) nextErrors.hiringSource = 'Hiring source is required'
+    if (!form.company) nextErrors.company = 'Company is required'
     if (!form.roster) nextErrors.roster = 'Roster is required'
 
     const biWeekError = validateBiWeekDate(form.startBiWeek)
@@ -102,31 +186,74 @@ export default function StaffingPlanFormPage() {
     return Object.keys(nextErrors).length === 0
   }
 
+  const finish = (message: string, options?: { resetForm?: boolean; leavePage?: boolean }) => {
+    if (options?.resetForm) {
+      setForm(createEmptyForm(currentUser?.company ?? ''))
+    }
+    if (onSubmitted) {
+      onSubmitted(message)
+      return
+    }
+    setSuccessMessage(message)
+    setShowSuccess(true)
+    if (options?.leavePage && !dialogMode) {
+      navigate('/staffing-plan/matrix')
+    }
+  }
+
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
     if (!validate()) return
-    addRequest(form)
-    setForm(initialForm)
-    setShowSuccess(true)
+
+    if (isRevisionMode && revisionSource) {
+      reviseRequest(revisionSource.id, form)
+      finish(
+        `Revision ${revisionSource.revision + 1} submitted for ${revisionSource.position} (Position ${revisionSource.positionNumber}).`,
+        { leavePage: true },
+      )
+    } else {
+      const created = addRequest(form)
+      finish(`Position request submitted successfully. Position: ${created.positionNumber}.`, {
+        resetForm: true,
+      })
+    }
   }
 
-  return (
-    <>
-      <Card>
-        <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-            <AssignmentIcon color="primary" sx={{ fontSize: 36 }} />
-            <Box>
-              <Typography variant="h4" color="primary">
-                Staffing Plan Position Request
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Submit a new position request for the staffing plan
-              </Typography>
-            </Box>
-          </Box>
+  const handleCancel = () => {
+    if (onClose) {
+      onClose()
+      return
+    }
+    navigate('/staffing-plan/matrix')
+  }
 
-          <Divider sx={{ mb: 4 }} />
+  const formBody = (
+          <>
+          {invalidRevisionId && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              The position request could not be found. It may have been superseded by a newer
+              revision.{' '}
+              {onClose ? (
+                <Button onClick={onClose} size="small">
+                  Close
+                </Button>
+              ) : (
+                <Button component={RouterLink} to="/staffing-plan/matrix" size="small">
+                  Back to staffing plan
+                </Button>
+              )}
+            </Alert>
+          )}
+
+          {isRevisionMode && (
+            <Alert severity="info" icon={<HistoryIcon />} sx={{ mb: 2 }}>
+              You are revising <strong>{revisionSource!.position}</strong> (Position{' '}
+              {revisionSource!.positionNumber}). Submitting will create revision{' '}
+              <strong>{revisionSource!.revision + 1}</strong> and send it for manager review.
+            </Alert>
+          )}
+
+          {!dialogMode ? <Divider sx={{ mb: 4 }} /> : null}
 
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <SectionTitle>Project &amp; Organization</SectionTitle>
@@ -137,6 +264,14 @@ export default function StaffingPlanFormPage() {
                   options={PHASES}
                   value={form.phase}
                   onChange={(value) => updateField('phase', value as StaffingPlanFormData['phase'])}
+                  disabled={phaseLocked}
+                  helperText={
+                    phaseLocked
+                      ? form.phase === 'JS2'
+                        ? 'JS2 for Fluor'
+                        : 'JS1 for Hatch and Bantrel'
+                      : 'JS1 (Hatch/Bantrel) or JS2 (Fluor)'
+                  }
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
@@ -246,14 +381,20 @@ export default function StaffingPlanFormPage() {
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <SearchableSelect
-                  label="Hiring Source"
-                  options={HIRING_SOURCES}
-                  value={form.hiringSource}
+                  label="Company"
+                  options={COMPANIES}
+                  value={form.company}
                   onChange={(value) =>
-                    updateField('hiringSource', value as StaffingPlanFormData['hiringSource'])
+                    updateField('company', value as StaffingPlanFormData['company'])
                   }
                   required
-                  error={errors.hiringSource}
+                  error={errors.company}
+                  disabled={companyLocked}
+                  helperText={
+                    companyLocked
+                      ? 'Defaults to your company designation'
+                      : 'BHP can submit for any company'
+                  }
                 />
               </Grid>
             </Grid>
@@ -307,41 +448,144 @@ export default function StaffingPlanFormPage() {
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                <TextField
+                <SundayWeekDatePicker
                   label="Start Bi-Week"
-                  type="date"
                   value={form.startBiWeek}
-                  onChange={(e) => updateField('startBiWeek', e.target.value)}
-                  error={Boolean(errors.startBiWeek)}
-                  helperText={errors.startBiWeek ?? 'Bi-weekly Sunday start date'}
-                  slotProps={{ inputLabel: { shrink: true } }}
+                  onChange={(value) => updateField('startBiWeek', value)}
+                  mode="biweekly"
+                  error={errors.startBiWeek}
+                  helperText="Bi-weekly Sunday start date"
                   required
-                  fullWidth
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                <TextField
-                  label="LWP"
-                  type="date"
+                <SundayWeekDatePicker
+                  label="Last Working Day"
                   value={form.lwp}
-                  onChange={(e) => updateField('lwp', e.target.value)}
-                  error={Boolean(errors.lwp)}
-                  helperText={errors.lwp ?? 'Weekly Sunday date'}
-                  slotProps={{ inputLabel: { shrink: true } }}
+                  onChange={(value) => updateField('lwp', value)}
+                  mode="weekly"
+                  error={errors.lwp}
+                  helperText="Weekly Sunday date"
                   required
-                  fullWidth
                 />
               </Grid>
             </Grid>
 
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
-              <Button type="submit" variant="contained" size="large" startIcon={<SendIcon />}>
-                Submit Request
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 4, flexWrap: 'wrap' }}>
+              {(isRevisionMode || dialogMode) && (
+                <Button onClick={handleCancel} variant="outlined">
+                  {isRevisionMode ? 'Cancel Revision' : 'Cancel'}
+                </Button>
+              )}
+              <Button
+                type="submit"
+                variant="contained"
+                size="large"
+                startIcon={isRevisionMode ? <EditIcon /> : <SendIcon />}
+                disabled={invalidRevisionId}
+              >
+                {isRevisionMode
+                  ? `Submit Revision ${revisionSource!.revision + 1}`
+                  : 'Submit Request'}
               </Button>
             </Box>
           </Box>
+          </>
+  )
+
+  if (dialogMode) {
+    return formBody
+  }
+
+  return (
+    <>
+      <Card sx={{ mb: 3 }}>
+        <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+            <AssignmentIcon color="primary" sx={{ fontSize: 36 }} />
+            <Box>
+              <Typography variant="h4" color="primary">
+                {isRevisionMode ? 'Revise Position Request' : 'Staffing Plan Position Request'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {isRevisionMode
+                  ? `Creating revision ${revisionSource!.revision + 1} from revision ${revisionSource!.revision}. Each update is saved as a new revision for review.`
+                  : 'Submit a new position request for the staffing plan'}
+              </Typography>
+            </Box>
+          </Box>
+          {formBody}
         </CardContent>
       </Card>
+
+      {!isRevisionMode && visibleRequests.length > 0 && (
+        <Card>
+          <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+            <SectionTitle>Submitted Requests</SectionTitle>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Revise an existing position request to create a new revision for manager review.
+            </Typography>
+            <Stack spacing={2}>
+              {visibleRequests.map((request) => (
+                <Box
+                  key={request.id}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: { xs: 'flex-start', sm: 'center' },
+                    gap: 2,
+                    flexWrap: 'wrap',
+                    p: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 2,
+                  }}
+                >
+                  <Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                      <Typography variant="subtitle1">{request.position}</Typography>
+                      <Chip
+                        label={`Position ${request.positionNumber}`}
+                        size="small"
+                        color="info"
+                        variant="outlined"
+                      />
+                      <Chip label={`Rev ${request.revision}`} size="small" variant="outlined" />
+                      <Chip label={request.company} size="small" variant="outlined" />
+                      <Chip
+                        label={request.status}
+                        size="small"
+                        color={statusColor(request.status)}
+                      />
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      {request.area} / {request.subArea}
+                    </Typography>
+                  </Box>
+                  {onOpenRevise ? (
+                    <Button
+                      onClick={() => onOpenRevise(request.id)}
+                      variant="outlined"
+                      startIcon={<EditIcon />}
+                    >
+                      Revise
+                    </Button>
+                  ) : (
+                    <Button
+                      component={RouterLink}
+                      to={`/staffing-plan/revise/${request.id}`}
+                      variant="outlined"
+                      startIcon={<EditIcon />}
+                    >
+                      Revise
+                    </Button>
+                  )}
+                </Box>
+              ))}
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
 
       <Snackbar
         open={showSuccess}
@@ -350,7 +594,7 @@ export default function StaffingPlanFormPage() {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert severity="success" variant="filled" onClose={() => setShowSuccess(false)}>
-          Position request submitted successfully.
+          {successMessage}
         </Alert>
       </Snackbar>
     </>

@@ -6,6 +6,7 @@ import {
   CardActions,
   CardContent,
   Chip,
+  Collapse,
   Divider,
   Stack,
   Tab,
@@ -16,10 +17,23 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 import PendingActionsIcon from '@mui/icons-material/PendingActions'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
+import EditIcon from '@mui/icons-material/Edit'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import ExpandLessIcon from '@mui/icons-material/ExpandLess'
+import { filterByCompanyVisibility } from '../../constants/companies'
+import { useRequestForms } from '../../context/RequestFormsContext'
+import { useRoles } from '../../context/RolesContext'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
+import { useWorkflows } from '../../context/WorkflowContext'
 import RejectDialog from '../../components/RejectDialog'
+import { ChangedFieldDetail, RevisionChangesLegend } from '../../components/ChangedFieldDetail'
 import type { StaffingPlanRequest } from '../../types/staffingPlan'
 import { formatDisplayDate } from '../../utils/staffingPlanDates'
+import {
+  getChangedFieldKeys,
+  getPreviousRevision,
+  STAFFING_PLAN_COMPARE_FIELDS,
+} from '../../utils/revisionDiff'
 
 type FilterTab = 'all' | 'pending' | 'approved' | 'rejected'
 
@@ -43,38 +57,125 @@ function formatTimestamp(dateString: string) {
   })
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function RequestDetails({
+  request,
+  changedFields,
+}: {
+  request: StaffingPlanRequest
+  changedFields?: Set<string>
+}) {
+  const changed = (field: string) => changedFields?.has(field) ?? false
+
   return (
-    <Typography variant="body2">
-      <strong>{label}:</strong> {value || '—'}
-    </Typography>
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
+        gap: 1.5,
+      }}
+    >
+      <ChangedFieldDetail label="Position Number" value={request.positionNumber} />
+      <ChangedFieldDetail label="Phase" value={request.phase} changed={changed('phase')} />
+      <ChangedFieldDetail label="Area" value={request.area} changed={changed('area')} />
+      <ChangedFieldDetail label="Sub Area" value={request.subArea} changed={changed('subArea')} />
+      <ChangedFieldDetail
+        label="Location Type"
+        value={request.locationType}
+        changed={changed('locationType')}
+      />
+      <ChangedFieldDetail
+        label="Functional Group"
+        value={request.functionalGroup}
+        changed={changed('functionalGroup')}
+      />
+      <ChangedFieldDetail label="DSG" value={request.dsg} changed={changed('dsg')} />
+      <ChangedFieldDetail label="Country" value={request.country} changed={changed('country')} />
+      <ChangedFieldDetail
+        label="Discipline"
+        value={request.discipline}
+        changed={changed('discipline')}
+      />
+      <ChangedFieldDetail label="Class" value={request.class} changed={changed('class')} />
+      <ChangedFieldDetail
+        label="Company"
+        value={request.company}
+        changed={changed('company')}
+      />
+      <ChangedFieldDetail label="Roster" value={request.roster} changed={changed('roster')} />
+      <ChangedFieldDetail label="EE Id / SAP" value={request.eeIdSap} changed={changed('eeIdSap')} />
+      <ChangedFieldDetail
+        label="Sort Number"
+        value={request.sortNumber}
+        changed={changed('sortNumber')}
+      />
+      <ChangedFieldDetail
+        label="Total Hours"
+        value={request.totalHours}
+        changed={changed('totalHours')}
+      />
+      <ChangedFieldDetail
+        label="Hours To Go"
+        value={request.hoursToGo}
+        changed={changed('hoursToGo')}
+      />
+      <ChangedFieldDetail
+        label="Start Bi-Week"
+        value={formatDisplayDate(request.startBiWeek)}
+        changed={changed('startBiWeek')}
+      />
+      <ChangedFieldDetail
+        label="Last Working Day"
+        value={formatDisplayDate(request.lwp)}
+        changed={changed('lwp')}
+      />
+      <ChangedFieldDetail label="Submitted" value={formatTimestamp(request.submittedAt)} />
+      {request.reviewedAt && (
+        <ChangedFieldDetail label="Reviewed" value={formatTimestamp(request.reviewedAt)} />
+      )}
+    </Box>
   )
 }
 
 export default function StaffingPlanManagerPage() {
-  const { requests, rejectRequest, approveRequest } = useStaffingPlanRequests()
+  const { currentUser } = useRoles()
+  const { openRequestForm } = useRequestForms()
+  const { currentRequests, rejectRequest, approveRequest, getHistory } = useStaffingPlanRequests()
+  const { getWorkflow } = useWorkflows()
   const [filter, setFilter] = useState<FilterTab>('all')
   const [rejectTarget, setRejectTarget] = useState<StaffingPlanRequest | null>(null)
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+
+  const visibleRequests = useMemo(
+    () => filterByCompanyVisibility(currentRequests, currentUser?.company),
+    [currentRequests, currentUser?.company],
+  )
 
   const filteredRequests = useMemo(() => {
-    if (filter === 'all') return requests
-    return requests.filter((request) => request.status === filter)
-  }, [filter, requests])
+    if (filter === 'all') return visibleRequests
+    return visibleRequests.filter((request) => request.status === filter)
+  }, [filter, visibleRequests])
 
   const counts = useMemo(
     () => ({
-      all: requests.length,
-      pending: requests.filter((r) => r.status === 'pending').length,
-      approved: requests.filter((r) => r.status === 'approved').length,
-      rejected: requests.filter((r) => r.status === 'rejected').length,
+      all: visibleRequests.length,
+      pending: visibleRequests.filter((r) => r.status === 'pending').length,
+      approved: visibleRequests.filter((r) => r.status === 'approved').length,
+      rejected: visibleRequests.filter((r) => r.status === 'rejected').length,
     }),
-    [requests],
+    [visibleRequests],
   )
 
   const handleReject = (comment: string) => {
     if (!rejectTarget) return
     rejectRequest(rejectTarget.id, comment)
     setRejectTarget(null)
+  }
+
+  const toggleHistory = (revisionGroupId: string) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [revisionGroupId]: !prev[revisionGroupId],
+    }))
   }
 
   return (
@@ -88,7 +189,7 @@ export default function StaffingPlanManagerPage() {
                 Position Request Review
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Review staffing plan position requests and update their status
+                Review current revisions of position requests
               </Typography>
             </Box>
           </Box>
@@ -120,97 +221,181 @@ export default function StaffingPlanManagerPage() {
             </Box>
           ) : (
             <Stack spacing={2.5} sx={{ mt: 3 }}>
-              {filteredRequests.map((request) => (
-                <Card key={request.id} variant="outlined" sx={{ boxShadow: 'none' }}>
-                  <CardContent>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                        flexWrap: 'wrap',
-                        gap: 1,
-                      }}
-                    >
-                      <Box>
-                        <Typography variant="h6">{request.position}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {request.phase} · {request.area} / {request.subArea}
-                        </Typography>
-                      </Box>
-                      <StatusChip status={request.status} />
-                    </Box>
+              {filteredRequests.map((request) => {
+                const history = getHistory(request.revisionGroupId)
+                const hasHistory = history.length > 1
+                const historyOpen = expandedGroups[request.revisionGroupId] ?? false
+                const previousRevision = getPreviousRevision(history, request)
+                const changedFields = getChangedFieldKeys(
+                  request,
+                  previousRevision,
+                  STAFFING_PLAN_COMPARE_FIELDS,
+                )
 
-                    <Divider sx={{ my: 2 }} />
-
-                    <Box
-                      sx={{
-                        display: 'grid',
-                        gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
-                        gap: 1.5,
-                      }}
-                    >
-                      <Detail label="Location Type" value={request.locationType} />
-                      <Detail label="Functional Group" value={request.functionalGroup} />
-                      <Detail label="DSG" value={request.dsg} />
-                      <Detail label="Country" value={request.country} />
-                      <Detail label="Discipline" value={request.discipline} />
-                      <Detail label="Class" value={request.class} />
-                      <Detail label="Hiring Source" value={request.hiringSource} />
-                      <Detail label="Roster" value={request.roster} />
-                      <Detail label="EE Id / SAP" value={request.eeIdSap} />
-                      <Detail label="Sort Number" value={request.sortNumber} />
-                      <Detail label="Total Hours" value={request.totalHours} />
-                      <Detail label="Hours To Go" value={request.hoursToGo} />
-                      <Detail label="Start Bi-Week" value={formatDisplayDate(request.startBiWeek)} />
-                      <Detail label="LWP" value={formatDisplayDate(request.lwp)} />
-                      <Detail label="Submitted" value={formatTimestamp(request.submittedAt)} />
-                      {request.reviewedAt && (
-                        <Detail label="Reviewed" value={formatTimestamp(request.reviewedAt)} />
-                      )}
-                    </Box>
-
-                    {request.status === 'rejected' && request.rejectionComment && (
+                return (
+                  <Card key={request.id} variant="outlined" sx={{ boxShadow: 'none' }}>
+                    <CardContent>
                       <Box
                         sx={{
-                          mt: 2,
-                          p: 2,
-                          bgcolor: 'error.50',
-                          borderRadius: 2,
-                          border: '1px solid',
-                          borderColor: 'error.light',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          flexWrap: 'wrap',
+                          gap: 1,
                         }}
                       >
-                        <Typography variant="subtitle2" color="error.main">
-                          Rejection Comment
-                        </Typography>
-                        <Typography variant="body2">{request.rejectionComment}</Typography>
+                        <Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography variant="h6">{request.position}</Typography>
+                            <Chip
+                              label={`Position ${request.positionNumber}`}
+                              size="small"
+                              color="info"
+                              variant="outlined"
+                            />
+                            <Chip
+                              label={`Revision ${request.revision}`}
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                            />
+                            <Chip label={request.company} size="small" variant="outlined" />
+                          </Box>
+                          <Typography variant="body2" color="text.secondary">
+                            {request.phase} · {request.area} / {request.subArea}
+                          </Typography>
+                          {request.workflow && (() => {
+                            const workflow = getWorkflow(request.workflow.workflowId)
+                            const node = workflow?.nodes.find(
+                              (item) => item.id === request.workflow?.currentNodeId,
+                            )
+                            return node ? (
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                                Workflow: {workflow?.name} · {node.data.label}
+                              </Typography>
+                            ) : null
+                          })()}
+                        </Box>
+                        <StatusChip status={request.status} />
                       </Box>
-                    )}
-                  </CardContent>
 
-                  {request.status === 'pending' && (
-                    <CardActions sx={{ px: 2, pb: 2, gap: 1 }}>
+                      <Divider sx={{ my: 2 }} />
+
+                      <RevisionChangesLegend visible={request.revision > 1} />
+                      <RequestDetails request={request} changedFields={changedFields} />
+
+                      {request.status === 'rejected' && request.rejectionComment && (
+                        <Box
+                          sx={{
+                            mt: 2,
+                            p: 2,
+                            bgcolor: 'error.50',
+                            borderRadius: 2,
+                            border: '1px solid',
+                            borderColor: 'error.light',
+                          }}
+                        >
+                          <Typography variant="subtitle2" color="error.main">
+                            Rejection Comment
+                          </Typography>
+                          <Typography variant="body2">{request.rejectionComment}</Typography>
+                        </Box>
+                      )}
+
+                      {hasHistory && (
+                        <Box sx={{ mt: 2 }}>
+                          <Button
+                            size="small"
+                            onClick={() => toggleHistory(request.revisionGroupId)}
+                            endIcon={historyOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                          >
+                            {historyOpen ? 'Hide' : 'Show'} revision history ({history.length})
+                          </Button>
+                          <Collapse in={historyOpen}>
+                            <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+                              {history
+                                .filter((entry) => entry.id !== request.id)
+                                .map((entry) => {
+                                  const entryPrevious = getPreviousRevision(history, entry)
+                                  const entryChangedFields = getChangedFieldKeys(
+                                    entry,
+                                    entryPrevious,
+                                    STAFFING_PLAN_COMPARE_FIELDS,
+                                  )
+
+                                  return (
+                                  <Box
+                                    key={entry.id}
+                                    sx={{
+                                      p: 2,
+                                      bgcolor: 'grey.50',
+                                      borderRadius: 2,
+                                      border: '1px solid',
+                                      borderColor: 'divider',
+                                    }}
+                                  >
+                                    <Box
+                                      sx={{
+                                        display: 'flex',
+                                        gap: 1,
+                                        alignItems: 'center',
+                                        flexWrap: 'wrap',
+                                        mb: 1,
+                                      }}
+                                    >
+                                      <Typography variant="subtitle2">
+                                        Revision {entry.revision}
+                                      </Typography>
+                                      <StatusChip status={entry.status} />
+                                      <Typography variant="caption" color="text.secondary">
+                                        Submitted {formatTimestamp(entry.submittedAt)}
+                                      </Typography>
+                                    </Box>
+                                    <RevisionChangesLegend visible={entry.revision > 1} />
+                                    <RequestDetails request={entry} changedFields={entryChangedFields} />
+                                  </Box>
+                                  )
+                                })}
+                            </Stack>
+                          </Collapse>
+                        </Box>
+                      )}
+                    </CardContent>
+
+                    <CardActions sx={{ px: 2, pb: 2, gap: 1, flexWrap: 'wrap' }}>
+                      {request.status === 'pending' && (
+                        <>
+                          <Button
+                            variant="contained"
+                            color="success"
+                            startIcon={<CheckCircleIcon />}
+                            onClick={() => approveRequest(request.id)}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            startIcon={<CancelIcon />}
+                            onClick={() => setRejectTarget(request)}
+                          >
+                            Reject
+                          </Button>
+                        </>
+                      )}
                       <Button
-                        variant="contained"
-                        color="success"
-                        startIcon={<CheckCircleIcon />}
-                        onClick={() => approveRequest(request.id)}
-                      >
-                        Approve
-                      </Button>
-                      <Button
+                        onClick={() =>
+                          openRequestForm('staffing-plan', { reviseRequestId: request.id })
+                        }
                         variant="outlined"
-                        color="error"
-                        startIcon={<CancelIcon />}
-                        onClick={() => setRejectTarget(request)}
+                        startIcon={<EditIcon />}
                       >
-                        Reject
+                        Revise
                       </Button>
                     </CardActions>
-                  )}
-                </Card>
-              ))}
+                  </Card>
+                )
+              })}
             </Stack>
           )}
         </CardContent>
@@ -220,9 +405,9 @@ export default function StaffingPlanManagerPage() {
         open={Boolean(rejectTarget)}
         message={
           <>
-            You are rejecting the position request for{' '}
-            <strong>{rejectTarget?.position ?? ''}</strong> ({rejectTarget?.area}). Please provide
-            a comment explaining the rejection.
+            You are rejecting revision {rejectTarget?.revision ?? ''} of the position request for{' '}
+            <strong>{rejectTarget?.position ?? ''}</strong> (Position{' '}
+            {rejectTarget?.positionNumber}). Please provide a comment explaining the rejection.
           </>
         }
         onClose={() => setRejectTarget(null)}
