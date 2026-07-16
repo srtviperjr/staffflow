@@ -65,17 +65,17 @@ export const PAF_REGISTER_COLUMN_DEFS: PafRegisterColumnDef[] = [
   { id: 'lwp', label: 'Last Working Day', getValue: (row) => row.lwp, minWidth: 140 },
 ]
 
-/** PAF # and Candidate lead by default. */
+/** PAF #, Candidate, and Status lead by default. */
 export const DEFAULT_PAF_COLUMN_ORDER: PafRegisterColumnId[] = [
   'pafNumber',
   'candidate',
+  'status',
   'position',
   'functionalGroup',
   'dsg',
   'country',
   'class',
   'company',
-  'status',
   'revision',
   'roster',
   'totalHours',
@@ -84,7 +84,11 @@ export const DEFAULT_PAF_COLUMN_ORDER: PafRegisterColumnId[] = [
 ]
 
 /** Columns frozen while scrolling the Gantt (in addition to Expand + Actions). */
-export const DEFAULT_PAF_STICKY_COLUMNS: PafRegisterColumnId[] = ['pafNumber', 'candidate']
+export const DEFAULT_PAF_STICKY_COLUMNS: PafRegisterColumnId[] = [
+  'pafNumber',
+  'candidate',
+  'status',
+]
 
 const COLUMN_BY_ID = new Map(PAF_REGISTER_COLUMN_DEFS.map((column) => [column.id, column]))
 

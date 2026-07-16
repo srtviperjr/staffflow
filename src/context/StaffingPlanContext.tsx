@@ -8,10 +8,11 @@ import {
 } from 'react'
 import type { StaffingPlanFormData, StaffingPlanRequest } from '../types/staffingPlan'
 import {
-  generatePositionNumber,
   getCurrentStaffingPlanRequests,
   getStaffingRevisionHistory,
+  nextPositionNumber,
   normalizeStaffingPlanRequests,
+  staffingPositionNumbersChanged,
 } from '../utils/staffingPlanRevisions'
 import { SAMPLE_STAFFING_PLAN_REQUESTS } from '../data/sampleData'
 import { useWorkflows } from './WorkflowContext'
@@ -35,7 +36,13 @@ function loadRequests(): StaffingPlanRequest[] {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
-      return normalizeStaffingPlanRequests(JSON.parse(stored) as StaffingPlanRequest[])
+      const parsed = JSON.parse(stored) as StaffingPlanRequest[]
+      const normalized = normalizeStaffingPlanRequests(parsed)
+      // Persist repairs when legacy UUID / HA001-style numbers become Company-###.
+      if (staffingPositionNumbersChanged(parsed, normalized)) {
+        saveRequests(normalized)
+      }
+      return normalized
     }
 
     const seeded = normalizeStaffingPlanRequests(SAMPLE_STAFFING_PLAN_REQUESTS)
@@ -53,14 +60,17 @@ function saveRequests(requests: StaffingPlanRequest[]) {
 function buildRequestFromForm(
   data: StaffingPlanFormData,
   overrides: Partial<StaffingPlanRequest>,
+  existing: StaffingPlanRequest[] = [],
 ): StaffingPlanRequest {
+  const company = data.company as StaffingPlanRequest['company']
   return {
     id: overrides.id ?? crypto.randomUUID(),
     revisionGroupId: overrides.revisionGroupId ?? crypto.randomUUID(),
     revision: overrides.revision ?? 1,
     supersedesId: overrides.supersedesId,
     isCurrentRevision: overrides.isCurrentRevision ?? true,
-    positionNumber: overrides.positionNumber ?? generatePositionNumber(overrides.id ?? crypto.randomUUID()),
+    positionNumber:
+      overrides.positionNumber ?? nextPositionNumber(company, existing),
     phase: data.phase as StaffingPlanRequest['phase'],
     locationType: data.locationType as StaffingPlanRequest['locationType'],
     functionalGroup: data.functionalGroup as StaffingPlanRequest['functionalGroup'],
@@ -71,7 +81,7 @@ function buildRequestFromForm(
     discipline: data.discipline as StaffingPlanRequest['discipline'],
     position: data.position.trim(),
     class: data.class as StaffingPlanRequest['class'],
-    company: data.company as StaffingPlanRequest['company'],
+    company,
     eeIdSap: data.eeIdSap.trim(),
     sortNumber: data.sortNumber.trim(),
     totalHours: data.totalHours.trim(),
@@ -114,15 +124,19 @@ export function StaffingPlanProvider({ children }: { children: ReactNode }) {
         workflowProgress = result.progress
       }
 
-      const newRequest = buildRequestFromForm(data, {
-        id,
-        revisionGroupId: id,
-        revision: 1,
-        isCurrentRevision: true,
-        positionNumber: generatePositionNumber(id),
-        status,
-        workflow: workflowProgress,
-      })
+      const newRequest = buildRequestFromForm(
+        data,
+        {
+          id,
+          revisionGroupId: id,
+          revision: 1,
+          isCurrentRevision: true,
+          positionNumber: nextPositionNumber(data.company, requests),
+          status,
+          workflow: workflowProgress,
+        },
+        requests,
+      )
       persist([newRequest, ...requests])
       return newRequest
     },
@@ -144,15 +158,19 @@ export function StaffingPlanProvider({ children }: { children: ReactNode }) {
         workflowProgress = result.progress
       }
 
-      const newRequest = buildRequestFromForm(data, {
-        revisionGroupId: source.revisionGroupId,
-        revision: source.revision + 1,
-        supersedesId: source.id,
-        isCurrentRevision: true,
-        positionNumber: source.positionNumber,
-        status,
-        workflow: workflowProgress,
-      })
+      const newRequest = buildRequestFromForm(
+        data,
+        {
+          revisionGroupId: source.revisionGroupId,
+          revision: source.revision + 1,
+          supersedesId: source.id,
+          isCurrentRevision: true,
+          positionNumber: source.positionNumber,
+          status,
+          workflow: workflowProgress,
+        },
+        requests,
+      )
 
       const updatedRequests = requests.map((request) =>
         request.revisionGroupId === source.revisionGroupId

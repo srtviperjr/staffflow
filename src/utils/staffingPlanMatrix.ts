@@ -96,7 +96,7 @@ export interface MatrixColumnDef {
 }
 
 export const MATRIX_COLUMN_DEFS: MatrixColumnDef[] = [
-  { id: 'positionNumber', label: 'Position #', getValue: (row) => row.positionNumber, minWidth: 110 },
+  { id: 'positionNumber', label: 'Position #', getValue: (row) => row.positionNumber, minWidth: 120 },
   { id: 'candidate', label: 'Candidate', getValue: (row) => row.candidate, minWidth: 140 },
   { id: 'phase', label: 'Phase', getValue: (row) => row.phase, minWidth: 80 },
   { id: 'projectOffice', label: 'Project Office', getValue: (row) => row.projectOffice },

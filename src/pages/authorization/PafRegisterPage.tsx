@@ -74,9 +74,9 @@ import {
   type PafRegisterColumnId,
 } from '../../utils/pafRegister'
 
-const COLUMN_ORDER_KEY = 'paf-register-column-order-v2'
-const COLUMN_VISIBLE_KEY = 'paf-register-visible-columns-v2'
-const COLUMN_STICKY_KEY = 'paf-register-sticky-columns-v2'
+const COLUMN_ORDER_KEY = 'paf-register-column-order-v3'
+const COLUMN_VISIBLE_KEY = 'paf-register-visible-columns-v3'
+const COLUMN_STICKY_KEY = 'paf-register-sticky-columns-v3'
 const EXPAND_COL_WIDTH = 48
 const ACTIONS_COL_WIDTH = 118
 const META_WIDTH_FALLBACK = 110
