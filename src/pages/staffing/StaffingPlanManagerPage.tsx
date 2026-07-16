@@ -97,11 +97,6 @@ function RequestDetails({
       />
       <ChangedFieldDetail label="Class" value={request.class} changed={changed('class')} />
       <ChangedFieldDetail
-        label="Hiring Source"
-        value={request.hiringSource}
-        changed={changed('hiringSource')}
-      />
-      <ChangedFieldDetail
         label="Company"
         value={request.company}
         changed={changed('company')}

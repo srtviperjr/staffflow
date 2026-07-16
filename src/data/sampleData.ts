@@ -18,8 +18,8 @@ function reviewedAt(offsetDays: number) {
   return new Date(SUBMITTED_BASE + offsetDays * 86_400_000 + 3_600_000).toISOString()
 }
 
-function staffingPendingWorkflow(hiringSource: string): WorkflowProgress {
-  const reviewNode = hiringSource === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
+function staffingPendingWorkflow(company: string): WorkflowProgress {
+  const reviewNode = company === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
   return {
     workflowId: 'workflow-staffing-plan-approval',
     currentNodeId: reviewNode,
@@ -29,15 +29,15 @@ function staffingPendingWorkflow(hiringSource: string): WorkflowProgress {
       {
         nodeId: 'sp-hiring-gate',
         arrivedAt: submittedAt(0),
-        branch: hiringSource === 'Bantrel' ? 'yes' : 'no',
+        branch: company === 'Bantrel' ? 'yes' : 'no',
       },
       { nodeId: reviewNode, arrivedAt: submittedAt(0) },
     ],
   }
 }
 
-function staffingApprovedWorkflow(hiringSource: string): WorkflowProgress {
-  const reviewNode = hiringSource === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
+function staffingApprovedWorkflow(company: string): WorkflowProgress {
+  const reviewNode = company === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
   return {
     workflowId: 'workflow-staffing-plan-approval',
     currentNodeId: 'sp-end-ok',
@@ -47,7 +47,7 @@ function staffingApprovedWorkflow(hiringSource: string): WorkflowProgress {
       {
         nodeId: 'sp-hiring-gate',
         arrivedAt: submittedAt(0),
-        branch: hiringSource === 'Bantrel' ? 'yes' : 'no',
+        branch: company === 'Bantrel' ? 'yes' : 'no',
       },
       { nodeId: reviewNode, arrivedAt: submittedAt(0) },
       { nodeId: 'sp-decision', arrivedAt: submittedAt(1), branch: 'yes' },
@@ -57,8 +57,8 @@ function staffingApprovedWorkflow(hiringSource: string): WorkflowProgress {
   }
 }
 
-function staffingRejectedWorkflow(hiringSource: string): WorkflowProgress {
-  const reviewNode = hiringSource === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
+function staffingRejectedWorkflow(company: string): WorkflowProgress {
+  const reviewNode = company === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
   return {
     workflowId: 'workflow-staffing-plan-approval',
     currentNodeId: 'sp-end-reject',
@@ -68,7 +68,7 @@ function staffingRejectedWorkflow(hiringSource: string): WorkflowProgress {
       {
         nodeId: 'sp-hiring-gate',
         arrivedAt: submittedAt(0),
-        branch: hiringSource === 'Bantrel' ? 'yes' : 'no',
+        branch: company === 'Bantrel' ? 'yes' : 'no',
       },
       { nodeId: reviewNode, arrivedAt: submittedAt(0) },
       { nodeId: 'sp-decision', arrivedAt: submittedAt(1), branch: 'no' },
@@ -78,9 +78,9 @@ function staffingRejectedWorkflow(hiringSource: string): WorkflowProgress {
   }
 }
 
-function pafPendingWorkflow(hiringSource: string): WorkflowProgress {
+function pafPendingWorkflow(company: string): WorkflowProgress {
   const reviewNode =
-    hiringSource === 'Bechtel' ? 'paf-review-contractor' : 'paf-review-standard'
+    company === 'Fluor' ? 'paf-review-contractor' : 'paf-review-standard'
   return {
     workflowId: 'workflow-paf-approval',
     currentNodeId: reviewNode,
@@ -90,16 +90,16 @@ function pafPendingWorkflow(hiringSource: string): WorkflowProgress {
       {
         nodeId: 'paf-class-gate',
         arrivedAt: submittedAt(11),
-        branch: hiringSource === 'Bechtel' ? 'yes' : 'no',
+        branch: company === 'Fluor' ? 'yes' : 'no',
       },
       { nodeId: reviewNode, arrivedAt: submittedAt(11) },
     ],
   }
 }
 
-function pafApprovedWorkflow(hiringSource: string): WorkflowProgress {
+function pafApprovedWorkflow(company: string): WorkflowProgress {
   const reviewNode =
-    hiringSource === 'Bechtel' ? 'paf-review-contractor' : 'paf-review-standard'
+    company === 'Fluor' ? 'paf-review-contractor' : 'paf-review-standard'
   return {
     workflowId: 'workflow-paf-approval',
     currentNodeId: 'paf-end-ok',
@@ -109,7 +109,7 @@ function pafApprovedWorkflow(hiringSource: string): WorkflowProgress {
       {
         nodeId: 'paf-class-gate',
         arrivedAt: submittedAt(11),
-        branch: hiringSource === 'Bechtel' ? 'yes' : 'no',
+        branch: company === 'Fluor' ? 'yes' : 'no',
       },
       { nodeId: reviewNode, arrivedAt: submittedAt(11) },
       { nodeId: 'paf-decision', arrivedAt: submittedAt(12), branch: 'yes' },
@@ -119,9 +119,9 @@ function pafApprovedWorkflow(hiringSource: string): WorkflowProgress {
   }
 }
 
-function pafRejectedWorkflow(hiringSource: string): WorkflowProgress {
+function pafRejectedWorkflow(company: string): WorkflowProgress {
   const reviewNode =
-    hiringSource === 'Bechtel' ? 'paf-review-contractor' : 'paf-review-standard'
+    company === 'Fluor' ? 'paf-review-contractor' : 'paf-review-standard'
   return {
     workflowId: 'workflow-paf-approval',
     currentNodeId: 'paf-end-reject',
@@ -131,7 +131,7 @@ function pafRejectedWorkflow(hiringSource: string): WorkflowProgress {
       {
         nodeId: 'paf-class-gate',
         arrivedAt: submittedAt(11),
-        branch: hiringSource === 'Bechtel' ? 'yes' : 'no',
+        branch: company === 'Fluor' ? 'yes' : 'no',
       },
       { nodeId: reviewNode, arrivedAt: submittedAt(11) },
       { nodeId: 'paf-decision', arrivedAt: submittedAt(12), branch: 'no' },
@@ -158,7 +158,6 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     discipline: '29 - Architecture',
     position: 'Architect',
     class: 'E00 - Principal',
-    hiringSource: 'Bantrel',
     company: 'Bantrel',
     eeIdSap: '',
     sortNumber: '101',
@@ -188,7 +187,6 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     discipline: '26 - Electrical Engineering',
     position: 'Engineer',
     class: 'E10 - Engineer',
-    hiringSource: 'Hatch',
     company: 'Hatch',
     eeIdSap: '',
     sortNumber: '102',
@@ -218,7 +216,6 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     discipline: '27 - Systems and Process Control',
     position: 'PCS Lead',
     class: 'E09 - Senior Engineer',
-    hiringSource: 'Bechtel',
     company: 'Fluor',
     eeIdSap: '',
     sortNumber: '103',
@@ -230,7 +227,7 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     status: 'approved',
     submittedAt: submittedAt(2),
     reviewedAt: reviewedAt(3),
-    workflow: staffingApprovedWorkflow('Bechtel'),
+    workflow: staffingApprovedWorkflow('Fluor'),
   },
   {
     id: 'sample-sp-04',
@@ -248,7 +245,6 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     discipline: '61 - Planning and Scheduling',
     position: 'Senior Planner',
     class: 'E09 - Senior Engineer',
-    hiringSource: 'Hatch',
     company: 'BHP',
     eeIdSap: '',
     sortNumber: '104',
@@ -278,7 +274,6 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     discipline: '40 - Construction Management',
     position: 'Package Coordinator',
     class: 'E02 - Engineering, Project, Construction Manager',
-    hiringSource: 'Bantrel',
     company: 'Bantrel',
     eeIdSap: '',
     sortNumber: '105',
@@ -307,7 +302,6 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     discipline: '33 - Expediting',
     position: 'Expeditor - offsite',
     class: 'X42 - Project Support Coordinator - India',
-    hiringSource: 'Hatch',
     company: 'Hatch',
     eeIdSap: 'SAP-88421',
     sortNumber: '106',
@@ -336,7 +330,6 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     discipline: '14 - Risk Management',
     position: 'Site Risk Specialist Mining',
     class: 'E04 - Specialist/Supervisor',
-    hiringSource: 'Bechtel',
     company: 'Fluor',
     eeIdSap: '',
     sortNumber: '107',
@@ -347,7 +340,7 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     lwp: '2027-01-03',
     status: 'pending',
     submittedAt: submittedAt(6),
-    workflow: staffingPendingWorkflow('Bechtel'),
+    workflow: staffingPendingWorkflow('Fluor'),
   },
   {
     id: 'sample-sp-08',
@@ -365,7 +358,6 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     discipline: '63 - Cost Management',
     position: 'Cost Controller - Lead',
     class: 'E02 - Engineering, Project, Construction Manager',
-    hiringSource: 'Hatch',
     company: 'BHP',
     eeIdSap: '',
     sortNumber: '108',
@@ -394,7 +386,6 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     discipline: '32 - Purchasing',
     position: 'Purchasing Agent',
     class: 'E25 - Administrative Specialist',
-    hiringSource: 'Hatch',
     company: 'Hatch',
     eeIdSap: '',
     sortNumber: '109',
@@ -425,7 +416,6 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     discipline: '50 - Commissioning Management',
     position: 'I&C Lead NPI Area',
     class: 'E09 - Senior Engineer',
-    hiringSource: 'Bechtel',
     company: 'Fluor',
     eeIdSap: '',
     sortNumber: '110',
@@ -438,7 +428,7 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     submittedAt: submittedAt(9),
     reviewedAt: reviewedAt(10),
     rejectionComment: 'Duplicate role — existing commissioning lead covers this area.',
-    workflow: staffingRejectedWorkflow('Bechtel'),
+    workflow: staffingRejectedWorkflow('Fluor'),
   },
 ]
 
@@ -465,7 +455,6 @@ function pafForPosition(
     candidateName: overrides.candidateName,
     country: overrides.country ?? position.country,
     class: overrides.class ?? position.class,
-    hiringSource: overrides.hiringSource ?? position.hiringSource,
     company: overrides.company ?? position.company,
     eeIdSap: overrides.eeIdSap ?? '',
     pafNumber: overrides.pafNumber,
@@ -512,7 +501,7 @@ export const SAMPLE_PROJECT_AUTHORIZATION_REQUESTS: ProjectAuthorizationRequest[
     submittedAt: submittedAt(13),
     reviewedAt: reviewedAt(14),
     rejectionComment: 'Candidate does not meet minimum experience requirements.',
-    workflow: pafRejectedWorkflow('Bechtel'),
+    workflow: pafRejectedWorkflow('Fluor'),
   }),
   pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[3], {
     id: 'sample-paf-04',

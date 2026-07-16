@@ -17,10 +17,23 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree'
 import GroupIcon from '@mui/icons-material/Group'
 import ActingAsUserSwitcher from './ActingAsUserSwitcher'
 import NavMenuGroup, { navButtonSx } from './NavMenuGroup'
+import { useRoles } from '../context/RolesContext'
+import {
+  canReviewRequests,
+  canSubmitRequests,
+  canViewStaffingMatrix,
+  isAdmin,
+} from '../utils/permissions'
 
 export default function Layout() {
   const location = useLocation()
   const path = location.pathname
+  const { currentUserRoles } = useRoles()
+
+  const admin = isAdmin(currentUserRoles)
+  const canSubmit = canSubmitRequests(currentUserRoles)
+  const canReview = canReviewRequests(currentUserRoles)
+  const canViewMatrix = canViewStaffingMatrix(currentUserRoles)
 
   const isHome = path === '/'
   const isStaffManagement = path.startsWith('/staffing-plan')
@@ -29,6 +42,64 @@ export default function Layout() {
     path.startsWith('/roles') || path.startsWith('/users') || path.startsWith('/workflows')
   const wideLayout =
     path.startsWith('/staffing-plan/matrix') || path.startsWith('/workflows')
+
+  const staffItems = [
+    canSubmit
+      ? {
+          label: 'Position Request',
+          to: '/staffing-plan',
+          icon: <AssignmentIcon fontSize="small" />,
+          active: path === '/staffing-plan' || path.startsWith('/staffing-plan/revise'),
+        }
+      : null,
+    canReview
+      ? {
+          label: 'Position Requests Review',
+          to: '/staffing-plan/manager',
+          icon: <ManageAccountsIcon fontSize="small" />,
+          active: path === '/staffing-plan/manager',
+        }
+      : null,
+    canViewMatrix
+      ? {
+          label: 'Staffing Plan',
+          to: '/staffing-plan/matrix',
+          icon: <TableChartIcon fontSize="small" />,
+          active: path === '/staffing-plan/matrix',
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    label: string
+    to: string
+    icon: React.ReactNode
+    active: boolean
+  }>
+
+  const pafItems = [
+    canSubmit
+      ? {
+          label: 'PAF Request',
+          to: '/project-authorization',
+          icon: <VerifiedIcon fontSize="small" />,
+          active:
+            path === '/project-authorization' ||
+            path.startsWith('/project-authorization/revise'),
+        }
+      : null,
+    canReview
+      ? {
+          label: 'PAF Requests Review',
+          to: '/project-authorization/manager',
+          icon: <ManageAccountsIcon fontSize="small" />,
+          active: path === '/project-authorization/manager',
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    label: string
+    to: string
+    icon: React.ReactNode
+    active: boolean
+  }>
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -78,79 +149,51 @@ export default function Layout() {
               Home
             </Button>
 
-            <NavMenuGroup
-              label="Staff Management"
-              icon={<AssignmentIcon fontSize="small" />}
-              active={isStaffManagement}
-              items={[
-                {
-                  label: 'Position Request',
-                  to: '/staffing-plan',
-                  icon: <AssignmentIcon fontSize="small" />,
-                  active: path === '/staffing-plan' || path.startsWith('/staffing-plan/revise'),
-                },
-                {
-                  label: 'Position Requests Review',
-                  to: '/staffing-plan/manager',
-                  icon: <ManageAccountsIcon fontSize="small" />,
-                  active: path === '/staffing-plan/manager',
-                },
-                {
-                  label: 'Staffing Plan',
-                  to: '/staffing-plan/matrix',
-                  icon: <TableChartIcon fontSize="small" />,
-                  active: path === '/staffing-plan/matrix',
-                },
-              ]}
-            />
+            {staffItems.length > 0 ? (
+              <NavMenuGroup
+                label="Staff Management"
+                icon={<AssignmentIcon fontSize="small" />}
+                active={isStaffManagement}
+                items={staffItems}
+              />
+            ) : null}
 
-            <NavMenuGroup
-              label="PAF Management"
-              icon={<VerifiedIcon fontSize="small" />}
-              active={isPafManagement}
-              items={[
-                {
-                  label: 'PAF Approval',
-                  to: '/project-authorization',
-                  icon: <VerifiedIcon fontSize="small" />,
-                  active:
-                    path === '/project-authorization' ||
-                    path.startsWith('/project-authorization/revise'),
-                },
-                {
-                  label: 'PAF Approvals Review',
-                  to: '/project-authorization/manager',
-                  icon: <ManageAccountsIcon fontSize="small" />,
-                  active: path === '/project-authorization/manager',
-                },
-              ]}
-            />
+            {pafItems.length > 0 ? (
+              <NavMenuGroup
+                label="PAF Management"
+                icon={<VerifiedIcon fontSize="small" />}
+                active={isPafManagement}
+                items={pafItems}
+              />
+            ) : null}
 
-            <NavMenuGroup
-              label="Application Admin"
-              icon={<AdminPanelSettingsIcon fontSize="small" />}
-              active={isApplicationAdmin}
-              items={[
-                {
-                  label: 'Roles',
-                  to: '/roles',
-                  icon: <AdminPanelSettingsIcon fontSize="small" />,
-                  active: path.startsWith('/roles'),
-                },
-                {
-                  label: 'Users',
-                  to: '/users',
-                  icon: <GroupIcon fontSize="small" />,
-                  active: path.startsWith('/users'),
-                },
-                {
-                  label: 'Workflows',
-                  to: '/workflows',
-                  icon: <AccountTreeIcon fontSize="small" />,
-                  active: path.startsWith('/workflows'),
-                },
-              ]}
-            />
+            {admin ? (
+              <NavMenuGroup
+                label="Application Admin"
+                icon={<AdminPanelSettingsIcon fontSize="small" />}
+                active={isApplicationAdmin}
+                items={[
+                  {
+                    label: 'Roles',
+                    to: '/roles',
+                    icon: <AdminPanelSettingsIcon fontSize="small" />,
+                    active: path.startsWith('/roles'),
+                  },
+                  {
+                    label: 'Users',
+                    to: '/users',
+                    icon: <GroupIcon fontSize="small" />,
+                    active: path.startsWith('/users'),
+                  },
+                  {
+                    label: 'Workflows',
+                    to: '/workflows',
+                    icon: <AccountTreeIcon fontSize="small" />,
+                    active: path.startsWith('/workflows'),
+                  },
+                ]}
+              />
+            ) : null}
           </Box>
 
           <ActingAsUserSwitcher />

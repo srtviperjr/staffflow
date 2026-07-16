@@ -505,7 +505,7 @@ function WorkflowEditorCanvas() {
                 </Alert>
               ) : (
                 <Alert severity="warning" sx={{ py: 0.5 }}>
-                  Attach a form to drive staffing or PAF approvals from this chart.
+                  Attach a form to drive staffing or PAF requests from this chart.
                 </Alert>
               )}
             </Stack>

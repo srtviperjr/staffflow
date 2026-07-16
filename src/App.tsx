@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { CssBaseline, ThemeProvider } from '@mui/material'
 import theme from './theme'
 import Layout from './components/Layout'
+import AdminRoute from './components/AdminRoute'
 import { OnboardingProvider } from './context/OnboardingContext'
 import { LabourChangeProvider } from './context/LabourChangeContext'
 import { StaffingPlanProvider } from './context/StaffingPlanContext'
@@ -53,9 +54,30 @@ function App() {
                           path="project-authorization/manager"
                           element={<ProjectAuthorizationManagerPage />}
                         />
-                        <Route path="roles" element={<RolesManagementPage />} />
-                        <Route path="users" element={<UsersManagementPage />} />
-                        <Route path="workflows" element={<WorkflowEditorPage />} />
+                        <Route
+                          path="roles"
+                          element={
+                            <AdminRoute>
+                              <RolesManagementPage />
+                            </AdminRoute>
+                          }
+                        />
+                        <Route
+                          path="users"
+                          element={
+                            <AdminRoute>
+                              <UsersManagementPage />
+                            </AdminRoute>
+                          }
+                        />
+                        <Route
+                          path="workflows"
+                          element={
+                            <AdminRoute>
+                              <WorkflowEditorPage />
+                            </AdminRoute>
+                          }
+                        />
                         <Route path="*" element={<Navigate to="/" replace />} />
                       </Route>
                     </Routes>

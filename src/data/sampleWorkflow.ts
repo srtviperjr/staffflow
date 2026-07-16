@@ -12,14 +12,14 @@ const SHARED_STATES = [
 /**
  * Canonical Staffing Plan approval flow — mirrors the product behavior:
  * submit → manager review → approve / reject.
- * Includes a field-based hiring-source gate so both paths reunite at review
+ * Includes a field-based company gate so both paths reunite at review
  * (demonstrates form-field decisions without changing who approves).
  */
 export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
   id: 'workflow-staffing-plan-approval',
   name: 'Staffing Plan Approval',
   description:
-    'Submit a staffing plan position request, optionally route by hiring source, then manager approve or reject',
+    'Submit a staffing plan position request, optionally route by company, then manager approve or reject',
   formType: 'staffing-plan',
   states: SHARED_STATES,
   nodes: [
@@ -52,11 +52,11 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
       position: { x: 290, y: 260 },
       data: {
         kind: 'decision',
-        label: 'Bantrel hire?',
-        decisionQuestion: 'Is hiring source Bantrel?',
+        label: 'Bantrel company?',
+        decisionQuestion: 'Is company Bantrel?',
         decisionMode: 'field',
         fieldCondition: {
-          field: 'hiringSource',
+          field: 'company',
           operator: 'equals',
           value: 'Bantrel',
         },
@@ -188,15 +188,15 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
 }
 
 /**
- * Canonical PAF approval flow — mirrors the product behavior:
+ * Canonical PAF request flow — mirrors the product behavior:
  * submit → manager review → approve / reject.
- * Includes a field-based class gate for contractor vs standard hire paths.
+ * Includes a field-based company gate for Fluor vs other company paths.
  */
 export const PAF_APPROVAL_WORKFLOW: WorkflowDefinition = {
   id: 'workflow-paf-approval',
-  name: 'PAF Approval Flow',
+  name: 'PAF Request Flow',
   description:
-    'Submit a PAF request against an approved staffing position, route by hiring source, then manager approve or reject',
+    'Submit a PAF request against an approved staffing position, route by company, then manager approve or reject',
   formType: 'project-authorization',
   states: SHARED_STATES,
   nodes: [
@@ -229,13 +229,13 @@ export const PAF_APPROVAL_WORKFLOW: WorkflowDefinition = {
       position: { x: 290, y: 260 },
       data: {
         kind: 'decision',
-        label: 'Bechtel hire?',
-        decisionQuestion: 'Is hiring source Bechtel?',
+        label: 'Fluor company?',
+        decisionQuestion: 'Is company Fluor?',
         decisionMode: 'field',
         fieldCondition: {
-          field: 'hiringSource',
+          field: 'company',
           operator: 'equals',
-          value: 'Bechtel',
+          value: 'Fluor',
         },
         roleId: '',
         stateId: 'state-submitted',
@@ -247,7 +247,7 @@ export const PAF_APPROVAL_WORKFLOW: WorkflowDefinition = {
       position: { x: 40, y: 440 },
       data: {
         kind: 'step',
-        label: 'Manager Review (Bechtel)',
+        label: 'Manager Review (Fluor)',
         roleId: 'role-manager',
         stateId: 'state-in-review',
         waitForAction: true,

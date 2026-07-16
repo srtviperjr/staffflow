@@ -17,7 +17,6 @@ export interface ProjectAuthorizationRequest {
   candidateName: string
   country: string
   class: string
-  hiringSource: string
   company: Company
   eeIdSap: string
   pafNumber: string
@@ -41,7 +40,6 @@ export interface ProjectAuthorizationFormData {
   candidateName: string
   country: string
   class: string
-  hiringSource: string
   company: Company | ''
   eeIdSap: string
   sortNumber: string
