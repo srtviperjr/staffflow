@@ -1,6 +1,6 @@
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import type { StaffingPlanRequest } from '../types/staffingPlan'
-import { getApprovedStaffingRequests } from './approvedPositions'
+import { getStaffingPlanMainRequests } from './approvedPositions'
 import { personBarColor } from './ganttPeriods'
 import {
   findNextAvailablePafRange,
@@ -46,6 +46,7 @@ export interface StaffingMatrixRow {
   discipline: string
   position: string
   positionNumber: string
+  status: string
   candidate: string
   class: string
   company: string
@@ -68,6 +69,7 @@ export interface StaffingMatrixSummary {
 
 export type MatrixColumnId =
   | 'positionNumber'
+  | 'status'
   | 'candidate'
   | 'phase'
   | 'projectOffice'
@@ -97,6 +99,7 @@ export interface MatrixColumnDef {
 
 export const MATRIX_COLUMN_DEFS: MatrixColumnDef[] = [
   { id: 'positionNumber', label: 'Position #', getValue: (row) => row.positionNumber, minWidth: 120 },
+  { id: 'status', label: 'Status', getValue: (row) => row.status, minWidth: 100 },
   { id: 'candidate', label: 'Candidate', getValue: (row) => row.candidate, minWidth: 140 },
   { id: 'phase', label: 'Phase', getValue: (row) => row.phase, minWidth: 80 },
   { id: 'projectOffice', label: 'Project Office', getValue: (row) => row.projectOffice },
@@ -118,9 +121,10 @@ export const MATRIX_COLUMN_DEFS: MatrixColumnDef[] = [
   { id: 'lwp', label: 'Last Working Day', getValue: (row) => row.lwp, minWidth: 140 },
 ]
 
-/** Position # and Candidate lead by default. */
+/** Position #, Status, and Candidate lead by default. */
 export const DEFAULT_COLUMN_ORDER: MatrixColumnId[] = [
   'positionNumber',
+  'status',
   'candidate',
   'phase',
   'projectOffice',
@@ -143,7 +147,7 @@ export const DEFAULT_COLUMN_ORDER: MatrixColumnId[] = [
 ]
 
 /** Columns frozen while scrolling the Gantt (in addition to Expand + Actions). */
-export const DEFAULT_STICKY_COLUMNS: MatrixColumnId[] = ['positionNumber', 'candidate']
+export const DEFAULT_STICKY_COLUMNS: MatrixColumnId[] = ['positionNumber', 'status', 'candidate']
 
 /** @deprecated Prefer MATRIX_COLUMN_DEFS — kept for any residual label lookups */
 export const METADATA_COLUMNS = MATRIX_COLUMN_DEFS.map((column) => column.label)
@@ -324,6 +328,7 @@ function buildRow(
     discipline: position.discipline,
     position: position.position,
     positionNumber: position.positionNumber,
+    status: position.status,
     candidate: authorization?.candidateName ?? 'None',
     class: position.class,
     company: position.company,
@@ -345,9 +350,10 @@ export function buildStaffingMatrixRows(
   authorizations: ProjectAuthorizationRequest[],
   periods: string[],
 ): StaffingMatrixRow[] {
-  const approvedPositions = getApprovedStaffingRequests(staffingRequests)
+  // Latest approved per group; first/pending-only groups still appear (like PAF Register).
+  const mainPositions = getStaffingPlanMainRequests(staffingRequests)
 
-  return approvedPositions
+  return mainPositions
     .map((position) => {
       // Main row shows approved PAFs when revisions exist; pending stay under expand.
       const displayPafs = getApprovedDisplayPafsForPosition(

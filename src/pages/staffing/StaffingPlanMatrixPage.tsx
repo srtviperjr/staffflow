@@ -85,10 +85,10 @@ import {
   type StaffingMatrixRow,
 } from '../../utils/staffingPlanMatrix'
 
-const COLUMN_ORDER_KEY = 'staffing-matrix-column-order-v2'
-const COLUMN_VISIBLE_KEY = 'staffing-matrix-visible-columns-v2'
-const COLUMN_STICKY_KEY = 'staffing-matrix-sticky-columns-v2'
-const EXPAND_COL_WIDTH = 72
+const COLUMN_ORDER_KEY = 'staffing-matrix-column-order-v3'
+const COLUMN_VISIBLE_KEY = 'staffing-matrix-visible-columns-v3'
+const COLUMN_STICKY_KEY = 'staffing-matrix-sticky-columns-v3'
+const EXPAND_COL_WIDTH = 100
 const ACTIONS_COL_WIDTH = 118
 const META_WIDTH_FALLBACK = 110
 
@@ -336,6 +336,10 @@ function renderMetadataCell(
   onCreatePaf: (positionId: string) => void,
   onOpenPaf: (authorization: ProjectAuthorizationRequest) => void,
 ) {
+  if (columnId === 'status') {
+    return <Chip size="small" label={value} color={statusColor(value)} />
+  }
+
   if (columnId !== 'candidate') {
     return value
   }
@@ -632,8 +636,9 @@ export default function StaffingPlanMatrixPage() {
               Staffing Plan
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Main rows show the latest approved position and approved PAFs. Expand (+) appears when
-              there are additional position or PAF revisions; a pending icon marks updates below.
+              Main rows show the latest approved position (or the first pending revision if none is
+              approved yet). Status sits beside Position #. Revise / expand / pending icons are in
+              the first column.
             </Typography>
           </Box>
         </Box>
@@ -1002,6 +1007,18 @@ export default function StaffingPlanMatrixPage() {
                             }}
                           >
                             <Stack direction="row" spacing={0} sx={{ alignItems: 'center' }}>
+                              {canRevise ? (
+                                <Tooltip title="Revise position">
+                                  <IconButton
+                                    size="small"
+                                    color="primary"
+                                    aria-label="Revise position"
+                                    onClick={() => handleRevise(row.revisionGroupId)}
+                                  >
+                                    <EditIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              ) : null}
                               {canExpand ? (
                                 <IconButton
                                   size="small"
@@ -1042,25 +1059,46 @@ export default function StaffingPlanMatrixPage() {
                               bgcolor: 'background.paper',
                               minWidth: ACTIONS_COL_WIDTH,
                               width: ACTIONS_COL_WIDTH,
+                              whiteSpace: 'normal',
                               boxShadow: stickyLayout.actionsHaveEdgeShadow
                                 ? stickyEdgeShadow
                                 : undefined,
                             }}
                           >
-                            {canRevise ? (
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                startIcon={<EditIcon />}
-                                onClick={() => handleRevise(row.revisionGroupId)}
-                                sx={{
-                                  textTransform: 'none',
-                                  fontSize: '0.75rem',
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
-                                Revise
-                              </Button>
+                            {canReview && row.status === 'pending' ? (
+                              <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  color="success"
+                                  startIcon={<CheckCircleIcon />}
+                                  onClick={() => approveStaffing(row.id)}
+                                  sx={{ textTransform: 'none', fontSize: '0.7rem' }}
+                                >
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  color="error"
+                                  startIcon={<CancelIcon />}
+                                  onClick={() =>
+                                    setRejectTarget({
+                                      id: row.id,
+                                      kind: 'staffing-plan',
+                                      title: row.position,
+                                      subtitle: `Position ${row.positionNumber}`,
+                                      status: 'pending',
+                                      revision: row.positionRequest.revision,
+                                      submittedAt: row.positionRequest.submittedAt,
+                                      staffingRequest: row.positionRequest,
+                                    })
+                                  }
+                                  sx={{ textTransform: 'none', fontSize: '0.7rem' }}
+                                >
+                                  Reject
+                                </Button>
+                              </Stack>
                             ) : null}
                           </TableCell>
                           {visibleColumnDefs.map((column) => {

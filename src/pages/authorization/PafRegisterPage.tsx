@@ -77,10 +77,10 @@ import {
   type PafRegisterColumnId,
 } from '../../utils/pafRegister'
 
-const COLUMN_ORDER_KEY = 'paf-register-column-order-v3'
-const COLUMN_VISIBLE_KEY = 'paf-register-visible-columns-v3'
-const COLUMN_STICKY_KEY = 'paf-register-sticky-columns-v3'
-const EXPAND_COL_WIDTH = 72
+const COLUMN_ORDER_KEY = 'paf-register-column-order-v4'
+const COLUMN_VISIBLE_KEY = 'paf-register-visible-columns-v4'
+const COLUMN_STICKY_KEY = 'paf-register-sticky-columns-v4'
+const EXPAND_COL_WIDTH = 100
 const ACTIONS_COL_WIDTH = 118
 const META_WIDTH_FALLBACK = 110
 
@@ -307,9 +307,9 @@ export default function PafRegisterPage() {
               PAF Register
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Main rows show the latest approved PAF for each person. Expand (+) appears only when
-              there are additional revisions; a pending icon marks updates below. Expand/Actions stay
-              fixed while the calendar scrolls.
+              Main rows show the latest approved PAF (or the first pending revision if none is
+              approved yet). Status sits beside PAF #. Revise / expand / pending icons are in the
+              first column; Approve/Reject stay in Actions.
             </Typography>
           </Box>
         </Box>
@@ -631,6 +631,22 @@ export default function PafRegisterPage() {
                             }}
                           >
                             <Stack direction="row" spacing={0} sx={{ alignItems: 'center' }}>
+                              {canRevise ? (
+                                <Tooltip title="Revise PAF">
+                                  <IconButton
+                                    size="small"
+                                    color="secondary"
+                                    aria-label="Revise PAF"
+                                    onClick={() =>
+                                      openRequestForm('project-authorization', {
+                                        reviseRequestId: row.id,
+                                      })
+                                    }
+                                  >
+                                    <EditIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              ) : null}
                               {canExpand ? (
                                 <IconButton
                                   size="small"
@@ -678,22 +694,6 @@ export default function PafRegisterPage() {
                             }}
                           >
                             <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
-                              {canRevise ? (
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  color="secondary"
-                                  startIcon={<EditIcon />}
-                                  onClick={() =>
-                                    openRequestForm('project-authorization', {
-                                      reviseRequestId: row.id,
-                                    })
-                                  }
-                                  sx={{ textTransform: 'none', fontSize: '0.7rem' }}
-                                >
-                                  Revise
-                                </Button>
-                              ) : null}
                               {canReview && row.status === 'pending' ? (
                                 <>
                                   <Button
