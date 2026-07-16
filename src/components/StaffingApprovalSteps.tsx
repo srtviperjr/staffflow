@@ -31,7 +31,7 @@ export default function StaffingApprovalSteps({
     <Box sx={{ mt: compact ? 0.75 : 1.5 }}>
       {!compact ? (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
-          Approval steps before final approval
+          Workflow progress (status stays Pending until Project Director approval)
         </Typography>
       ) : null}
       <Box

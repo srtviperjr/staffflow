@@ -57,8 +57,8 @@ function evaluateFieldYes(
 }
 
 /**
- * Walk the happy path (approve / field-yes) and collect wait-for-action steps
- * that must complete before final approval.
+ * Walk the happy path and collect milestone steps:
+ * requestor submit + each wait-for-action approval before final approval.
  */
 export function getRequiredApprovalNodes(
   workflow: WorkflowDefinition,
@@ -79,8 +79,23 @@ export function getRequiredApprovalNodes(
 
     if (node.type === 'end') break
 
-    if (node.type === 'step' && node.data.waitForAction) {
-      steps.push(node)
+    if (node.type === 'step') {
+      const isSubmitMilestone =
+        !node.data.waitForAction &&
+        (node.data.roleId === 'role-requestor' ||
+          /submit/i.test(node.data.label) ||
+          /submitted/i.test(node.data.label))
+      const isApprovalWait = Boolean(node.data.waitForAction)
+
+      if (isSubmitMilestone || isApprovalWait) {
+        steps.push(node)
+      }
+
+      // Fully-approved marker steps are not checklist items
+      if (!node.data.waitForAction && /fully approved/i.test(node.data.label)) {
+        break
+      }
+
       currentId = followSingle(workflow, node.id)
       continue
     }
@@ -91,8 +106,9 @@ export function getRequiredApprovalNodes(
         currentId = followBranch(workflow, node.id, yes ? 'yes' : 'no')
         continue
       }
-      // Manual final decision — not a separate "approval step" row beyond manager wait
-      break
+      // Manual decision — skip listing; continue happy-path Yes if present
+      currentId = followBranch(workflow, node.id, 'yes') ?? followSingle(workflow, node.id)
+      continue
     }
 
     currentId = followSingle(workflow, node.id)

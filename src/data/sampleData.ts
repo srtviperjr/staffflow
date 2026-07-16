@@ -140,7 +140,15 @@ function candidateName(seed: number) {
   return `${pick(FIRST_NAMES, seed)} ${pick(LAST_NAMES, seed * 3 + 1)}`
 }
 
-/** Waiting on Cost Engineer costing approval (no hourly cost yet). */
+function pdNodeForPhase(phase: string): 'sp-pd-js1' | 'sp-pd-js2' {
+  return phase === 'JS2' ? 'sp-pd-js2' : 'sp-pd-js1'
+}
+
+function managerNodeForCompany(company: string): 'sp-review-bantrel' | 'sp-review-other' {
+  return company === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
+}
+
+/** Waiting on Cost Engineer (after requestor submit). */
 function staffingPendingAtCostWorkflow(): WorkflowProgress {
   return {
     workflowId: 'workflow-staffing-plan-approval',
@@ -153,12 +161,29 @@ function staffingPendingAtCostWorkflow(): WorkflowProgress {
   }
 }
 
-function pdNodeForPhase(phase: string): 'sp-pd-js1' | 'sp-pd-js2' {
-  return phase === 'JS2' ? 'sp-pd-js2' : 'sp-pd-js1'
+/** Waiting on Manager after Cost Engineer. */
+function staffingPendingWorkflow(company: string, _phase: string): WorkflowProgress {
+  const reviewNode = managerNodeForCompany(company)
+  return {
+    workflowId: 'workflow-staffing-plan-approval',
+    currentNodeId: reviewNode,
+    history: [
+      { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
+      {
+        nodeId: 'sp-hiring-gate',
+        arrivedAt: submittedAt(0),
+        branch: company === 'Bantrel' ? 'yes' : 'no',
+      },
+      { nodeId: reviewNode, arrivedAt: submittedAt(0) },
+    ],
+  }
 }
 
-/** Waiting on Project Director after Costing Approved. */
-function staffingPendingAtPdWorkflow(phase: string): WorkflowProgress {
+/** Waiting on Project Director (final approval) after Manager. */
+function staffingPendingAtPdWorkflow(company: string, phase: string): WorkflowProgress {
+  const reviewNode = managerNodeForCompany(company)
   const pdNode = pdNodeForPhase(phase)
   return {
     workflowId: 'workflow-staffing-plan-approval',
@@ -167,6 +192,12 @@ function staffingPendingAtPdWorkflow(phase: string): WorkflowProgress {
       { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
       { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
       { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
+      {
+        nodeId: 'sp-hiring-gate',
+        arrivedAt: submittedAt(0),
+        branch: company === 'Bantrel' ? 'yes' : 'no',
+      },
+      { nodeId: reviewNode, arrivedAt: submittedAt(0), branch: 'yes' },
       {
         nodeId: 'sp-project-gate',
         arrivedAt: submittedAt(0),
@@ -177,35 +208,8 @@ function staffingPendingAtPdWorkflow(phase: string): WorkflowProgress {
   }
 }
 
-/** Waiting on manager after Cost Engineer and Project Director. */
-function staffingPendingWorkflow(company: string, phase: string): WorkflowProgress {
-  const reviewNode = company === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
-  const pdNode = pdNodeForPhase(phase)
-  return {
-    workflowId: 'workflow-staffing-plan-approval',
-    currentNodeId: reviewNode,
-    history: [
-      { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
-      { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
-      { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
-      {
-        nodeId: 'sp-project-gate',
-        arrivedAt: submittedAt(0),
-        branch: phase === 'JS1' ? 'yes' : 'no',
-      },
-      { nodeId: pdNode, arrivedAt: submittedAt(0), branch: 'yes' },
-      {
-        nodeId: 'sp-hiring-gate',
-        arrivedAt: submittedAt(0),
-        branch: company === 'Bantrel' ? 'yes' : 'no',
-      },
-      { nodeId: reviewNode, arrivedAt: submittedAt(0) },
-    ],
-  }
-}
-
 function staffingApprovedWorkflow(company: string, phase: string): WorkflowProgress {
-  const reviewNode = company === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
+  const reviewNode = managerNodeForCompany(company)
   const pdNode = pdNodeForPhase(phase)
   return {
     workflowId: 'workflow-staffing-plan-approval',
@@ -215,27 +219,25 @@ function staffingApprovedWorkflow(company: string, phase: string): WorkflowProgr
       { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
       { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
       {
-        nodeId: 'sp-project-gate',
-        arrivedAt: submittedAt(0),
-        branch: phase === 'JS1' ? 'yes' : 'no',
-      },
-      { nodeId: pdNode, arrivedAt: submittedAt(0), branch: 'yes' },
-      {
         nodeId: 'sp-hiring-gate',
         arrivedAt: submittedAt(0),
         branch: company === 'Bantrel' ? 'yes' : 'no',
       },
-      { nodeId: reviewNode, arrivedAt: submittedAt(0) },
-      { nodeId: 'sp-decision', arrivedAt: submittedAt(1), branch: 'yes' },
+      { nodeId: reviewNode, arrivedAt: submittedAt(0), branch: 'yes' },
+      {
+        nodeId: 'sp-project-gate',
+        arrivedAt: submittedAt(0),
+        branch: phase === 'JS1' ? 'yes' : 'no',
+      },
+      { nodeId: pdNode, arrivedAt: submittedAt(1), branch: 'yes' },
       { nodeId: 'sp-approved', arrivedAt: submittedAt(1) },
       { nodeId: 'sp-end-ok', arrivedAt: submittedAt(1) },
     ],
   }
 }
 
-function staffingRejectedWorkflow(company: string, phase: string): WorkflowProgress {
-  const reviewNode = company === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
-  const pdNode = pdNodeForPhase(phase)
+function staffingRejectedWorkflow(company: string, _phase: string): WorkflowProgress {
+  const reviewNode = managerNodeForCompany(company)
   return {
     workflowId: 'workflow-staffing-plan-approval',
     currentNodeId: 'sp-end-reject',
@@ -244,18 +246,11 @@ function staffingRejectedWorkflow(company: string, phase: string): WorkflowProgr
       { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
       { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
       {
-        nodeId: 'sp-project-gate',
-        arrivedAt: submittedAt(0),
-        branch: phase === 'JS1' ? 'yes' : 'no',
-      },
-      { nodeId: pdNode, arrivedAt: submittedAt(0), branch: 'yes' },
-      {
         nodeId: 'sp-hiring-gate',
         arrivedAt: submittedAt(0),
         branch: company === 'Bantrel' ? 'yes' : 'no',
       },
-      { nodeId: reviewNode, arrivedAt: submittedAt(0) },
-      { nodeId: 'sp-decision', arrivedAt: submittedAt(1), branch: 'no' },
+      { nodeId: reviewNode, arrivedAt: submittedAt(0), branch: 'no' },
       { nodeId: 'sp-rejected', arrivedAt: submittedAt(1) },
       { nodeId: 'sp-end-reject', arrivedAt: submittedAt(1) },
     ],
@@ -672,7 +667,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
                   : awaitingCost
                     ? staffingPendingAtCostWorkflow()
                     : awaitingPd
-                      ? staffingPendingAtPdWorkflow(phase)
+                      ? staffingPendingAtPdWorkflow(company, phase)
                       : staffingPendingWorkflow(company, phase),
           }),
         )

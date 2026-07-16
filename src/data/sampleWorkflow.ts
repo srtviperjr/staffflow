@@ -3,25 +3,25 @@ import type { WorkflowDefinition } from '../types/workflow'
 const SHARED_STATES = [
   { id: 'state-draft', name: 'Draft', color: '#757575' },
   { id: 'state-submitted', name: 'Submitted', color: '#1976d2' },
-  { id: 'state-costing-approved', name: 'Cost Review', color: '#6a1b9a' },
-  { id: 'state-pd-review', name: 'Project Director Review', color: '#4527a0' },
+  { id: 'state-cost-review', name: 'Cost Review', color: '#6a1b9a' },
   { id: 'state-in-review', name: 'In Review', color: '#ed6c02' },
+  { id: 'state-pd-review', name: 'Project Director Review', color: '#4527a0' },
   { id: 'state-approved', name: 'Approved', color: '#2e7d32' },
   { id: 'state-rejected', name: 'Rejected', color: '#c62828' },
   { id: 'state-complete', name: 'Complete', color: '#00695c' },
 ]
 
 /**
- * Canonical Staffing Plan approval flow:
- * submit → Costing Approved (Cost Engineer) → Project Director (by phase) →
- * company gate → manager approve / reject.
+ * Staffing Plan approval flow (request stays Pending until the last approval):
+ * Submitted (requestor) → Approved by Cost Engineer → Approved by Manager →
+ * Approved by Project Director (final) → fully Approved.
  * Reject at any wait step ends the workflow.
  */
 export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
   id: 'workflow-staffing-plan-approval',
   name: 'Staffing Plan Approval',
   description:
-    'Cost Engineer costing approval, then Project Director for the position project, then manager approve or reject',
+    'Requestor submits, Cost Engineer approves costing, Manager approves, Project Director gives final approval',
   formType: 'staffing-plan',
   states: SHARED_STATES,
   nodes: [
@@ -39,10 +39,10 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
     {
       id: 'sp-submit',
       type: 'step',
-      position: { x: 280, y: 100 },
+      position: { x: 280, y: 110 },
       data: {
         kind: 'step',
-        label: 'Submit Position Request',
+        label: 'Submitted — by Requestor',
         roleId: 'role-requestor',
         stateId: 'state-submitted',
         waitForAction: false,
@@ -51,61 +51,19 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
     {
       id: 'sp-cost-review',
       type: 'step',
-      position: { x: 280, y: 220 },
+      position: { x: 280, y: 240 },
       data: {
         kind: 'step',
-        label: 'Costing Approved',
+        label: 'Approved — by Cost Engineer',
         roleId: 'role-cost-engineer',
-        stateId: 'state-costing-approved',
-        waitForAction: true,
-      },
-    },
-    {
-      id: 'sp-project-gate',
-      type: 'decision',
-      position: { x: 290, y: 360 },
-      data: {
-        kind: 'decision',
-        label: 'JS1 project?',
-        decisionQuestion: 'Is this a JS1 project position?',
-        decisionMode: 'field',
-        fieldCondition: {
-          field: 'phase',
-          operator: 'equals',
-          value: 'JS1',
-        },
-        roleId: '',
-        stateId: 'state-costing-approved',
-      },
-    },
-    {
-      id: 'sp-pd-js1',
-      type: 'step',
-      position: { x: 40, y: 500 },
-      data: {
-        kind: 'step',
-        label: 'Project Director Approval (JS1)',
-        roleId: 'role-project-director',
-        stateId: 'state-pd-review',
-        waitForAction: true,
-      },
-    },
-    {
-      id: 'sp-pd-js2',
-      type: 'step',
-      position: { x: 480, y: 500 },
-      data: {
-        kind: 'step',
-        label: 'Project Director Approval (JS2)',
-        roleId: 'role-project-director',
-        stateId: 'state-pd-review',
+        stateId: 'state-cost-review',
         waitForAction: true,
       },
     },
     {
       id: 'sp-hiring-gate',
       type: 'decision',
-      position: { x: 290, y: 640 },
+      position: { x: 290, y: 380 },
       data: {
         kind: 'decision',
         label: 'Bantrel company?',
@@ -117,16 +75,16 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
           value: 'Bantrel',
         },
         roleId: '',
-        stateId: 'state-pd-review',
+        stateId: 'state-cost-review',
       },
     },
     {
       id: 'sp-review-bantrel',
       type: 'step',
-      position: { x: 40, y: 780 },
+      position: { x: 40, y: 520 },
       data: {
         kind: 'step',
-        label: 'Manager Review (Bantrel)',
+        label: 'Approved — by Manager',
         roleId: 'role-manager',
         stateId: 'state-in-review',
         waitForAction: true,
@@ -135,36 +93,65 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
     {
       id: 'sp-review-other',
       type: 'step',
-      position: { x: 480, y: 780 },
+      position: { x: 480, y: 520 },
       data: {
         kind: 'step',
-        label: 'Manager Review',
+        label: 'Approved — by Manager',
         roleId: 'role-manager',
         stateId: 'state-in-review',
         waitForAction: true,
       },
     },
     {
-      id: 'sp-decision',
+      id: 'sp-project-gate',
       type: 'decision',
-      position: { x: 290, y: 920 },
+      position: { x: 290, y: 660 },
       data: {
         kind: 'decision',
-        label: 'Approved?',
-        decisionQuestion: 'Does the manager approve this staffing plan request?',
-        decisionMode: 'manual',
-        roleId: 'role-manager',
+        label: 'JS1 project?',
+        decisionQuestion: 'Is this a JS1 project position?',
+        decisionMode: 'field',
+        fieldCondition: {
+          field: 'phase',
+          operator: 'equals',
+          value: 'JS1',
+        },
+        roleId: '',
         stateId: 'state-in-review',
+      },
+    },
+    {
+      id: 'sp-pd-js1',
+      type: 'step',
+      position: { x: 40, y: 800 },
+      data: {
+        kind: 'step',
+        label: 'Approved — by Project Director',
+        roleId: 'role-project-director',
+        stateId: 'state-pd-review',
+        waitForAction: true,
+      },
+    },
+    {
+      id: 'sp-pd-js2',
+      type: 'step',
+      position: { x: 480, y: 800 },
+      data: {
+        kind: 'step',
+        label: 'Approved — by Project Director',
+        roleId: 'role-project-director',
+        stateId: 'state-pd-review',
+        waitForAction: true,
       },
     },
     {
       id: 'sp-approved',
       type: 'step',
-      position: { x: 80, y: 1060 },
+      position: { x: 280, y: 940 },
       data: {
         kind: 'step',
-        label: 'Mark Approved',
-        roleId: 'role-manager',
+        label: 'Fully Approved',
+        roleId: 'role-project-director',
         stateId: 'state-approved',
         waitForAction: false,
       },
@@ -172,7 +159,7 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
     {
       id: 'sp-rejected',
       type: 'step',
-      position: { x: 520, y: 1060 },
+      position: { x: 560, y: 940 },
       data: {
         kind: 'step',
         label: 'Mark Rejected',
@@ -184,7 +171,7 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
     {
       id: 'sp-end-ok',
       type: 'end',
-      position: { x: 120, y: 1200 },
+      position: { x: 320, y: 1080 },
       data: {
         kind: 'end',
         label: 'Complete',
@@ -195,7 +182,7 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
     {
       id: 'sp-end-reject',
       type: 'end',
-      position: { x: 560, y: 1200 },
+      position: { x: 600, y: 1080 },
       data: {
         kind: 'end',
         label: 'Ended (Rejected)',
@@ -207,40 +194,10 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
   edges: [
     { id: 'sp-e-start-submit', source: 'sp-start', target: 'sp-submit' },
     { id: 'sp-e-submit-cost', source: 'sp-submit', target: 'sp-cost-review' },
-    { id: 'sp-e-cost-project', source: 'sp-cost-review', target: 'sp-project-gate' },
+    { id: 'sp-e-cost-hire', source: 'sp-cost-review', target: 'sp-hiring-gate' },
     {
       id: 'sp-e-cost-reject',
       source: 'sp-cost-review',
-      sourceHandle: 'no',
-      target: 'sp-rejected',
-      label: 'Reject',
-    },
-    {
-      id: 'sp-e-project-js1',
-      source: 'sp-project-gate',
-      sourceHandle: 'yes',
-      target: 'sp-pd-js1',
-      label: 'Yes',
-    },
-    {
-      id: 'sp-e-project-js2',
-      source: 'sp-project-gate',
-      sourceHandle: 'no',
-      target: 'sp-pd-js2',
-      label: 'No',
-    },
-    { id: 'sp-e-pd-js1-hire', source: 'sp-pd-js1', target: 'sp-hiring-gate' },
-    { id: 'sp-e-pd-js2-hire', source: 'sp-pd-js2', target: 'sp-hiring-gate' },
-    {
-      id: 'sp-e-pd-js1-reject',
-      source: 'sp-pd-js1',
-      sourceHandle: 'no',
-      target: 'sp-rejected',
-      label: 'Reject',
-    },
-    {
-      id: 'sp-e-pd-js2-reject',
-      source: 'sp-pd-js2',
       sourceHandle: 'no',
       target: 'sp-rejected',
       label: 'Reject',
@@ -259,6 +216,8 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
       target: 'sp-review-other',
       label: 'No',
     },
+    { id: 'sp-e-bantrel-project', source: 'sp-review-bantrel', target: 'sp-project-gate' },
+    { id: 'sp-e-other-project', source: 'sp-review-other', target: 'sp-project-gate' },
     {
       id: 'sp-e-bantrel-reject',
       source: 'sp-review-bantrel',
@@ -273,26 +232,40 @@ export const STAFFING_PLAN_WORKFLOW: WorkflowDefinition = {
       target: 'sp-rejected',
       label: 'Reject',
     },
-    { id: 'sp-e-bantrel-decision', source: 'sp-review-bantrel', target: 'sp-decision' },
-    { id: 'sp-e-other-decision', source: 'sp-review-other', target: 'sp-decision' },
     {
-      id: 'sp-e-yes',
-      source: 'sp-decision',
+      id: 'sp-e-project-js1',
+      source: 'sp-project-gate',
       sourceHandle: 'yes',
-      target: 'sp-approved',
+      target: 'sp-pd-js1',
       label: 'Yes',
     },
     {
-      id: 'sp-e-no',
-      source: 'sp-decision',
+      id: 'sp-e-project-js2',
+      source: 'sp-project-gate',
+      sourceHandle: 'no',
+      target: 'sp-pd-js2',
+      label: 'No',
+    },
+    { id: 'sp-e-pd-js1-ok', source: 'sp-pd-js1', target: 'sp-approved' },
+    { id: 'sp-e-pd-js2-ok', source: 'sp-pd-js2', target: 'sp-approved' },
+    {
+      id: 'sp-e-pd-js1-reject',
+      source: 'sp-pd-js1',
       sourceHandle: 'no',
       target: 'sp-rejected',
-      label: 'No',
+      label: 'Reject',
+    },
+    {
+      id: 'sp-e-pd-js2-reject',
+      source: 'sp-pd-js2',
+      sourceHandle: 'no',
+      target: 'sp-rejected',
+      label: 'Reject',
     },
     { id: 'sp-e-approved-end', source: 'sp-approved', target: 'sp-end-ok' },
     { id: 'sp-e-rejected-end', source: 'sp-rejected', target: 'sp-end-reject' },
   ],
-  updatedAt: '2026-07-16T21:40:00.000Z',
+  updatedAt: '2026-07-16T22:05:00.000Z',
 }
 
 /**
