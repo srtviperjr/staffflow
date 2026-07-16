@@ -1,4 +1,4 @@
-export const PHASES = ['Jansen'] as const
+export const PHASES = ['JS1', 'JS2'] as const
 
 export const LOCATION_TYPES = ['Project Office', 'Site - Comm', 'Site - Const'] as const
 

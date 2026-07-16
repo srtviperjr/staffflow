@@ -55,7 +55,7 @@ export default function Layout() {
             to="/"
             sx={{ fontWeight: 700, color: 'inherit', textDecoration: 'none', mr: 1 }}
           >
-            Jansen StaffFlow
+            Jansen Workflows
           </Typography>
 
           <Box

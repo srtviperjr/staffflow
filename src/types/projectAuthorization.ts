@@ -1,3 +1,4 @@
+import type { Company } from '../constants/companies'
 import type { WorkflowProgress } from './workflow'
 
 export type ProjectAuthorizationStatus = 'pending' | 'approved' | 'rejected'
@@ -17,6 +18,7 @@ export interface ProjectAuthorizationRequest {
   country: string
   class: string
   hiringSource: string
+  company: Company
   eeIdSap: string
   pafNumber: string
   sortNumber: string
@@ -40,6 +42,7 @@ export interface ProjectAuthorizationFormData {
   country: string
   class: string
   hiringSource: string
+  company: Company | ''
   eeIdSap: string
   sortNumber: string
   totalHours: string

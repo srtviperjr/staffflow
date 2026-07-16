@@ -1,4 +1,4 @@
-# Jansen StaffFlow
+# Jansen Workflows
 
 React + TypeScript + Material UI app with multiple request workflows for submitting and reviewing requests. Built with Vite and React Router.
 

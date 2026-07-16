@@ -1,8 +1,11 @@
+import type { Company } from '../constants/companies'
+
 export interface AppUser {
   id: string
   name: string
   email: string
   title: string
+  company: Company
 }
 
 export interface AppRole {
@@ -22,4 +25,5 @@ export interface CreateUserInput {
   name: string
   email: string
   title: string
+  company: Company
 }

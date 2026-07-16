@@ -118,6 +118,7 @@ export function RolesProvider({ children }: { children: ReactNode }) {
         name: input.name.trim(),
         email: input.email.trim(),
         title: input.title.trim(),
+        company: input.company,
       }
 
       setUsers((prev) => {
@@ -140,6 +141,7 @@ export function RolesProvider({ children }: { children: ReactNode }) {
               name: input.name.trim(),
               email: input.email.trim(),
               title: input.title.trim(),
+              company: input.company,
             }
           : user,
       )

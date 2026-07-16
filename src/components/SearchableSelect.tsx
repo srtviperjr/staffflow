@@ -10,6 +10,7 @@ interface SearchableSelectProps {
   helperText?: string
   required?: boolean
   freeSolo?: boolean
+  disabled?: boolean
 }
 
 export default function SearchableSelect({
@@ -21,10 +22,12 @@ export default function SearchableSelect({
   helperText,
   required,
   freeSolo = false,
+  disabled = false,
 }: SearchableSelectProps) {
   return (
     <Autocomplete
       freeSolo={freeSolo}
+      disabled={disabled}
       options={sortAlpha(options)}
       value={freeSolo ? value : value || null}
       onChange={(_, newValue) => onChange(newValue ?? '')}

@@ -72,6 +72,7 @@ function buildRequestFromForm(
     position: data.position.trim(),
     class: data.class as StaffingPlanRequest['class'],
     hiringSource: data.hiringSource as StaffingPlanRequest['hiringSource'],
+    company: data.company as StaffingPlanRequest['company'],
     eeIdSap: data.eeIdSap.trim(),
     sortNumber: data.sortNumber.trim(),
     totalHours: data.totalHours.trim(),

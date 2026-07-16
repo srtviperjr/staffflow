@@ -84,7 +84,7 @@ function UserTransferList({
                 <ListItemText
                   id={labelId}
                   primary={user.name}
-                  secondary={`${user.title} · ${user.email}`}
+                  secondary={`${user.company} · ${user.title} · ${user.email}`}
                 />
               </ListItemButton>
             )
