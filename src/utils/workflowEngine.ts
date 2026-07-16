@@ -2,8 +2,10 @@ import type { RequestStatus } from '../types/staffingPlan'
 import type {
   FieldCondition,
   WorkflowAction,
+  WorkflowActor,
   WorkflowDefinition,
   WorkflowFormType,
+  WorkflowHistoryEntry,
   WorkflowNodeData,
   WorkflowProgress,
 } from '../types/workflow'
@@ -164,11 +166,82 @@ function buildResult(
   }
 }
 
+function isSubmitMilestone(data: WorkflowNodeData): boolean {
+  return (
+    !data.waitForAction &&
+    (data.roleId === 'role-requestor' ||
+      /submit/i.test(data.label) ||
+      /submitted/i.test(data.label))
+  )
+}
+
+function withActorFields(
+  actor: WorkflowActor | undefined,
+  action: WorkflowHistoryEntry['action'],
+  at: string,
+): Pick<WorkflowHistoryEntry, 'actedAt' | 'actedByUserId' | 'actedByName' | 'action'> {
+  if (!actor || !action) return {}
+  return {
+    actedAt: at,
+    actedByUserId: actor.userId,
+    actedByName: actor.name,
+    action,
+  }
+}
+
+function markNodeAction(
+  progress: WorkflowProgress,
+  nodeId: string,
+  action: NonNullable<WorkflowHistoryEntry['action']>,
+  actor: WorkflowActor | undefined,
+  branch?: 'yes' | 'no',
+): WorkflowProgress {
+  const actedAt = new Date().toISOString()
+  let lastIndex = -1
+  for (let i = progress.history.length - 1; i >= 0; i -= 1) {
+    if (progress.history[i].nodeId === nodeId) {
+      lastIndex = i
+      break
+    }
+  }
+
+  if (lastIndex < 0) {
+    return {
+      ...progress,
+      history: [
+        ...progress.history,
+        {
+          nodeId,
+          arrivedAt: actedAt,
+          branch,
+          ...withActorFields(actor, action, actedAt),
+        },
+      ],
+    }
+  }
+
+  const history = progress.history.map((entry, index) => {
+    if (index !== lastIndex) return entry
+    return {
+      ...entry,
+      branch: branch ?? entry.branch,
+      ...withActorFields(actor, action, actedAt),
+    }
+  })
+
+  return { ...progress, history }
+}
+
 function appendHistory(
   progress: WorkflowProgress,
   nodeId: string,
-  branch?: 'yes' | 'no',
+  options?: {
+    branch?: 'yes' | 'no'
+    actor?: WorkflowActor
+    action?: WorkflowHistoryEntry['action']
+  },
 ): WorkflowProgress {
+  const arrivedAt = new Date().toISOString()
   return {
     ...progress,
     currentNodeId: nodeId,
@@ -176,8 +249,9 @@ function appendHistory(
       ...progress.history,
       {
         nodeId,
-        arrivedAt: new Date().toISOString(),
-        branch,
+        arrivedAt,
+        branch: options?.branch,
+        ...withActorFields(options?.actor, options?.action, arrivedAt),
       },
     ],
   }
@@ -193,6 +267,7 @@ export function advanceWorkflow(
   formData: FormRecord,
   action?: WorkflowAction,
   previousFormData?: FormRecord | null,
+  actor?: WorkflowActor | null,
 ): WorkflowRunResult {
   let current = getNode(workflow, progress.currentNodeId)
   if (!current) {
@@ -200,6 +275,7 @@ export function advanceWorkflow(
   }
 
   const priorForm = previousFormData ?? progress.previousFormData ?? null
+  const actingUser = actor ?? undefined
   let nextProgress = progress
   let pendingAction = action
   let safety = 0
@@ -226,14 +302,24 @@ export function advanceWorkflow(
         if (!target) {
           return buildResult(workflow, nextProgress, current, true, false)
         }
-        nextProgress = appendHistory({ ...nextProgress, currentNodeId: target }, target, branch)
+        nextProgress = appendHistory({ ...nextProgress, currentNodeId: target }, target, {
+          branch,
+        })
         continue
       }
 
       // Manual decision
       if (pendingAction) {
         const branch: 'yes' | 'no' = pendingAction === 'approve' ? 'yes' : 'no'
+        const decisionAction = pendingAction
         pendingAction = undefined
+        nextProgress = markNodeAction(
+          nextProgress,
+          current.id,
+          decisionAction,
+          actingUser,
+          branch,
+        )
         const target = followBranch(workflow, current.id, branch)
         if (!target) {
           // If reject has no path, stay and mark rejected via state fallback
@@ -245,7 +331,9 @@ export function advanceWorkflow(
           }
           return buildResult(workflow, nextProgress, current, true, false)
         }
-        nextProgress = appendHistory({ ...nextProgress, currentNodeId: target }, target, branch)
+        nextProgress = appendHistory({ ...nextProgress, currentNodeId: target }, target, {
+          branch,
+        })
         continue
       }
 
@@ -259,13 +347,14 @@ export function advanceWorkflow(
         if (actionNow === 'reject') {
           // Any rejection ends the workflow: follow an explicit reject/no edge when
           // present, otherwise mark rejected immediately (do not continue approve path).
+          nextProgress = markNodeAction(nextProgress, current.id, 'reject', actingUser, 'no')
           const rejectTarget = followBranch(workflow, current.id, 'no')
           if (rejectTarget) {
             pendingAction = undefined
             nextProgress = appendHistory(
               { ...nextProgress, currentNodeId: rejectTarget },
               rejectTarget,
-              'no',
+              { branch: 'no' },
             )
             continue
           }
@@ -277,6 +366,7 @@ export function advanceWorkflow(
         }
 
         // approve → continue along the default (non-reject) edge
+        nextProgress = markNodeAction(nextProgress, current.id, 'approve', actingUser, 'yes')
         const target = followSingle(workflow, current.id)
         if (!target) {
           pendingAction = undefined
@@ -286,7 +376,9 @@ export function advanceWorkflow(
           }
         }
         pendingAction = undefined
-        nextProgress = appendHistory({ ...nextProgress, currentNodeId: target }, target, 'yes')
+        nextProgress = appendHistory({ ...nextProgress, currentNodeId: target }, target, {
+          branch: 'yes',
+        })
         // If the next node is a manual decision, apply this approve as Yes immediately
         const nextNode = getNode(workflow, target)
         if (
@@ -306,7 +398,15 @@ export function advanceWorkflow(
     if (!target) {
       return buildResult(workflow, nextProgress, current, true, false)
     }
-    nextProgress = appendHistory({ ...nextProgress, currentNodeId: target }, target)
+
+    // Credit the submitter when arriving at the submit milestone
+    const targetNode = getNode(workflow, target)
+    const submitActor =
+      targetNode?.type === 'step' && isSubmitMilestone(targetNode.data) ? actingUser : undefined
+    nextProgress = appendHistory({ ...nextProgress, currentNodeId: target }, target, {
+      actor: submitActor,
+      action: submitActor ? 'submit' : undefined,
+    })
   }
 
   current = getNode(workflow, nextProgress.currentNodeId)
@@ -320,6 +420,7 @@ export function startWorkflow(
   workflow: WorkflowDefinition,
   formData: FormRecord,
   previousFormData?: FormRecord | null,
+  actor?: WorkflowActor | null,
 ): WorkflowRunResult {
   const startNode =
     workflow.nodes.find((node) => node.type === 'start') ?? workflow.nodes[0]
@@ -339,7 +440,7 @@ export function startWorkflow(
     ...(previousFormData ? { previousFormData } : {}),
   }
 
-  return advanceWorkflow(workflow, progress, formData, undefined, previousFormData)
+  return advanceWorkflow(workflow, progress, formData, undefined, previousFormData, actor)
 }
 
 export function getWorkflowForForm(

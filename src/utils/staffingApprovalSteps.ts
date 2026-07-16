@@ -8,6 +8,10 @@ export interface StaffingApprovalStep {
   label: string
   roleId: string
   status: ApprovalStepStatus
+  /** Who completed this step (submit / approve / reject), when known */
+  actedByName?: string
+  actedAt?: string
+  action?: 'approve' | 'reject' | 'submit'
 }
 
 type StoredNode = WorkflowDefinition['nodes'][number]
@@ -121,9 +125,20 @@ function historyNodeIds(progress: WorkflowProgress | undefined): Set<string> {
   return new Set((progress?.history ?? []).map((entry) => entry.nodeId))
 }
 
+function latestHistoryForNode(
+  progress: WorkflowProgress | undefined,
+  nodeId: string,
+): WorkflowProgress['history'][number] | undefined {
+  const history = progress?.history ?? []
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    if (history[i].nodeId === nodeId) return history[i]
+  }
+  return undefined
+}
+
 /**
  * Build the approval checklist for a staffing request: done / current / upcoming
- * (or rejected at the current wait step).
+ * (or rejected at the current wait step). Includes actor/time when recorded.
  */
 export function getStaffingApprovalSteps(options: {
   workflow: WorkflowDefinition | undefined
@@ -142,9 +157,12 @@ export function getStaffingApprovalSteps(options: {
 
   return required.map((node) => {
     const isCurrent = currentId === node.id
+    const historyEntry = latestHistoryForNode(progress, node.id)
     let status: ApprovalStepStatus
 
     if (requestStatus === 'rejected' && isCurrent) {
+      status = 'rejected'
+    } else if (requestStatus === 'rejected' && historyEntry?.action === 'reject') {
       status = 'rejected'
     } else if (requestStatus === 'rejected' && visited.has(node.id) && !isCurrent) {
       // Left this step before a later rejection
@@ -161,11 +179,22 @@ export function getStaffingApprovalSteps(options: {
       status = 'upcoming'
     }
 
+    const showActor =
+      status === 'done' ||
+      (status === 'rejected' && Boolean(historyEntry?.actedByName || historyEntry?.actedAt))
+
     return {
       nodeId: node.id,
       label: node.data.label,
       roleId: node.data.roleId,
       status,
+      ...(showActor
+        ? {
+            actedByName: historyEntry?.actedByName,
+            actedAt: historyEntry?.actedAt ?? historyEntry?.arrivedAt,
+            action: historyEntry?.action,
+          }
+        : {}),
     }
   })
 }

@@ -84,15 +84,28 @@ export interface WorkflowNodeUpdate {
   fieldCondition?: FieldCondition
 }
 
+/** User credited when submitting or acting on a workflow step */
+export interface WorkflowActor {
+  userId: string
+  name: string
+}
+
+export interface WorkflowHistoryEntry {
+  nodeId: string
+  arrivedAt: string
+  branch?: 'yes' | 'no'
+  /** When a user completed this step (submit / approve / reject) */
+  actedAt?: string
+  actedByUserId?: string
+  actedByName?: string
+  action?: 'approve' | 'reject' | 'submit'
+}
+
 /** Runtime progress of a request through its workflow */
 export interface WorkflowProgress {
   workflowId: string
   currentNodeId: string
-  history: Array<{
-    nodeId: string
-    arrivedAt: string
-    branch?: 'yes' | 'no'
-  }>
+  history: WorkflowHistoryEntry[]
   /**
    * Form snapshot from the prior revision when this run started via revise.
    * Used by hasChanged / hasNotChanged field decisions throughout the run.

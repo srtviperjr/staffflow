@@ -16,6 +16,8 @@ import {
   staffingPositionNumbersChanged,
 } from '../utils/staffingPlanRevisions'
 import { SAMPLE_STAFFING_PLAN_REQUESTS } from '../data/sampleData'
+import type { WorkflowActor } from '../types/workflow'
+import { useRoles } from './RolesContext'
 import { useWorkflows } from './WorkflowContext'
 import { advanceWorkflow, startWorkflow } from '../utils/workflowEngine'
 
@@ -104,8 +106,16 @@ function requestAsFormRecord(request: StaffingPlanRequest): Record<string, unkno
   return { ...request }
 }
 
+function toWorkflowActor(
+  user: { id: string; name: string } | null | undefined,
+): WorkflowActor | undefined {
+  if (!user) return undefined
+  return { userId: user.id, name: user.name }
+}
+
 export function StaffingPlanProvider({ children }: { children: ReactNode }) {
   const { getWorkflowByForm, getWorkflow } = useWorkflows()
+  const { currentUser } = useRoles()
   const [requests, setRequests] = useState<StaffingPlanRequest[]>(loadRequests)
 
   const persist = useCallback((updated: StaffingPlanRequest[]) => {
@@ -120,9 +130,15 @@ export function StaffingPlanProvider({ children }: { children: ReactNode }) {
       const workflow = getWorkflowByForm('staffing-plan')
       let status: StaffingPlanRequest['status'] = 'pending'
       let workflowProgress: StaffingPlanRequest['workflow']
+      const actor = toWorkflowActor(currentUser)
 
       if (workflow) {
-        const result = startWorkflow(workflow, data as unknown as Record<string, unknown>)
+        const result = startWorkflow(
+          workflow,
+          data as unknown as Record<string, unknown>,
+          undefined,
+          actor,
+        )
         status = result.status
         workflowProgress = result.progress
       }
@@ -143,7 +159,7 @@ export function StaffingPlanProvider({ children }: { children: ReactNode }) {
       persist([newRequest, ...requests])
       return newRequest
     },
-    [persist, requests, getWorkflowByForm],
+    [persist, requests, getWorkflowByForm, currentUser],
   )
 
   const reviseRequest = useCallback(
@@ -154,6 +170,7 @@ export function StaffingPlanProvider({ children }: { children: ReactNode }) {
       const workflow = getWorkflowByForm('staffing-plan')
       let status: StaffingPlanRequest['status'] = 'pending'
       let workflowProgress: StaffingPlanRequest['workflow']
+      const actor = toWorkflowActor(currentUser)
 
       if (workflow) {
         const previousFormData = requestToStaffingFormData(source) as unknown as Record<
@@ -164,6 +181,7 @@ export function StaffingPlanProvider({ children }: { children: ReactNode }) {
           workflow,
           data as unknown as Record<string, unknown>,
           previousFormData,
+          actor,
         )
         status = result.status
         workflowProgress = result.progress
@@ -191,11 +209,12 @@ export function StaffingPlanProvider({ children }: { children: ReactNode }) {
 
       persist([newRequest, ...updatedRequests])
     },
-    [persist, requests, getWorkflowByForm],
+    [persist, requests, getWorkflowByForm, currentUser],
   )
 
   const rejectRequest = useCallback(
     (id: string, comment: string) => {
+      const actor = toWorkflowActor(currentUser)
       persist(
         requests.map((request) => {
           if (request.id !== id) return request
@@ -208,6 +227,8 @@ export function StaffingPlanProvider({ children }: { children: ReactNode }) {
                 request.workflow,
                 requestAsFormRecord(request),
                 'reject',
+                undefined,
+                actor,
               )
               return {
                 ...request,
@@ -228,11 +249,12 @@ export function StaffingPlanProvider({ children }: { children: ReactNode }) {
         }),
       )
     },
-    [persist, requests, getWorkflow],
+    [persist, requests, getWorkflow, currentUser],
   )
 
   const approveRequest = useCallback(
     (id: string, options?: { hourlyCost?: string }) => {
+      const actor = toWorkflowActor(currentUser)
       persist(
         requests.map((request) => {
           if (request.id !== id) return request
@@ -250,6 +272,8 @@ export function StaffingPlanProvider({ children }: { children: ReactNode }) {
                 withCost.workflow,
                 requestAsFormRecord(withCost),
                 'approve',
+                undefined,
+                actor,
               )
               return {
                 ...withCost,
@@ -269,7 +293,7 @@ export function StaffingPlanProvider({ children }: { children: ReactNode }) {
         }),
       )
     },
-    [persist, requests, getWorkflow],
+    [persist, requests, getWorkflow, currentUser],
   )
 
   const currentRequests = useMemo(() => getCurrentStaffingPlanRequests(requests), [requests])
