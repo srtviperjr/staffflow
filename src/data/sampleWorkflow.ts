@@ -3,7 +3,7 @@ import type { WorkflowDefinition } from '../types/workflow'
 const SHARED_STATES = [
   { id: 'state-draft', name: 'Draft', color: '#757575' },
   { id: 'state-submitted', name: 'Submitted', color: '#1976d2' },
-  { id: 'state-costing-approved', name: 'Costing Approved', color: '#6a1b9a' },
+  { id: 'state-costing-approved', name: 'Cost Review', color: '#6a1b9a' },
   { id: 'state-pd-review', name: 'Project Director Review', color: '#4527a0' },
   { id: 'state-in-review', name: 'In Review', color: '#ed6c02' },
   { id: 'state-approved', name: 'Approved', color: '#2e7d32' },

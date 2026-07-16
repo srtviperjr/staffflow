@@ -56,6 +56,7 @@ import {
   canViewCostInfo,
 } from '../../utils/permissions'
 import { canActOnWorkflowRequest } from '../../utils/pendingApprovals'
+import { getStaffingApprovalSteps } from '../../utils/staffingApprovalSteps'
 import { useWorkflows } from '../../context/WorkflowContext'
 import {
   formatRelatedItemCaption,
@@ -1374,6 +1375,19 @@ export default function StaffingPlanMatrixPage() {
           )
         }
         showCost={showCost}
+        approvalSteps={
+          selectedStaffing
+            ? getStaffingApprovalSteps({
+                workflow: selectedStaffing.workflow
+                  ? getWorkflow(selectedStaffing.workflow.workflowId)
+                  : undefined,
+                progress: selectedStaffing.workflow,
+                phase: selectedStaffing.phase,
+                company: selectedStaffing.company,
+                requestStatus: selectedStaffing.status,
+              })
+            : []
+        }
         onApprove={() => {
           if (!selectedStaffing) return
           approveStaffing(selectedStaffing.id)

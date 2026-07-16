@@ -131,6 +131,19 @@ export function mapStateToRequestStatus(
   return 'pending'
 }
 
+function resolveRunStatus(
+  workflow: WorkflowDefinition,
+  stateId: string,
+  completed: boolean,
+  waiting: boolean,
+): RequestStatus {
+  // Intermediate labels like "Costing Approved" must stay pending while waiting.
+  if (waiting) return 'pending'
+  const mapped = mapStateToRequestStatus(workflow, stateId)
+  if (!completed && mapped === 'approved') return 'pending'
+  return mapped
+}
+
 function buildResult(
   workflow: WorkflowDefinition,
   progress: WorkflowProgress,
@@ -142,7 +155,7 @@ function buildResult(
   const state = workflow.states.find((item) => item.id === stateId)
   return {
     progress,
-    status: mapStateToRequestStatus(workflow, stateId),
+    status: resolveRunStatus(workflow, stateId, completed, waiting),
     stateId,
     stateName: state?.name || '',
     completed,

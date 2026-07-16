@@ -41,6 +41,8 @@ import {
   isCostEngineerReviewStep,
 } from '../../utils/pendingApprovals'
 import { canEditHourlyCost, canViewCostInfo } from '../../utils/permissions'
+import { getStaffingApprovalSteps } from '../../utils/staffingApprovalSteps'
+import StaffingApprovalSteps from '../../components/StaffingApprovalSteps'
 import {
   computePositionCost,
   formatCostAmount,
@@ -211,19 +213,30 @@ export default function StaffingPlanManagerPage() {
     [currentRequests, currentUser?.company],
   )
 
+  const actionablePending = useMemo(
+    () =>
+      visibleRequests.filter((request) =>
+        canActOnWorkflowRequest(request, currentUserRoles, getWorkflow, {
+          userProject: currentUser?.project,
+        }),
+      ),
+    [visibleRequests, currentUserRoles, getWorkflow, currentUser?.project],
+  )
+
   const filteredRequests = useMemo(() => {
+    if (filter === 'pending') return actionablePending
     if (filter === 'all') return visibleRequests
     return visibleRequests.filter((request) => request.status === filter)
-  }, [filter, visibleRequests])
+  }, [filter, visibleRequests, actionablePending])
 
   const counts = useMemo(
     () => ({
       all: visibleRequests.length,
-      pending: visibleRequests.filter((r) => r.status === 'pending').length,
+      pending: actionablePending.length,
       approved: visibleRequests.filter((r) => r.status === 'approved').length,
       rejected: visibleRequests.filter((r) => r.status === 'rejected').length,
     }),
-    [visibleRequests],
+    [visibleRequests, actionablePending],
   )
 
   const handleReject = (comment: string) => {
@@ -299,7 +312,9 @@ export default function StaffingPlanManagerPage() {
               <Typography variant="body2" color="text.secondary">
                 {filter === 'all'
                   ? 'Submitted position requests will appear here for review.'
-                  : `No ${filter} requests at this time.`}
+                  : filter === 'pending'
+                    ? 'No requests are waiting on your role right now.'
+                    : `No ${filter} requests at this time.`}
               </Typography>
             </Box>
           ) : (
@@ -320,6 +335,19 @@ export default function StaffingPlanManagerPage() {
                 const atCostStep = isCostEngineerReviewStep(request, getWorkflow)
                 const hourlyDraft = draftHourlyCost[request.id] ?? request.hourlyCost ?? ''
                 const draftPositionCost = computePositionCost(request.hoursToGo, hourlyDraft)
+                const workflow = request.workflow
+                  ? getWorkflow(request.workflow.workflowId)
+                  : undefined
+                const currentWorkflowNode = workflow?.nodes.find(
+                  (item) => item.id === request.workflow?.currentNodeId,
+                )
+                const approvalSteps = getStaffingApprovalSteps({
+                  workflow,
+                  progress: request.workflow,
+                  phase: request.phase,
+                  company: request.company,
+                  requestStatus: request.status,
+                })
 
                 return (
                   <Card key={request.id} variant="outlined" sx={{ boxShadow: 'none' }}>
@@ -353,17 +381,12 @@ export default function StaffingPlanManagerPage() {
                           <Typography variant="body2" color="text.secondary">
                             {request.phase} · {request.area} / {request.subArea}
                           </Typography>
-                          {request.workflow && (() => {
-                            const workflow = getWorkflow(request.workflow.workflowId)
-                            const node = workflow?.nodes.find(
-                              (item) => item.id === request.workflow?.currentNodeId,
-                            )
-                            return node ? (
-                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                                Workflow: {workflow?.name} · {node.data.label}
-                              </Typography>
-                            ) : null
-                          })()}
+                          {currentWorkflowNode ? (
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                              Workflow: {workflow?.name} · {currentWorkflowNode.data.label}
+                            </Typography>
+                          ) : null}
+                          <StaffingApprovalSteps steps={approvalSteps} />
                         </Box>
                         <StatusChip status={request.status} />
                       </Box>

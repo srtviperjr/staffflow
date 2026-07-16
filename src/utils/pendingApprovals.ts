@@ -2,8 +2,13 @@ import { filterByCompanyVisibility, type Company } from '../constants/companies'
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import type { AppRole } from '../types/roles'
 import type { Phase, StaffingPlanRequest } from '../types/staffingPlan'
-import type { WorkflowDefinition } from '../types/workflow'
+import type { WorkflowDefinition, WorkflowProgress } from '../types/workflow'
 import { isAdmin, ROLE_PROJECT_DIRECTOR, roleIdsOf } from './permissions'
+import {
+  getStaffingApprovalSteps,
+  hasRoleAlreadyApprovedStep,
+  isRoleCurrentlyWaiting,
+} from './staffingApprovalSteps'
 
 export type PendingApprovalKind = 'staffing-plan' | 'project-authorization'
 
@@ -16,6 +21,7 @@ export interface PendingApprovalItem {
   submittedAt: string
   workflowStepLabel?: string
   reviewPath: string
+  approvalSteps?: ReturnType<typeof getStaffingApprovalSteps>
 }
 
 function currentNode(
@@ -60,9 +66,10 @@ function matchesProjectDirectorScope(
 /** True when the request is waiting on a step/decision owned by this user's roles. */
 export function canActOnWorkflowRequest(
   request: {
-    workflow?: { currentNodeId: string; workflowId: string }
+    workflow?: WorkflowProgress
     status: string
     phase?: Phase
+    company?: string
   },
   roles: AppRole[],
   getWorkflow: (workflowId: string) => WorkflowDefinition | undefined,
@@ -83,7 +90,26 @@ export function canActOnWorkflowRequest(
   const workflow = getWorkflow(request.workflow.workflowId)
   const node = currentNode(workflow, request)
   if (!isWaitingForUserRole(node, userRoleIds, adminBypass)) return false
-  return matchesProjectDirectorScope(node, request.phase, options?.userProject, adminBypass)
+  if (!matchesProjectDirectorScope(node, request.phase, options?.userProject, adminBypass)) {
+    return false
+  }
+
+  // Do not surface items once this user's role has already approved its step,
+  // unless they are the role waiting at the current step (e.g. multi-role users).
+  if (!adminBypass && request.phase && request.company && workflow) {
+    const steps = getStaffingApprovalSteps({
+      workflow,
+      progress: request.workflow,
+      phase: request.phase,
+      company: request.company,
+      requestStatus: 'pending',
+    })
+    if (hasRoleAlreadyApprovedStep(steps, userRoleIds) && !isRoleCurrentlyWaiting(steps, userRoleIds)) {
+      return false
+    }
+  }
+
+  return true
 }
 
 export function isCostEngineerReviewStep(
@@ -124,6 +150,15 @@ export function getPendingApprovalsForUser(options: {
         ? getWorkflow(request.workflow.workflowId)
         : undefined
       const node = currentNode(workflow, request)
+      const approvalSteps = workflow
+        ? getStaffingApprovalSteps({
+            workflow,
+            progress: request.workflow,
+            phase: request.phase,
+            company: request.company,
+            requestStatus: request.status,
+          })
+        : undefined
       return {
         id: request.id,
         kind: 'staffing-plan' as const,
@@ -133,6 +168,7 @@ export function getPendingApprovalsForUser(options: {
         submittedAt: request.submittedAt,
         workflowStepLabel: node?.data.label,
         reviewPath: '/staffing-plan/manager',
+        approvalSteps,
       }
     })
 

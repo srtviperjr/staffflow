@@ -20,12 +20,15 @@ import {
   formatCostAmount,
   formatHourlyCostDisplay,
 } from '../utils/positionCost'
+import type { StaffingApprovalStep } from '../utils/staffingApprovalSteps'
+import StaffingApprovalSteps from './StaffingApprovalSteps'
 
 interface StaffingDetailDialogProps {
   request: StaffingPlanRequest | null
   onClose: () => void
   canReview?: boolean
   showCost?: boolean
+  approvalSteps?: StaffingApprovalStep[]
   onApprove?: () => void
   onReject?: () => void
 }
@@ -49,6 +52,7 @@ export default function StaffingDetailDialog({
   onClose,
   canReview = false,
   showCost = false,
+  approvalSteps = [],
   onApprove,
   onReject,
 }: StaffingDetailDialogProps) {
@@ -71,6 +75,11 @@ export default function StaffingDetailDialog({
         ) : null}
       </DialogTitle>
       <DialogContent>
+        {approvalSteps.length > 0 ? (
+          <Box sx={{ mb: 2 }}>
+            <StaffingApprovalSteps steps={approvalSteps} />
+          </Box>
+        ) : null}
         {request && (
           <Box
             sx={{
