@@ -1032,6 +1032,15 @@ export default function StaffingPlanMatrixPage() {
                             }}
                           >
                             <Stack direction="row" spacing={0} sx={{ alignItems: 'center' }}>
+                              <Tooltip title="View position">
+                                <IconButton
+                                  size="small"
+                                  aria-label="View position"
+                                  onClick={() => setSelectedStaffing(row.positionRequest)}
+                                >
+                                  <VisibilityIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
                               {canRevise ? (
                                 <Tooltip title="Revise position">
                                   <IconButton
@@ -1090,63 +1099,48 @@ export default function StaffingPlanMatrixPage() {
                                 : undefined,
                             }}
                           >
-                            <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                startIcon={<VisibilityIcon />}
-                                onClick={() => setSelectedStaffing(row.positionRequest)}
-                                sx={{
-                                  textTransform: 'none',
-                                  fontSize: '0.7rem',
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
-                                View
-                              </Button>
-                              {canReview &&
-                              row.status === 'pending' &&
-                              canActOnWorkflowRequest(
-                                row.positionRequest,
-                                currentUserRoles,
-                                getWorkflow,
-                                { userProject: currentUser?.project },
-                              ) ? (
-                                <>
-                                  <Button
-                                    size="small"
-                                    variant="contained"
-                                    color="success"
-                                    startIcon={<CheckCircleIcon />}
-                                    onClick={() => approveStaffing(row.id)}
-                                    sx={{ textTransform: 'none', fontSize: '0.7rem' }}
-                                  >
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    color="error"
-                                    startIcon={<CancelIcon />}
-                                    onClick={() =>
-                                      setRejectTarget({
-                                        id: row.id,
-                                        kind: 'staffing-plan',
-                                        title: row.position,
-                                        subtitle: `Position ${row.positionNumber}`,
-                                        status: 'pending',
-                                        revision: row.positionRequest.revision,
-                                        submittedAt: row.positionRequest.submittedAt,
-                                        staffingRequest: row.positionRequest,
-                                      })
-                                    }
-                                    sx={{ textTransform: 'none', fontSize: '0.7rem' }}
-                                  >
-                                    Reject
-                                  </Button>
-                                </>
-                              ) : null}
-                            </Stack>
+                            {canReview &&
+                            row.status === 'pending' &&
+                            canActOnWorkflowRequest(
+                              row.positionRequest,
+                              currentUserRoles,
+                              getWorkflow,
+                              { userProject: currentUser?.project },
+                            ) ? (
+                              <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  color="success"
+                                  startIcon={<CheckCircleIcon />}
+                                  onClick={() => approveStaffing(row.id)}
+                                  sx={{ textTransform: 'none', fontSize: '0.7rem' }}
+                                >
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  color="error"
+                                  startIcon={<CancelIcon />}
+                                  onClick={() =>
+                                    setRejectTarget({
+                                      id: row.id,
+                                      kind: 'staffing-plan',
+                                      title: row.position,
+                                      subtitle: `Position ${row.positionNumber}`,
+                                      status: 'pending',
+                                      revision: row.positionRequest.revision,
+                                      submittedAt: row.positionRequest.submittedAt,
+                                      staffingRequest: row.positionRequest,
+                                    })
+                                  }
+                                  sx={{ textTransform: 'none', fontSize: '0.7rem' }}
+                                >
+                                  Reject
+                                </Button>
+                              </Stack>
+                            ) : null}
                           </TableCell>
                           {visibleColumnDefs.map((column) => {
                             const value = column.getValue(row)
