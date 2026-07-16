@@ -1,5 +1,5 @@
 import { Link as RouterLink } from 'react-router-dom'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Box,
   Button,
@@ -19,8 +19,7 @@ import ScienceIcon from '@mui/icons-material/Science'
 import TableChartIcon from '@mui/icons-material/TableChart'
 import PendingActionsIcon from '@mui/icons-material/PendingActions'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
-import { APP_SEED_VERSION_KEY } from '../data/seedVersion'
-import { ensureLatestSeedData } from '../data/seedAppData'
+import LoadSampleDataDialog from '../components/LoadSampleDataDialog'
 import { useRequestForms } from '../context/RequestFormsContext'
 import { useRoles } from '../context/RolesContext'
 import { useStaffingPlanRequests } from '../context/StaffingPlanContext'
@@ -50,6 +49,7 @@ export default function HomePage() {
   const { currentRequests: pafRequests } = useProjectAuthorizationRequests()
   const { getWorkflow } = useWorkflows()
   const { openRequestForm } = useRequestForms()
+  const [sampleDataOpen, setSampleDataOpen] = useState(false)
 
   const admin = isAdmin(currentUserRoles)
   const canSubmit = canSubmitRequests(currentUserRoles)
@@ -67,12 +67,6 @@ export default function HomePage() {
       }),
     [staffingRequests, pafRequests, currentUserRoles, currentUser?.company, getWorkflow],
   )
-
-  const handleLoadSampleData = () => {
-    localStorage.removeItem(APP_SEED_VERSION_KEY)
-    ensureLatestSeedData()
-    window.location.reload()
-  }
 
   const availableWorkflows = [
     canSubmit
@@ -159,12 +153,14 @@ export default function HomePage() {
             variant="outlined"
             size="small"
             startIcon={<ScienceIcon />}
-            onClick={handleLoadSampleData}
+            onClick={() => setSampleDataOpen(true)}
           >
             Load Sample Data
           </Button>
         ) : null}
       </Box>
+
+      <LoadSampleDataDialog open={sampleDataOpen} onClose={() => setSampleDataOpen(false)} />
 
       <Typography variant="h5" color="primary" sx={{ mt: 4, mb: 2, fontWeight: 700 }}>
         Available workflows

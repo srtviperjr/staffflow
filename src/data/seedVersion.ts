@@ -1,5 +1,5 @@
 /** Bump when sample data shape or content must replace stored localStorage. */
-export const APP_SEED_VERSION = 'staffing-approved-main-grouped-expand-v1'
+export const APP_SEED_VERSION = 'configurable-sample-data-v1'
 export const APP_SEED_VERSION_KEY = 'app-seed-version'
 
 export function isSeedCurrent(): boolean {
