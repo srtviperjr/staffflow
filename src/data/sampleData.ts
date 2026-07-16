@@ -1,6 +1,9 @@
+import type { Company } from '../constants/companies'
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import type { StaffingPlanRequest } from '../types/staffingPlan'
+import type { WorkflowProgress } from '../types/workflow'
 import { formatApprovedPositionLabel } from '../utils/approvedPositions'
+import { markSeedCurrent } from './seedVersion'
 
 const STAFFING_STORAGE_KEY = 'staffing-plan-requests'
 const PAF_STORAGE_KEY = 'project-authorization-requests'
@@ -13,6 +16,129 @@ function submittedAt(offsetDays: number) {
 
 function reviewedAt(offsetDays: number) {
   return new Date(SUBMITTED_BASE + offsetDays * 86_400_000 + 3_600_000).toISOString()
+}
+
+function staffingPendingWorkflow(hiringSource: string): WorkflowProgress {
+  const reviewNode = hiringSource === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
+  return {
+    workflowId: 'workflow-staffing-plan-approval',
+    currentNodeId: reviewNode,
+    history: [
+      { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
+      {
+        nodeId: 'sp-hiring-gate',
+        arrivedAt: submittedAt(0),
+        branch: hiringSource === 'Bantrel' ? 'yes' : 'no',
+      },
+      { nodeId: reviewNode, arrivedAt: submittedAt(0) },
+    ],
+  }
+}
+
+function staffingApprovedWorkflow(hiringSource: string): WorkflowProgress {
+  const reviewNode = hiringSource === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
+  return {
+    workflowId: 'workflow-staffing-plan-approval',
+    currentNodeId: 'sp-end-ok',
+    history: [
+      { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
+      {
+        nodeId: 'sp-hiring-gate',
+        arrivedAt: submittedAt(0),
+        branch: hiringSource === 'Bantrel' ? 'yes' : 'no',
+      },
+      { nodeId: reviewNode, arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-decision', arrivedAt: submittedAt(1), branch: 'yes' },
+      { nodeId: 'sp-approved', arrivedAt: submittedAt(1) },
+      { nodeId: 'sp-end-ok', arrivedAt: submittedAt(1) },
+    ],
+  }
+}
+
+function staffingRejectedWorkflow(hiringSource: string): WorkflowProgress {
+  const reviewNode = hiringSource === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
+  return {
+    workflowId: 'workflow-staffing-plan-approval',
+    currentNodeId: 'sp-end-reject',
+    history: [
+      { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
+      {
+        nodeId: 'sp-hiring-gate',
+        arrivedAt: submittedAt(0),
+        branch: hiringSource === 'Bantrel' ? 'yes' : 'no',
+      },
+      { nodeId: reviewNode, arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-decision', arrivedAt: submittedAt(1), branch: 'no' },
+      { nodeId: 'sp-rejected', arrivedAt: submittedAt(1) },
+      { nodeId: 'sp-end-reject', arrivedAt: submittedAt(1) },
+    ],
+  }
+}
+
+function pafPendingWorkflow(hiringSource: string): WorkflowProgress {
+  const reviewNode =
+    hiringSource === 'Bechtel' ? 'paf-review-contractor' : 'paf-review-standard'
+  return {
+    workflowId: 'workflow-paf-approval',
+    currentNodeId: reviewNode,
+    history: [
+      { nodeId: 'paf-start', arrivedAt: submittedAt(11) },
+      { nodeId: 'paf-submit', arrivedAt: submittedAt(11) },
+      {
+        nodeId: 'paf-class-gate',
+        arrivedAt: submittedAt(11),
+        branch: hiringSource === 'Bechtel' ? 'yes' : 'no',
+      },
+      { nodeId: reviewNode, arrivedAt: submittedAt(11) },
+    ],
+  }
+}
+
+function pafApprovedWorkflow(hiringSource: string): WorkflowProgress {
+  const reviewNode =
+    hiringSource === 'Bechtel' ? 'paf-review-contractor' : 'paf-review-standard'
+  return {
+    workflowId: 'workflow-paf-approval',
+    currentNodeId: 'paf-end-ok',
+    history: [
+      { nodeId: 'paf-start', arrivedAt: submittedAt(11) },
+      { nodeId: 'paf-submit', arrivedAt: submittedAt(11) },
+      {
+        nodeId: 'paf-class-gate',
+        arrivedAt: submittedAt(11),
+        branch: hiringSource === 'Bechtel' ? 'yes' : 'no',
+      },
+      { nodeId: reviewNode, arrivedAt: submittedAt(11) },
+      { nodeId: 'paf-decision', arrivedAt: submittedAt(12), branch: 'yes' },
+      { nodeId: 'paf-approved', arrivedAt: submittedAt(12) },
+      { nodeId: 'paf-end-ok', arrivedAt: submittedAt(12) },
+    ],
+  }
+}
+
+function pafRejectedWorkflow(hiringSource: string): WorkflowProgress {
+  const reviewNode =
+    hiringSource === 'Bechtel' ? 'paf-review-contractor' : 'paf-review-standard'
+  return {
+    workflowId: 'workflow-paf-approval',
+    currentNodeId: 'paf-end-reject',
+    history: [
+      { nodeId: 'paf-start', arrivedAt: submittedAt(11) },
+      { nodeId: 'paf-submit', arrivedAt: submittedAt(11) },
+      {
+        nodeId: 'paf-class-gate',
+        arrivedAt: submittedAt(11),
+        branch: hiringSource === 'Bechtel' ? 'yes' : 'no',
+      },
+      { nodeId: reviewNode, arrivedAt: submittedAt(11) },
+      { nodeId: 'paf-decision', arrivedAt: submittedAt(12), branch: 'no' },
+      { nodeId: 'paf-rejected', arrivedAt: submittedAt(12) },
+      { nodeId: 'paf-end-reject', arrivedAt: submittedAt(12) },
+    ],
+  }
 }
 
 export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
@@ -33,6 +159,7 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     position: 'Architect',
     class: 'E00 - Principal',
     hiringSource: 'Bantrel',
+    company: 'Bantrel',
     eeIdSap: '',
     sortNumber: '101',
     totalHours: '2080',
@@ -43,6 +170,7 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     status: 'approved',
     submittedAt: submittedAt(0),
     reviewedAt: reviewedAt(1),
+    workflow: staffingApprovedWorkflow('Bantrel'),
   },
   {
     id: 'sample-sp-02',
@@ -61,6 +189,7 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     position: 'Engineer',
     class: 'E10 - Engineer',
     hiringSource: 'Hatch',
+    company: 'Hatch',
     eeIdSap: '',
     sortNumber: '102',
     totalHours: '1800',
@@ -71,6 +200,7 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     status: 'approved',
     submittedAt: submittedAt(1),
     reviewedAt: reviewedAt(2),
+    workflow: staffingApprovedWorkflow('Hatch'),
   },
   {
     id: 'sample-sp-03',
@@ -89,6 +219,7 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     position: 'PCS Lead',
     class: 'E09 - Senior Engineer',
     hiringSource: 'Bechtel',
+    company: 'Fluor',
     eeIdSap: '',
     sortNumber: '103',
     totalHours: '2200',
@@ -99,6 +230,7 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     status: 'approved',
     submittedAt: submittedAt(2),
     reviewedAt: reviewedAt(3),
+    workflow: staffingApprovedWorkflow('Bechtel'),
   },
   {
     id: 'sample-sp-04',
@@ -108,25 +240,27 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     positionNumber: 'SAMPLE04',
     phase: 'Jansen',
     locationType: 'Project Office',
-    functionalGroup: 'Engineering',
-    dsg: '260 - Electrical Engineering',
-    area: 'Surface',
+    functionalGroup: 'Project Controls',
+    dsg: '610 - Planning and Scheduling',
+    area: 'Central Functions',
     subArea: 'DV',
-    country: 'USA',
-    discipline: '26 - Electrical Engineering',
-    position: 'Electrical Designer',
-    class: 'E15 - Designer/Technician',
+    country: 'Canada',
+    discipline: '61 - Planning and Scheduling',
+    position: 'Senior Planner',
+    class: 'E09 - Senior Engineer',
     hiringSource: 'Hatch',
+    company: 'BHP',
     eeIdSap: '',
     sortNumber: '104',
-    totalHours: '1600',
-    hoursToGo: '800',
+    totalHours: '1900',
+    hoursToGo: '950',
     roster: '5x2 (10 hrs)',
     startBiWeek: '2026-07-05',
     lwp: '2027-01-03',
     status: 'approved',
     submittedAt: submittedAt(3),
     reviewedAt: reviewedAt(4),
+    workflow: staffingApprovedWorkflow('Hatch'),
   },
   {
     id: 'sample-sp-05',
@@ -145,6 +279,7 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     position: 'Package Coordinator',
     class: 'E02 - Engineering, Project, Construction Manager',
     hiringSource: 'Bantrel',
+    company: 'Bantrel',
     eeIdSap: '',
     sortNumber: '105',
     totalHours: '2000',
@@ -152,9 +287,9 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     roster: '5x2 (10 hrs)',
     startBiWeek: '2026-06-21',
     lwp: '2026-12-27',
-    status: 'approved',
+    status: 'pending',
     submittedAt: submittedAt(4),
-    reviewedAt: reviewedAt(5),
+    workflow: staffingPendingWorkflow('Bantrel'),
   },
   {
     id: 'sample-sp-06',
@@ -173,6 +308,7 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     position: 'Expeditor - offsite',
     class: 'X42 - Project Support Coordinator - India',
     hiringSource: 'Hatch',
+    company: 'Hatch',
     eeIdSap: 'SAP-88421',
     sortNumber: '106',
     totalHours: '1760',
@@ -180,9 +316,9 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     roster: '5x2 (10 hrs)',
     startBiWeek: '2026-07-05',
     lwp: '2027-01-03',
-    status: 'approved',
+    status: 'pending',
     submittedAt: submittedAt(5),
-    reviewedAt: reviewedAt(6),
+    workflow: staffingPendingWorkflow('Hatch'),
   },
   {
     id: 'sample-sp-07',
@@ -201,6 +337,7 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     position: 'Site Risk Specialist Mining',
     class: 'E04 - Specialist/Supervisor',
     hiringSource: 'Bechtel',
+    company: 'Fluor',
     eeIdSap: '',
     sortNumber: '107',
     totalHours: '1920',
@@ -210,6 +347,7 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     lwp: '2027-01-03',
     status: 'pending',
     submittedAt: submittedAt(6),
+    workflow: staffingPendingWorkflow('Bechtel'),
   },
   {
     id: 'sample-sp-08',
@@ -220,14 +358,15 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     phase: 'Jansen',
     locationType: 'Project Office',
     functionalGroup: 'Project Controls',
-    dsg: '350 - Logistics',
+    dsg: '630 - Cost Management',
     area: 'Central Functions',
     subArea: 'Wet Mill',
     country: 'Chile',
-    discipline: '35 - Logistics',
-    position: 'Logistics Lead',
+    discipline: '63 - Cost Management',
+    position: 'Cost Controller - Lead',
     class: 'E02 - Engineering, Project, Construction Manager',
-    hiringSource: 'Bantrel',
+    hiringSource: 'Hatch',
+    company: 'BHP',
     eeIdSap: '',
     sortNumber: '108',
     totalHours: '1840',
@@ -237,6 +376,7 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     lwp: '2026-12-27',
     status: 'pending',
     submittedAt: submittedAt(7),
+    workflow: staffingPendingWorkflow('Hatch'),
   },
   {
     id: 'sample-sp-09',
@@ -255,6 +395,7 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     position: 'Purchasing Agent',
     class: 'E25 - Administrative Specialist',
     hiringSource: 'Hatch',
+    company: 'Hatch',
     eeIdSap: '',
     sortNumber: '109',
     totalHours: '1560',
@@ -266,6 +407,7 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     submittedAt: submittedAt(8),
     reviewedAt: reviewedAt(9),
     rejectionComment: 'Position budget not approved for this phase.',
+    workflow: staffingRejectedWorkflow('Hatch'),
   },
   {
     id: 'sample-sp-10',
@@ -284,6 +426,7 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     position: 'I&C Lead NPI Area',
     class: 'E09 - Senior Engineer',
     hiringSource: 'Bechtel',
+    company: 'Fluor',
     eeIdSap: '',
     sortNumber: '110',
     totalHours: '2100',
@@ -295,6 +438,7 @@ export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
     submittedAt: submittedAt(9),
     reviewedAt: reviewedAt(10),
     rejectionComment: 'Duplicate role — existing commissioning lead covers this area.',
+    workflow: staffingRejectedWorkflow('Bechtel'),
   },
 ]
 
@@ -305,6 +449,7 @@ function pafForPosition(
     candidateName: string
     pafNumber: string
     status: ProjectAuthorizationRequest['status']
+    company?: Company
   },
 ): ProjectAuthorizationRequest {
   return {
@@ -321,6 +466,7 @@ function pafForPosition(
     country: overrides.country ?? position.country,
     class: overrides.class ?? position.class,
     hiringSource: overrides.hiringSource ?? position.hiringSource,
+    company: overrides.company ?? position.company,
     eeIdSap: overrides.eeIdSap ?? '',
     pafNumber: overrides.pafNumber,
     sortNumber: overrides.sortNumber ?? position.sortNumber,
@@ -332,6 +478,7 @@ function pafForPosition(
     submittedAt: overrides.submittedAt ?? submittedAt(12),
     reviewedAt: overrides.reviewedAt,
     rejectionComment: overrides.rejectionComment,
+    workflow: overrides.workflow,
   }
 }
 
@@ -341,38 +488,66 @@ export const SAMPLE_PROJECT_AUTHORIZATION_REQUESTS: ProjectAuthorizationRequest[
     candidateName: 'Jane Smith',
     pafNumber: 'PAF00001',
     status: 'approved',
+    company: 'Bantrel',
     submittedAt: submittedAt(11),
     reviewedAt: reviewedAt(12),
+    workflow: pafApprovedWorkflow('Bantrel'),
   }),
-  pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[2], {
+  pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[1], {
     id: 'sample-paf-02',
     candidateName: 'Priya Sharma',
     pafNumber: 'PAF00002',
     status: 'pending',
+    company: 'Hatch',
     country: 'India',
     submittedAt: submittedAt(12),
+    workflow: pafPendingWorkflow('Hatch'),
   }),
-  pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[3], {
+  pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[2], {
     id: 'sample-paf-03',
     candidateName: 'Tom Wilson',
     pafNumber: 'PAF00003',
     status: 'rejected',
+    company: 'Fluor',
     submittedAt: submittedAt(13),
     reviewedAt: reviewedAt(14),
     rejectionComment: 'Candidate does not meet minimum experience requirements.',
+    workflow: pafRejectedWorkflow('Bechtel'),
   }),
-  pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[5], {
+  pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[3], {
     id: 'sample-paf-04',
     candidateName: 'Carlos Mendez',
     pafNumber: 'PAF00004',
     status: 'approved',
+    company: 'BHP',
     eeIdSap: 'SAP-99102',
     submittedAt: submittedAt(14),
     reviewedAt: reviewedAt(15),
+    workflow: pafApprovedWorkflow('Hatch'),
+  }),
+  pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[1], {
+    id: 'sample-paf-05',
+    candidateName: 'Elena Vasquez',
+    pafNumber: 'PAF00005',
+    status: 'approved',
+    company: 'Hatch',
+    submittedAt: submittedAt(15),
+    reviewedAt: reviewedAt(16),
+    workflow: pafApprovedWorkflow('Hatch'),
+  }),
+  pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[3], {
+    id: 'sample-paf-06',
+    candidateName: 'Noah Berger',
+    pafNumber: 'PAF00006',
+    status: 'pending',
+    company: 'BHP',
+    submittedAt: submittedAt(16),
+    workflow: pafPendingWorkflow('Hatch'),
   }),
 ]
 
 export function seedSampleData() {
   localStorage.setItem(STAFFING_STORAGE_KEY, JSON.stringify(SAMPLE_STAFFING_PLAN_REQUESTS))
   localStorage.setItem(PAF_STORAGE_KEY, JSON.stringify(SAMPLE_PROJECT_AUTHORIZATION_REQUESTS))
+  markSeedCurrent()
 }

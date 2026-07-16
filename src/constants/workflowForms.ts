@@ -1,3 +1,4 @@
+import { COMPANIES } from './companies'
 import {
   AREAS,
   CLASSES,
@@ -43,6 +44,7 @@ export const WORKFLOW_FORMS: WorkflowFormMeta[] = [
       { key: 'position', label: 'Position' },
       { key: 'class', label: 'Class', options: CLASSES },
       { key: 'hiringSource', label: 'Hiring Source', options: HIRING_SOURCES },
+      { key: 'company', label: 'Company', options: COMPANIES },
       { key: 'eeIdSap', label: 'EE Id / SAP' },
       { key: 'sortNumber', label: 'Sort Number' },
       { key: 'totalHours', label: 'Total Hours' },
@@ -63,6 +65,7 @@ export const WORKFLOW_FORMS: WorkflowFormMeta[] = [
       { key: 'country', label: 'Country' },
       { key: 'class', label: 'Class', options: CLASSES },
       { key: 'hiringSource', label: 'Hiring Source', options: HIRING_SOURCES },
+      { key: 'company', label: 'Company', options: COMPANIES },
       { key: 'eeIdSap', label: 'EE Id / SAP' },
       { key: 'sortNumber', label: 'Sort Number' },
       { key: 'totalHours', label: 'Total Hours' },

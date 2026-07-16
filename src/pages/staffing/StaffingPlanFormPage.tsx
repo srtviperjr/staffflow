@@ -20,6 +20,8 @@ import EditIcon from '@mui/icons-material/Edit'
 import HistoryIcon from '@mui/icons-material/History'
 import SearchableSelect from '../../components/SearchableSelect'
 import SundayWeekDatePicker from '../../components/SundayWeekDatePicker'
+import { COMPANIES, filterByCompanyVisibility } from '../../constants/companies'
+import { useRoles } from '../../context/RolesContext'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
 import {
   AREAS,
@@ -41,25 +43,28 @@ import {
 import { validateBiWeekDate, validateLwpDate } from '../../utils/staffingPlanDates'
 import { requestToStaffingFormData } from '../../utils/staffingPlanRevisions'
 
-const initialForm: StaffingPlanFormData = {
-  phase: 'Jansen',
-  locationType: '',
-  functionalGroup: '',
-  dsg: '',
-  area: '',
-  subArea: '',
-  country: '',
-  discipline: '',
-  position: '',
-  class: '',
-  hiringSource: '',
-  eeIdSap: '',
-  sortNumber: '',
-  totalHours: '',
-  hoursToGo: '',
-  roster: '',
-  startBiWeek: '',
-  lwp: '',
+function createEmptyForm(company: StaffingPlanFormData['company'] = ''): StaffingPlanFormData {
+  return {
+    phase: 'Jansen',
+    locationType: '',
+    functionalGroup: '',
+    dsg: '',
+    area: '',
+    subArea: '',
+    country: '',
+    discipline: '',
+    position: '',
+    class: '',
+    hiringSource: '',
+    company,
+    eeIdSap: '',
+    sortNumber: '',
+    totalHours: '',
+    hoursToGo: '',
+    roster: '',
+    startBiWeek: '',
+    lwp: '',
+  }
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -79,25 +84,46 @@ function statusColor(status: string): 'default' | 'warning' | 'success' | 'error
 export default function StaffingPlanFormPage() {
   const { requestId } = useParams()
   const navigate = useNavigate()
+  const { currentUser } = useRoles()
   const { currentRequests, addRequest, reviseRequest } = useStaffingPlanRequests()
-  const [form, setForm] = useState<StaffingPlanFormData>(initialForm)
+  const [form, setForm] = useState<StaffingPlanFormData>(() =>
+    createEmptyForm(currentUser?.company ?? ''),
+  )
   const [errors, setErrors] = useState<Partial<Record<keyof StaffingPlanFormData, string>>>({})
   const [showSuccess, setShowSuccess] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
 
+  const visibleRequests = useMemo(
+    () => filterByCompanyVisibility(currentRequests, currentUser?.company),
+    [currentRequests, currentUser?.company],
+  )
+
   const revisionSource = useMemo(
-    () => currentRequests.find((request) => request.id === requestId),
-    [currentRequests, requestId],
+    () => visibleRequests.find((request) => request.id === requestId),
+    [visibleRequests, requestId],
   )
   const isRevisionMode = Boolean(requestId && revisionSource)
   const invalidRevisionId = Boolean(requestId && !revisionSource)
+  const companyLocked = Boolean(currentUser && currentUser.company !== 'BHP')
 
   useEffect(() => {
     if (revisionSource) {
       setForm(requestToStaffingFormData(revisionSource))
       setErrors({})
+      return
     }
-  }, [revisionSource])
+
+    if (!currentUser?.company) return
+
+    setForm((prev) => {
+      if (currentUser.company !== 'BHP') {
+        return prev.company === currentUser.company
+          ? prev
+          : { ...prev, company: currentUser.company }
+      }
+      return prev.company ? prev : { ...prev, company: currentUser.company }
+    })
+  }, [revisionSource, currentUser?.company])
 
   const updateField = <K extends keyof StaffingPlanFormData>(
     field: K,
@@ -120,6 +146,7 @@ export default function StaffingPlanFormPage() {
     if (!form.position.trim()) nextErrors.position = 'Position is required'
     if (!form.class) nextErrors.class = 'Class is required'
     if (!form.hiringSource) nextErrors.hiringSource = 'Hiring source is required'
+    if (!form.company) nextErrors.company = 'Company is required'
     if (!form.roster) nextErrors.roster = 'Roster is required'
 
     const biWeekError = validateBiWeekDate(form.startBiWeek)
@@ -145,7 +172,7 @@ export default function StaffingPlanFormPage() {
     } else {
       const created = addRequest(form)
       setSuccessMessage(`Position request submitted successfully. Position: ${created.positionNumber}.`)
-      setForm(initialForm)
+      setForm(createEmptyForm(currentUser?.company ?? ''))
     }
 
     setShowSuccess(true)
@@ -317,6 +344,24 @@ export default function StaffingPlanFormPage() {
                   error={errors.hiringSource}
                 />
               </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <SearchableSelect
+                  label="Company"
+                  options={COMPANIES}
+                  value={form.company}
+                  onChange={(value) =>
+                    updateField('company', value as StaffingPlanFormData['company'])
+                  }
+                  required
+                  error={errors.company}
+                  disabled={companyLocked}
+                  helperText={
+                    companyLocked
+                      ? 'Defaults to your company designation'
+                      : 'BHP can submit for any company'
+                  }
+                />
+              </Grid>
             </Grid>
 
             <SectionTitle>Identifiers &amp; Hours</SectionTitle>
@@ -413,7 +458,7 @@ export default function StaffingPlanFormPage() {
         </CardContent>
       </Card>
 
-      {!isRevisionMode && currentRequests.length > 0 && (
+      {!isRevisionMode && visibleRequests.length > 0 && (
         <Card>
           <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
             <SectionTitle>Submitted Requests</SectionTitle>
@@ -421,7 +466,7 @@ export default function StaffingPlanFormPage() {
               Revise an existing position request to create a new revision for manager review.
             </Typography>
             <Stack spacing={2}>
-              {currentRequests.map((request) => (
+              {visibleRequests.map((request) => (
                 <Box
                   key={request.id}
                   sx={{
@@ -446,6 +491,7 @@ export default function StaffingPlanFormPage() {
                         variant="outlined"
                       />
                       <Chip label={`Rev ${request.revision}`} size="small" variant="outlined" />
+                      <Chip label={request.company} size="small" variant="outlined" />
                       <Chip
                         label={request.status}
                         size="small"

@@ -21,7 +21,9 @@ import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import EditIcon from '@mui/icons-material/Edit'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
+import { filterByCompanyVisibility } from '../../constants/companies'
 import { useProjectAuthorizationRequests } from '../../context/ProjectAuthorizationContext'
+import { useRoles } from '../../context/RolesContext'
 import { useWorkflows } from '../../context/WorkflowContext'
 import RejectDialog from '../../components/RejectDialog'
 import { ChangedFieldDetail, RevisionChangesLegend } from '../../components/ChangedFieldDetail'
@@ -97,6 +99,11 @@ function RequestDetails({
         value={request.hiringSource}
         changed={changed('hiringSource')}
       />
+      <ChangedFieldDetail
+        label="Company"
+        value={request.company}
+        changed={changed('company')}
+      />
       <ChangedFieldDetail label="Roster" value={request.roster} changed={changed('roster')} />
       <ChangedFieldDetail label="EE Id / SAP" value={request.eeIdSap} changed={changed('eeIdSap')} />
       <ChangedFieldDetail
@@ -128,6 +135,7 @@ function RequestDetails({
 }
 
 export default function ProjectAuthorizationManagerPage() {
+  const { currentUser } = useRoles()
   const { currentRequests, rejectRequest, approveRequest, getHistory } =
     useProjectAuthorizationRequests()
   const { getWorkflow } = useWorkflows()
@@ -135,19 +143,24 @@ export default function ProjectAuthorizationManagerPage() {
   const [rejectTarget, setRejectTarget] = useState<ProjectAuthorizationRequest | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
+  const visibleRequests = useMemo(
+    () => filterByCompanyVisibility(currentRequests, currentUser?.company),
+    [currentRequests, currentUser?.company],
+  )
+
   const filteredRequests = useMemo(() => {
-    if (filter === 'all') return currentRequests
-    return currentRequests.filter((request) => request.status === filter)
-  }, [filter, currentRequests])
+    if (filter === 'all') return visibleRequests
+    return visibleRequests.filter((request) => request.status === filter)
+  }, [filter, visibleRequests])
 
   const counts = useMemo(
     () => ({
-      all: currentRequests.length,
-      pending: currentRequests.filter((r) => r.status === 'pending').length,
-      approved: currentRequests.filter((r) => r.status === 'approved').length,
-      rejected: currentRequests.filter((r) => r.status === 'rejected').length,
+      all: visibleRequests.length,
+      pending: visibleRequests.filter((r) => r.status === 'pending').length,
+      approved: visibleRequests.filter((r) => r.status === 'approved').length,
+      rejected: visibleRequests.filter((r) => r.status === 'rejected').length,
     }),
-    [currentRequests],
+    [visibleRequests],
   )
 
   const handleReject = (comment: string) => {
@@ -244,6 +257,7 @@ export default function ProjectAuthorizationManagerPage() {
                               color="primary"
                               variant="outlined"
                             />
+                            <Chip label={request.company} size="small" variant="outlined" />
                           </Box>
                           <Typography variant="body2" color="text.secondary">
                             {request.approvedPositionLabel}

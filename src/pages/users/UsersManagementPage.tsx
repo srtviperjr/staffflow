@@ -30,6 +30,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft'
 import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArrowRight'
+import { COMPANIES, type Company } from '../../constants/companies'
 import { useRoles } from '../../context/RolesContext'
 import type { AppRole, CreateUserInput } from '../../types/roles'
 
@@ -45,6 +46,7 @@ const emptyForm: CreateUserInput = {
   name: '',
   email: '',
   title: '',
+  company: 'BHP',
 }
 
 function RoleTransferList({
@@ -146,6 +148,7 @@ export default function UsersManagementPage() {
       name: selectedUser.name,
       email: selectedUser.email,
       title: selectedUser.title,
+      company: selectedUser.company,
     })
     setAssignedRoleIds(getRolesForUser(selectedUser.id).map((role) => role.id))
     setChecked([])
@@ -198,6 +201,7 @@ export default function UsersManagementPage() {
     if (!form.name.trim()) return 'Name is required'
     if (!form.email.trim()) return 'Email is required'
     if (!form.title.trim()) return 'Title is required'
+    if (!form.company) return 'Company is required'
     const emailTaken = users.some(
       (user) =>
         user.email.toLowerCase() === form.email.trim().toLowerCase() &&
@@ -258,7 +262,8 @@ export default function UsersManagementPage() {
   const hasUnsavedProfileChanges = selectedUser
     ? editForm.name !== selectedUser.name ||
       editForm.email !== selectedUser.email ||
-      editForm.title !== selectedUser.title
+      editForm.title !== selectedUser.title ||
+      editForm.company !== selectedUser.company
     : false
   const hasUnsavedChanges = hasUnsavedRoleChanges || hasUnsavedProfileChanges
 
@@ -316,6 +321,27 @@ export default function UsersManagementPage() {
                     required
                     fullWidth
                   />
+                  <FormControl fullWidth required>
+                    <InputLabel id="create-company-label">Company</InputLabel>
+                    <Select
+                      labelId="create-company-label"
+                      label="Company"
+                      value={createForm.company}
+                      onChange={(event) => {
+                        setCreateForm((prev) => ({
+                          ...prev,
+                          company: event.target.value as Company,
+                        }))
+                        setCreateError('')
+                      }}
+                    >
+                      {COMPANIES.map((company) => (
+                        <MenuItem key={company} value={company}>
+                          {company}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                   {createError ? <Alert severity="error">{createError}</Alert> : null}
                   <Button type="submit" variant="contained" startIcon={<AddIcon />}>
                     Create User
@@ -347,7 +373,7 @@ export default function UsersManagementPage() {
                     >
                       <Typography variant="subtitle2">{user.name}</Typography>
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                        {user.title}
+                        {user.company} · {user.title}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {userRoles.length > 0
@@ -418,7 +444,7 @@ export default function UsersManagementPage() {
                             required
                           />
                         </Grid>
-                        <Grid size={{ xs: 12 }}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                           <TextField
                             label="Title"
                             value={editForm.title}
@@ -428,6 +454,28 @@ export default function UsersManagementPage() {
                             fullWidth
                             required
                           />
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <FormControl fullWidth required>
+                            <InputLabel id="edit-company-label">Company</InputLabel>
+                            <Select
+                              labelId="edit-company-label"
+                              label="Company"
+                              value={editForm.company}
+                              onChange={(event) =>
+                                setEditForm((prev) => ({
+                                  ...prev,
+                                  company: event.target.value as Company,
+                                }))
+                              }
+                            >
+                              {COMPANIES.map((company) => (
+                                <MenuItem key={company} value={company}>
+                                  {company}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
                         </Grid>
                       </Grid>
 

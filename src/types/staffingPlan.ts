@@ -1,3 +1,4 @@
+import type { Company } from '../constants/companies'
 import {
   AREAS,
   CLASSES,
@@ -45,6 +46,7 @@ export interface StaffingPlanRequest {
   position: string
   class: PositionClass
   hiringSource: HiringSource
+  company: Company
   eeIdSap: string
   sortNumber: string
   totalHours: string
@@ -72,6 +74,7 @@ export interface StaffingPlanFormData {
   position: string
   class: PositionClass | ''
   hiringSource: HiringSource | ''
+  company: Company | ''
   eeIdSap: string
   sortNumber: string
   totalHours: string

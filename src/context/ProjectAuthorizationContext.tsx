@@ -83,6 +83,7 @@ function buildRequestFromForm(
     country: data.country.trim(),
     class: data.class,
     hiringSource: data.hiringSource,
+    company: data.company as ProjectAuthorizationRequest['company'],
     eeIdSap: data.eeIdSap.trim(),
     pafNumber: overrides.pafNumber ?? generatePafNumber(overrides.id ?? crypto.randomUUID()),
     sortNumber: data.sortNumber.trim(),

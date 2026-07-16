@@ -70,6 +70,7 @@ export function requestToStaffingFormData(
     position: request.position,
     class: request.class,
     hiringSource: request.hiringSource,
+    company: request.company,
     eeIdSap: request.eeIdSap,
     sortNumber: request.sortNumber,
     totalHours: request.totalHours,

@@ -15,23 +15,20 @@ import ScienceIcon from '@mui/icons-material/Science'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import AccountTreeIcon from '@mui/icons-material/AccountTree'
 import GroupIcon from '@mui/icons-material/Group'
-import { seedSampleData } from '../data/sampleData'
-import { DEFAULT_ROLES, SAMPLE_USERS } from '../data/sampleUsers'
-import { SAMPLE_WORKFLOWS } from '../data/sampleWorkflow'
+import { APP_SEED_VERSION_KEY } from '../data/seedVersion'
+import { ensureLatestSeedData } from '../data/seedAppData'
 
 export default function HomePage() {
   const handleLoadSampleData = () => {
-    seedSampleData()
-    localStorage.setItem('app-users', JSON.stringify(SAMPLE_USERS))
-    localStorage.setItem('app-roles', JSON.stringify(DEFAULT_ROLES))
-    localStorage.setItem('workflow-definitions', JSON.stringify(SAMPLE_WORKFLOWS))
+    localStorage.removeItem(APP_SEED_VERSION_KEY)
+    ensureLatestSeedData()
     window.location.reload()
   }
 
   return (
     <Box>
       <Typography variant="h4" color="primary" gutterBottom sx={{ fontWeight: 700 }}>
-        Jansen StaffFlow
+        Jansen Workflows
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
         Submit position requests, PAF approvals, and view the staffing plan matrix.

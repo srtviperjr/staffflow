@@ -59,7 +59,7 @@ export default function ActingAsUserSwitcher() {
                 {currentUser?.name ?? 'Select user'}
               </Typography>
               <Typography variant="caption" sx={{ opacity: 0.85, lineHeight: 1.2 }} noWrap>
-                {roleLabels}
+                {currentUser ? `${currentUser.company} · ${roleLabels}` : roleLabels}
               </Typography>
             </Box>
           )}
@@ -71,7 +71,7 @@ export default function ActingAsUserSwitcher() {
                   {user.name}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {user.title}
+                  {user.company} · {user.title}
                 </Typography>
               </Box>
             </MenuItem>

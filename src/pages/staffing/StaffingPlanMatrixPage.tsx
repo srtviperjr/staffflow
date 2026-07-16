@@ -15,7 +15,9 @@ import {
 } from '@mui/material'
 import TableChartIcon from '@mui/icons-material/TableChart'
 import PafDetailDialog from '../../components/PafDetailDialog'
+import { filterByCompanyVisibility } from '../../constants/companies'
 import { useProjectAuthorizationRequests } from '../../context/ProjectAuthorizationContext'
+import { useRoles } from '../../context/RolesContext'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
 import type { ProjectAuthorizationRequest } from '../../types/projectAuthorization'
 import {
@@ -112,14 +114,24 @@ function renderMetadataCell(
 
 export default function StaffingPlanMatrixPage() {
   const navigate = useNavigate()
+  const { currentUser } = useRoles()
   const { requests: staffingRequests } = useStaffingPlanRequests()
   const { requests: authorizationRequests } = useProjectAuthorizationRequests()
   const [selectedPaf, setSelectedPaf] = useState<ProjectAuthorizationRequest | null>(null)
 
+  const visibleStaffingRequests = useMemo(
+    () => filterByCompanyVisibility(staffingRequests, currentUser?.company),
+    [staffingRequests, currentUser?.company],
+  )
+  const visibleAuthorizationRequests = useMemo(
+    () => filterByCompanyVisibility(authorizationRequests, currentUser?.company),
+    [authorizationRequests, currentUser?.company],
+  )
+
   const periods = useMemo(() => getMatrixPeriods(), [])
   const rows = useMemo(
-    () => buildStaffingMatrixRows(staffingRequests, authorizationRequests, periods),
-    [staffingRequests, authorizationRequests, periods],
+    () => buildStaffingMatrixRows(visibleStaffingRequests, visibleAuthorizationRequests, periods),
+    [visibleStaffingRequests, visibleAuthorizationRequests, periods],
   )
   const summaryRows = useMemo(() => buildSummaryRows(periods), [periods])
 

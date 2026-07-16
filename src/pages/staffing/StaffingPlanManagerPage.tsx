@@ -21,6 +21,8 @@ import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import EditIcon from '@mui/icons-material/Edit'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
+import { filterByCompanyVisibility } from '../../constants/companies'
+import { useRoles } from '../../context/RolesContext'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
 import { useWorkflows } from '../../context/WorkflowContext'
 import RejectDialog from '../../components/RejectDialog'
@@ -99,6 +101,11 @@ function RequestDetails({
         value={request.hiringSource}
         changed={changed('hiringSource')}
       />
+      <ChangedFieldDetail
+        label="Company"
+        value={request.company}
+        changed={changed('company')}
+      />
       <ChangedFieldDetail label="Roster" value={request.roster} changed={changed('roster')} />
       <ChangedFieldDetail label="EE Id / SAP" value={request.eeIdSap} changed={changed('eeIdSap')} />
       <ChangedFieldDetail
@@ -135,25 +142,31 @@ function RequestDetails({
 }
 
 export default function StaffingPlanManagerPage() {
+  const { currentUser } = useRoles()
   const { currentRequests, rejectRequest, approveRequest, getHistory } = useStaffingPlanRequests()
   const { getWorkflow } = useWorkflows()
   const [filter, setFilter] = useState<FilterTab>('all')
   const [rejectTarget, setRejectTarget] = useState<StaffingPlanRequest | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
+  const visibleRequests = useMemo(
+    () => filterByCompanyVisibility(currentRequests, currentUser?.company),
+    [currentRequests, currentUser?.company],
+  )
+
   const filteredRequests = useMemo(() => {
-    if (filter === 'all') return currentRequests
-    return currentRequests.filter((request) => request.status === filter)
-  }, [filter, currentRequests])
+    if (filter === 'all') return visibleRequests
+    return visibleRequests.filter((request) => request.status === filter)
+  }, [filter, visibleRequests])
 
   const counts = useMemo(
     () => ({
-      all: currentRequests.length,
-      pending: currentRequests.filter((r) => r.status === 'pending').length,
-      approved: currentRequests.filter((r) => r.status === 'approved').length,
-      rejected: currentRequests.filter((r) => r.status === 'rejected').length,
+      all: visibleRequests.length,
+      pending: visibleRequests.filter((r) => r.status === 'pending').length,
+      approved: visibleRequests.filter((r) => r.status === 'approved').length,
+      rejected: visibleRequests.filter((r) => r.status === 'rejected').length,
     }),
-    [currentRequests],
+    [visibleRequests],
   )
 
   const handleReject = (comment: string) => {
@@ -250,6 +263,7 @@ export default function StaffingPlanManagerPage() {
                               color="primary"
                               variant="outlined"
                             />
+                            <Chip label={request.company} size="small" variant="outlined" />
                           </Box>
                           <Typography variant="body2" color="text.secondary">
                             {request.phase} · {request.area} / {request.subArea}

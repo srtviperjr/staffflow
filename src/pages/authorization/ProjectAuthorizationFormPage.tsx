@@ -21,7 +21,9 @@ import HistoryIcon from '@mui/icons-material/History'
 import SearchableSelect from '../../components/SearchableSelect'
 import SearchableOptionSelect from '../../components/SearchableOptionSelect'
 import SundayWeekDatePicker from '../../components/SundayWeekDatePicker'
+import { COMPANIES, filterByCompanyVisibility } from '../../constants/companies'
 import { useProjectAuthorizationRequests } from '../../context/ProjectAuthorizationContext'
+import { useRoles } from '../../context/RolesContext'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
 import { CLASSES, HIRING_SOURCES, ROSTERS } from '../../constants/staffingPlanOptions'
 import { COUNTRY_SUGGESTIONS } from '../../types/staffingPlan'
@@ -36,20 +38,25 @@ import {
 import { requestToFormData, staffingPlanToFormData } from '../../utils/projectAuthorizationRevisions'
 import { validateBiWeekDate, validateLwpDate } from '../../utils/staffingPlanDates'
 
-const initialForm: ProjectAuthorizationFormData = {
-  staffingPlanRequestId: '',
-  functionalGroup: '',
-  dsg: '',
-  candidateName: '',
-  country: '',
-  class: '',
-  hiringSource: '',
-  eeIdSap: '',
-  sortNumber: '',
-  totalHours: '',
-  roster: '',
-  startBiWeek: '',
-  lwp: '',
+function createEmptyForm(
+  company: ProjectAuthorizationFormData['company'] = '',
+): ProjectAuthorizationFormData {
+  return {
+    staffingPlanRequestId: '',
+    functionalGroup: '',
+    dsg: '',
+    candidateName: '',
+    country: '',
+    class: '',
+    hiringSource: '',
+    company,
+    eeIdSap: '',
+    sortNumber: '',
+    totalHours: '',
+    roster: '',
+    startBiWeek: '',
+    lwp: '',
+  }
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -71,25 +78,39 @@ export default function ProjectAuthorizationFormPage() {
   const [searchParams] = useSearchParams()
   const positionId = searchParams.get('positionId')
   const navigate = useNavigate()
+  const { currentUser } = useRoles()
   const { requests: staffingRequests } = useStaffingPlanRequests()
   const { currentRequests, addRequest, reviseRequest } = useProjectAuthorizationRequests()
-  const [form, setForm] = useState<ProjectAuthorizationFormData>(initialForm)
+  const [form, setForm] = useState<ProjectAuthorizationFormData>(() =>
+    createEmptyForm(currentUser?.company ?? ''),
+  )
   const [errors, setErrors] = useState<Partial<Record<keyof ProjectAuthorizationFormData, string>>>(
     {},
   )
   const [showSuccess, setShowSuccess] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
 
+  const visiblePafRequests = useMemo(
+    () => filterByCompanyVisibility(currentRequests, currentUser?.company),
+    [currentRequests, currentUser?.company],
+  )
+
   const revisionSource = useMemo(
-    () => currentRequests.find((request) => request.id === requestId),
-    [currentRequests, requestId],
+    () => visiblePafRequests.find((request) => request.id === requestId),
+    [visiblePafRequests, requestId],
   )
   const isRevisionMode = Boolean(requestId && revisionSource)
   const invalidRevisionId = Boolean(requestId && !revisionSource)
+  const companyLocked = Boolean(currentUser && currentUser.company !== 'BHP')
+
+  const visibleStaffingRequests = useMemo(
+    () => filterByCompanyVisibility(staffingRequests, currentUser?.company),
+    [staffingRequests, currentUser?.company],
+  )
 
   const approvedRequests = useMemo(
-    () => getApprovedStaffingRequests(staffingRequests),
-    [staffingRequests],
+    () => getApprovedStaffingRequests(visibleStaffingRequests),
+    [visibleStaffingRequests],
   )
 
   const prefillPosition = useMemo(
@@ -107,22 +128,34 @@ export default function ProjectAuthorizationFormPage() {
     if (prefillPosition) {
       setForm(staffingPlanToFormData(prefillPosition))
       setErrors({})
+      return
     }
-  }, [revisionSource, prefillPosition])
+
+    if (!currentUser?.company) return
+
+    setForm((prev) => {
+      if (currentUser.company !== 'BHP') {
+        return prev.company === currentUser.company
+          ? prev
+          : { ...prev, company: currentUser.company }
+      }
+      return prev.company ? prev : { ...prev, company: currentUser.company }
+    })
+  }, [revisionSource, prefillPosition, currentUser?.company])
 
   const functionalGroupOptions = useMemo(
-    () => getApprovedFunctionalGroups(staffingRequests),
-    [staffingRequests],
+    () => getApprovedFunctionalGroups(visibleStaffingRequests),
+    [visibleStaffingRequests],
   )
 
   const dsgOptions = useMemo(
-    () => getApprovedDsgOptions(staffingRequests, form.functionalGroup),
-    [staffingRequests, form.functionalGroup],
+    () => getApprovedDsgOptions(visibleStaffingRequests, form.functionalGroup),
+    [visibleStaffingRequests, form.functionalGroup],
   )
 
   const approvedPositionOptions = useMemo(
-    () => getApprovedPositionOptions(staffingRequests, form.functionalGroup, form.dsg),
-    [staffingRequests, form.functionalGroup, form.dsg],
+    () => getApprovedPositionOptions(visibleStaffingRequests, form.functionalGroup, form.dsg),
+    [visibleStaffingRequests, form.functionalGroup, form.dsg],
   )
 
   const updateField = <K extends keyof ProjectAuthorizationFormData>(
@@ -162,6 +195,7 @@ export default function ProjectAuthorizationFormPage() {
     if (!form.country.trim()) nextErrors.country = 'Country is required'
     if (!form.class) nextErrors.class = 'Class is required'
     if (!form.hiringSource) nextErrors.hiringSource = 'Hiring source is required'
+    if (!form.company) nextErrors.company = 'Company is required'
     if (!form.roster) nextErrors.roster = 'Roster is required'
 
     const biWeekError = validateBiWeekDate(form.startBiWeek)
@@ -197,7 +231,7 @@ export default function ProjectAuthorizationFormPage() {
       setSuccessMessage(
         `PAF approval submitted successfully. PAF: ${created.pafNumber}.`,
       )
-      setForm(initialForm)
+      setForm(createEmptyForm(currentUser?.company ?? ''))
     }
 
     setShowSuccess(true)
@@ -348,6 +382,24 @@ export default function ProjectAuthorizationFormPage() {
                   error={errors.hiringSource}
                 />
               </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <SearchableSelect
+                  label="Company"
+                  options={COMPANIES}
+                  value={form.company}
+                  onChange={(value) =>
+                    updateField('company', value as ProjectAuthorizationFormData['company'])
+                  }
+                  required
+                  error={errors.company}
+                  disabled={companyLocked}
+                  helperText={
+                    companyLocked
+                      ? 'Defaults to your company designation'
+                      : 'BHP can submit for any company'
+                  }
+                />
+              </Grid>
             </Grid>
 
             <SectionTitle>Identifiers &amp; Hours</SectionTitle>
@@ -434,7 +486,7 @@ export default function ProjectAuthorizationFormPage() {
         </CardContent>
       </Card>
 
-      {!isRevisionMode && currentRequests.length > 0 && (
+      {!isRevisionMode && visiblePafRequests.length > 0 && (
         <Card>
           <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
             <SectionTitle>Submitted Requests</SectionTitle>
@@ -442,7 +494,7 @@ export default function ProjectAuthorizationFormPage() {
               Revise an existing request to create a new revision for manager review.
             </Typography>
             <Stack spacing={2}>
-              {currentRequests.map((request) => (
+              {visiblePafRequests.map((request) => (
                 <Box
                   key={request.id}
                   sx={{
@@ -462,6 +514,7 @@ export default function ProjectAuthorizationFormPage() {
                       <Typography variant="subtitle1">{request.candidateName}</Typography>
                       <Chip label={`PAF ${request.pafNumber}`} size="small" color="info" variant="outlined" />
                       <Chip label={`Rev ${request.revision}`} size="small" variant="outlined" />
+                      <Chip label={request.company} size="small" variant="outlined" />
                       <Chip
                         label={request.status}
                         size="small"
