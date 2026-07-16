@@ -1,6 +1,6 @@
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import { personBarColor } from './ganttPeriods'
-import { getCurrentAuthorizationRequests } from './projectAuthorizationRevisions'
+import { getPafRegisterMainRequests } from './projectAuthorizationRevisions'
 import { formatDisplayDate, generateBiWeeklyPeriodsForRange } from './staffingPlanDates'
 
 export type PafRegisterColumnId =
@@ -70,14 +70,14 @@ export const DEFAULT_PAF_COLUMN_ORDER: PafRegisterColumnId[] =
 
 const COLUMN_BY_ID = new Map(PAF_REGISTER_COLUMN_DEFS.map((column) => [column.id, column]))
 
-/** Calendar periods covering all current PAF durations. */
+/** Calendar periods covering main register rows (approved / pending-only). */
 export function getPafRegisterPeriods(
   requests: ProjectAuthorizationRequest[] = [],
 ): string[] {
   let minStart = ''
   let maxEnd = ''
 
-  for (const request of getCurrentAuthorizationRequests(requests)) {
+  for (const request of getPafRegisterMainRequests(requests)) {
     if (!request.startBiWeek || !request.lwp) continue
     if (!minStart || request.startBiWeek < minStart) minStart = request.startBiWeek
     if (!maxEnd || request.lwp > maxEnd) maxEnd = request.lwp
@@ -140,7 +140,7 @@ export function filterPafRegisterRows(
 export function buildPafRegisterRows(
   requests: ProjectAuthorizationRequest[],
 ): PafRegisterRow[] {
-  return getCurrentAuthorizationRequests(requests)
+  return getPafRegisterMainRequests(requests)
     .map((request) => ({
       id: request.id,
       request,

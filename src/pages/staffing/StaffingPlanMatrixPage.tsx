@@ -55,6 +55,11 @@ import {
   type StaffingPositionRelatedGroups,
 } from '../../utils/relatedRegisterItems'
 import { formatDisplayDate } from '../../utils/staffingPlanDates'
+import {
+  buildStickyMetaLayout,
+  columnWidth,
+  stickyEdgeShadow,
+} from '../../utils/stickyTableColumns'
 import type { ProjectAuthorizationRequest } from '../../types/projectAuthorization'
 import type { StaffingPlanRequest } from '../../types/staffingPlan'
 import {
@@ -73,7 +78,8 @@ import {
 const COLUMN_ORDER_KEY = 'staffing-matrix-column-order'
 const COLUMN_VISIBLE_KEY = 'staffing-matrix-visible-columns'
 const EXPAND_COL_WIDTH = 48
-const ACTIONS_COL_WIDTH = 96
+const ACTIONS_COL_WIDTH = 118
+const META_WIDTH_FALLBACK = 110
 
 const cellSx = {
   border: '1px solid #bdbdbd',
@@ -125,6 +131,8 @@ function RelatedExpandRow({
   item,
   periods,
   detailColSpan,
+  metaBlockLeft,
+  metaBlockWidth,
   canReview,
   onView,
   onApprove,
@@ -135,6 +143,8 @@ function RelatedExpandRow({
   item: RelatedRegisterItem
   periods: string[]
   detailColSpan: number
+  metaBlockLeft: number
+  metaBlockWidth: number
   canReview: boolean
   onView: () => void
   onApprove: () => void
@@ -164,66 +174,28 @@ function RelatedExpandRow({
           bgcolor: sectionBg,
           minWidth: ACTIONS_COL_WIDTH,
           width: ACTIONS_COL_WIDTH,
+          whiteSpace: 'normal',
         }}
       >
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<VisibilityIcon />}
-          onClick={onView}
-          sx={{ textTransform: 'none', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
-        >
-          View
-        </Button>
-      </TableCell>
-      <TableCell colSpan={detailColSpan} sx={{ ...cellSx, bgcolor: sectionBg, py: 1 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            justifyContent: 'space-between',
-            gap: 1.5,
-            flexWrap: 'wrap',
-            pl: 1,
-          }}
-        >
-          <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              {item.barColor ? (
-                <Box
-                  sx={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: '2px',
-                    bgcolor: item.barColor,
-                    flexShrink: 0,
-                  }}
-                />
-              ) : null}
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                {item.title}
-              </Typography>
-              <Chip
-                size="small"
-                label={item.kind === 'staffing-plan' ? 'Position' : 'PAF'}
-                variant="outlined"
-                color={item.kind === 'staffing-plan' ? 'primary' : 'secondary'}
-              />
-              <Chip size="small" label={`Rev ${item.revision}`} variant="outlined" />
-              <Chip size="small" label={item.status} color={statusColor(item.status)} />
-            </Box>
-            <Typography variant="caption" color="text.secondary">
-              {formatRelatedItemCaption(item)}
-            </Typography>
-          </Box>
+        <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<VisibilityIcon />}
+            onClick={onView}
+            sx={{ textTransform: 'none', fontSize: '0.7rem', whiteSpace: 'nowrap' }}
+          >
+            View
+          </Button>
           {canReview && item.status === 'pending' ? (
-            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+            <>
               <Button
                 size="small"
                 variant="contained"
                 color="success"
                 startIcon={<CheckCircleIcon />}
                 onClick={onApprove}
+                sx={{ textTransform: 'none', fontSize: '0.7rem' }}
               >
                 Approve
               </Button>
@@ -233,11 +205,58 @@ function RelatedExpandRow({
                 color="error"
                 startIcon={<CancelIcon />}
                 onClick={onReject}
+                sx={{ textTransform: 'none', fontSize: '0.7rem' }}
               >
                 Reject
               </Button>
-            </Stack>
+            </>
           ) : null}
+        </Stack>
+      </TableCell>
+      <TableCell
+        colSpan={detailColSpan}
+        sx={{
+          ...cellSx,
+          position: 'sticky',
+          left: metaBlockLeft,
+          zIndex: 2,
+          bgcolor: sectionBg,
+          minWidth: metaBlockWidth,
+          width: metaBlockWidth,
+          maxWidth: metaBlockWidth,
+          py: 1,
+          whiteSpace: 'normal',
+          boxShadow: stickyEdgeShadow,
+        }}
+      >
+        <Box sx={{ pl: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            {item.barColor ? (
+              <Box
+                sx={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: '2px',
+                  bgcolor: item.barColor,
+                  flexShrink: 0,
+                }}
+              />
+            ) : null}
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              {item.title}
+            </Typography>
+            <Chip
+              size="small"
+              label={item.kind === 'staffing-plan' ? 'Position' : 'PAF'}
+              variant="outlined"
+              color={item.kind === 'staffing-plan' ? 'primary' : 'secondary'}
+            />
+            <Chip size="small" label={`Rev ${item.revision}`} variant="outlined" />
+            <Chip size="small" label={item.status} color={statusColor(item.status)} />
+          </Box>
+          <Typography variant="caption" color="text.secondary">
+            {formatRelatedItemCaption(item)}
+          </Typography>
         </Box>
       </TableCell>
       {periods.map((period) =>
@@ -431,6 +450,17 @@ export default function StaffingPlanMatrixPage() {
     [columnOrder, visibleColumns],
   )
 
+  const stickyLayout = useMemo(
+    () =>
+      buildStickyMetaLayout(
+        EXPAND_COL_WIDTH,
+        ACTIONS_COL_WIDTH,
+        visibleColumnDefs,
+        META_WIDTH_FALLBACK,
+      ),
+    [visibleColumnDefs],
+  )
+
   const relatedByRowId = useMemo(() => {
     const map = new Map<string, StaffingPositionRelatedGroups>()
     for (const row of rows) {
@@ -544,6 +574,7 @@ export default function StaffingPlanMatrixPage() {
   // Expand + Actions + visible metadata columns
   const metadataColSpan = visibleColumnDefs.length + 2
   const detailColSpan = visibleColumnDefs.length
+  const lastMetaIndex = visibleColumnDefs.length - 1
 
   return (
     <Box>
@@ -750,18 +781,21 @@ export default function StaffingPlanMatrixPage() {
                     >
                       Actions
                     </TableCell>
-                    {visibleColumnDefs.map((column) => (
+                    {visibleColumnDefs.map((column, index) => (
                       <TableCell
                         key={column.id}
                         sx={{
                           ...cellSx,
                           position: 'sticky',
                           top: 0,
+                          left: stickyLayout.offsets[index],
                           zIndex: 5,
                           bgcolor: '#9e9e9e',
                           color: 'white',
                           fontWeight: 700,
-                          minWidth: column.minWidth ?? 110,
+                          minWidth: columnWidth(column.minWidth, META_WIDTH_FALLBACK),
+                          width: columnWidth(column.minWidth, META_WIDTH_FALLBACK),
+                          boxShadow: index === lastMetaIndex ? stickyEdgeShadow : undefined,
                         }}
                       >
                         {column.label}
@@ -802,7 +836,7 @@ export default function StaffingPlanMatrixPage() {
                         width: ACTIONS_COL_WIDTH,
                       }}
                     />
-                    {visibleColumnDefs.map((column) => {
+                    {visibleColumnDefs.map((column, index) => {
                       const options = getUniqueColumnValues(rows, column.id)
                       return (
                         <TableCell
@@ -811,10 +845,13 @@ export default function StaffingPlanMatrixPage() {
                             ...cellSx,
                             position: 'sticky',
                             top: 40,
+                            left: stickyLayout.offsets[index],
                             zIndex: 5,
                             bgcolor: '#eceff1',
-                            minWidth: column.minWidth ?? 110,
+                            minWidth: columnWidth(column.minWidth, META_WIDTH_FALLBACK),
+                            width: columnWidth(column.minWidth, META_WIDTH_FALLBACK),
                             p: 0.5,
+                            boxShadow: index === lastMetaIndex ? stickyEdgeShadow : undefined,
                           }}
                         >
                           <FormControl size="small" fullWidth>
@@ -917,14 +954,20 @@ export default function StaffingPlanMatrixPage() {
                               </Button>
                             ) : null}
                           </TableCell>
-                          {visibleColumnDefs.map((column) => {
+                          {visibleColumnDefs.map((column, index) => {
                             const value = column.getValue(row)
                             return (
                               <TableCell
                                 key={`${row.id}-${column.id}`}
                                 sx={{
                                   ...cellSx,
-                                  minWidth: column.minWidth ?? 110,
+                                  position: 'sticky',
+                                  left: stickyLayout.offsets[index],
+                                  zIndex: 2,
+                                  bgcolor: 'background.paper',
+                                  minWidth: columnWidth(column.minWidth, META_WIDTH_FALLBACK),
+                                  width: columnWidth(column.minWidth, META_WIDTH_FALLBACK),
+                                  boxShadow: index === lastMetaIndex ? stickyEdgeShadow : undefined,
                                 }}
                               >
                                 {renderMetadataCell(
@@ -956,9 +999,12 @@ export default function StaffingPlanMatrixPage() {
                             {related.positionRevisions.length > 0 ? (
                               <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.03)' }}>
                                 <TableCell
-                                  colSpan={metadataColSpan + periods.length}
+                                  colSpan={metadataColSpan}
                                   sx={{
                                     ...cellSx,
+                                    position: 'sticky',
+                                    left: 0,
+                                    zIndex: 2,
                                     bgcolor: 'rgba(236,239,241,0.95)',
                                     py: 0.75,
                                     fontWeight: 700,
@@ -966,10 +1012,19 @@ export default function StaffingPlanMatrixPage() {
                                     letterSpacing: 0.3,
                                     textTransform: 'uppercase',
                                     color: 'text.secondary',
+                                    minWidth: stickyLayout.frozenRightEdge,
+                                    width: stickyLayout.frozenRightEdge,
+                                    boxShadow: stickyEdgeShadow,
                                   }}
                                 >
                                   Position revisions
                                 </TableCell>
+                                {periods.map((period) => (
+                                  <TableCell
+                                    key={`${row.id}-pos-section-${period}`}
+                                    sx={{ ...cellSx, bgcolor: 'rgba(236,239,241,0.95)', minWidth: 58 }}
+                                  />
+                                ))}
                               </TableRow>
                             ) : null}
                             {related.positionRevisions.map((item) => (
@@ -979,6 +1034,8 @@ export default function StaffingPlanMatrixPage() {
                                 item={item}
                                 periods={periods}
                                 detailColSpan={detailColSpan}
+                                metaBlockLeft={stickyLayout.metaBlockLeft}
+                                metaBlockWidth={stickyLayout.metaBlockWidth}
                                 canReview={canReview}
                                 onView={() => openRelatedItem(item)}
                                 onApprove={() => handleApproveRelated(item)}
@@ -989,9 +1046,12 @@ export default function StaffingPlanMatrixPage() {
                             {related.relatedPafs.length > 0 ? (
                               <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.03)' }}>
                                 <TableCell
-                                  colSpan={metadataColSpan + periods.length}
+                                  colSpan={metadataColSpan}
                                   sx={{
                                     ...cellSx,
+                                    position: 'sticky',
+                                    left: 0,
+                                    zIndex: 2,
                                     bgcolor: 'rgba(236,239,241,0.95)',
                                     py: 0.75,
                                     fontWeight: 700,
@@ -999,10 +1059,19 @@ export default function StaffingPlanMatrixPage() {
                                     letterSpacing: 0.3,
                                     textTransform: 'uppercase',
                                     color: 'text.secondary',
+                                    minWidth: stickyLayout.frozenRightEdge,
+                                    width: stickyLayout.frozenRightEdge,
+                                    boxShadow: stickyEdgeShadow,
                                   }}
                                 >
                                   Related PAFs
                                 </TableCell>
+                                {periods.map((period) => (
+                                  <TableCell
+                                    key={`${row.id}-paf-section-${period}`}
+                                    sx={{ ...cellSx, bgcolor: 'rgba(236,239,241,0.95)', minWidth: 58 }}
+                                  />
+                                ))}
                               </TableRow>
                             ) : null}
                             {related.relatedPafs.map((item) => (
@@ -1012,6 +1081,8 @@ export default function StaffingPlanMatrixPage() {
                                 item={item}
                                 periods={periods}
                                 detailColSpan={detailColSpan}
+                                metaBlockLeft={stickyLayout.metaBlockLeft}
+                                metaBlockWidth={stickyLayout.metaBlockWidth}
                                 canReview={canReview}
                                 onView={() => openRelatedItem(item)}
                                 onApprove={() => handleApproveRelated(item)}

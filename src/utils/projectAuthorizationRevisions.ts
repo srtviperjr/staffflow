@@ -108,6 +108,41 @@ export function getCurrentAuthorizationRequests(requests: ProjectAuthorizationRe
   return requests.filter((request) => request.isCurrentRevision)
 }
 
+/**
+ * Latest approved revision per PAF group (`revisionGroupId` / PAF number).
+ * Newer pending/rejected revisions do not replace the approved register row.
+ */
+export function getApprovedAuthorizationRequests(requests: ProjectAuthorizationRequest[]) {
+  const latestApprovedByGroup = new Map<string, ProjectAuthorizationRequest>()
+
+  for (const request of requests) {
+    if (request.status !== 'approved') continue
+    const existing = latestApprovedByGroup.get(request.revisionGroupId)
+    if (
+      !existing ||
+      request.revision > existing.revision ||
+      (request.revision === existing.revision && request.submittedAt > existing.submittedAt)
+    ) {
+      latestApprovedByGroup.set(request.revisionGroupId, request)
+    }
+  }
+
+  return [...latestApprovedByGroup.values()]
+}
+
+/**
+ * Main PAF Register rows: latest approved per person/PAF group.
+ * Groups that only have pending/rejected still appear so they can be reviewed.
+ */
+export function getPafRegisterMainRequests(requests: ProjectAuthorizationRequest[]) {
+  const approved = getApprovedAuthorizationRequests(requests)
+  const approvedGroups = new Set(approved.map((request) => request.revisionGroupId))
+  const pendingOnly = getCurrentAuthorizationRequests(requests).filter(
+    (request) => !approvedGroups.has(request.revisionGroupId),
+  )
+  return [...approved, ...pendingOnly]
+}
+
 export function getRevisionHistory(
   requests: ProjectAuthorizationRequest[],
   revisionGroupId: string,

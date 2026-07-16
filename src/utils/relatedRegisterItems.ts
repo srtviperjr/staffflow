@@ -117,13 +117,25 @@ export function getRelatedItemsForStaffingPosition(
   return [...grouped.positionRevisions, ...grouped.relatedPafs]
 }
 
-/** All revisions for a PAF revision group, latest first. */
+/**
+ * Other revisions for a PAF group (pending/rejected/older), shown under the
+ * main approved register row. Excludes the main row itself.
+ */
 export function getRelatedItemsForPafRequest(
   request: ProjectAuthorizationRequest,
   allPaf: ProjectAuthorizationRequest[],
 ): RelatedRegisterItem[] {
+  const statusRank = (status: RelatedRegisterItem['status']) =>
+    status === 'pending' ? 0 : status === 'rejected' ? 1 : 2
+
   return allPaf
-    .filter((item) => item.revisionGroupId === request.revisionGroupId)
+    .filter(
+      (item) => item.revisionGroupId === request.revisionGroupId && item.id !== request.id,
+    )
     .map(toPafRelatedItem)
-    .sort((a, b) => b.revision - a.revision)
+    .sort((a, b) => {
+      const byStatus = statusRank(a.status) - statusRank(b.status)
+      if (byStatus !== 0) return byStatus
+      return b.revision - a.revision
+    })
 }
