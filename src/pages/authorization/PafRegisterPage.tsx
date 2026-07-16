@@ -673,6 +673,15 @@ export default function PafRegisterPage() {
                             }}
                           >
                             <Stack direction="row" spacing={0} sx={{ alignItems: 'center' }}>
+                              <Tooltip title="View PAF">
+                                <IconButton
+                                  size="small"
+                                  aria-label="View PAF"
+                                  onClick={() => setSelectedPaf(row.request)}
+                                >
+                                  <VisibilityIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
                               {canRevise ? (
                                 <Tooltip title="Revise PAF">
                                   <IconButton
@@ -735,43 +744,41 @@ export default function PafRegisterPage() {
                                 : undefined,
                             }}
                           >
-                            <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
-                              {canReview && row.status === 'pending' ? (
-                                <>
-                                  <Button
-                                    size="small"
-                                    variant="contained"
-                                    color="success"
-                                    startIcon={<CheckCircleIcon />}
-                                    onClick={() => approveRequest(row.id)}
-                                    sx={{ textTransform: 'none', fontSize: '0.7rem' }}
-                                  >
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    color="error"
-                                    startIcon={<CancelIcon />}
-                                    onClick={() =>
-                                      setRejectTarget({
-                                        id: row.id,
-                                        kind: 'project-authorization',
-                                        title: row.candidate,
-                                        subtitle: row.pafNumber,
-                                        status: 'pending',
-                                        revision: Number(row.revision),
-                                        submittedAt: row.request.submittedAt,
-                                        pafRequest: row.request,
-                                      })
-                                    }
-                                    sx={{ textTransform: 'none', fontSize: '0.7rem' }}
-                                  >
-                                    Reject
-                                  </Button>
-                                </>
-                              ) : null}
-                            </Stack>
+                            {canReview && row.status === 'pending' ? (
+                              <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  color="success"
+                                  startIcon={<CheckCircleIcon />}
+                                  onClick={() => approveRequest(row.id)}
+                                  sx={{ textTransform: 'none', fontSize: '0.7rem' }}
+                                >
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  color="error"
+                                  startIcon={<CancelIcon />}
+                                  onClick={() =>
+                                    setRejectTarget({
+                                      id: row.id,
+                                      kind: 'project-authorization',
+                                      title: row.candidate,
+                                      subtitle: row.pafNumber,
+                                      status: 'pending',
+                                      revision: Number(row.revision),
+                                      submittedAt: row.request.submittedAt,
+                                      pafRequest: row.request,
+                                    })
+                                  }
+                                  sx={{ textTransform: 'none', fontSize: '0.7rem' }}
+                                >
+                                  Reject
+                                </Button>
+                              </Stack>
+                            ) : null}
                           </TableCell>
                           {visibleColumnDefs.map((column) => {
                             const value = column.getValue(row)

@@ -1032,6 +1032,15 @@ export default function StaffingPlanMatrixPage() {
                             }}
                           >
                             <Stack direction="row" spacing={0} sx={{ alignItems: 'center' }}>
+                              <Tooltip title="View position">
+                                <IconButton
+                                  size="small"
+                                  aria-label="View position"
+                                  onClick={() => setSelectedStaffing(row.positionRequest)}
+                                >
+                                  <VisibilityIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
                               {canRevise ? (
                                 <Tooltip title="Revise position">
                                   <IconButton

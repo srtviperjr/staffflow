@@ -11,6 +11,7 @@ import {
   FormControlLabel,
   FormLabel,
   IconButton,
+  LinearProgress,
   Radio,
   RadioGroup,
   Slider,
@@ -27,6 +28,7 @@ import {
   HOURLY_COST_SLIDER_MAX,
   HOURLY_COST_SLIDER_MIN,
   type SampleDataMode,
+  type SampleDataProgress,
 } from '../data/sampleData'
 import { COMPANIES } from '../constants/companies'
 
@@ -54,6 +56,7 @@ export default function LoadSampleDataDialog({ open, onClose }: LoadSampleDataDi
   ])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [progress, setProgress] = useState<SampleDataProgress | null>(null)
 
   const parsedCount = Number(recordCount)
   const countValid =
@@ -88,19 +91,34 @@ export default function LoadSampleDataDialog({ open, onClose }: LoadSampleDataDi
     }
 
     setBusy(true)
-    try {
-      applySampleDataLoad({
-        mode,
-        recordCount: parsedCount,
-        positionRatio: positionPercent / 100,
-        hourlyCostMin,
-        hourlyCostMax,
-      })
-      window.location.reload()
-    } catch (err) {
-      setBusy(false)
-      setError(err instanceof Error ? err.message : 'Unable to generate sample data.')
-    }
+    setProgress({
+      phase: 'clearing',
+      message:
+        mode === 'replace'
+          ? 'Starting… clearing existing data first.'
+          : 'Starting… preparing to append sample data.',
+      percent: 2,
+    })
+
+    void (async () => {
+      try {
+        await applySampleDataLoad(
+          {
+            mode,
+            recordCount: parsedCount,
+            positionRatio: positionPercent / 100,
+            hourlyCostMin,
+            hourlyCostMax,
+          },
+          setProgress,
+        )
+        window.location.reload()
+      } catch (err) {
+        setBusy(false)
+        setProgress(null)
+        setError(err instanceof Error ? err.message : 'Unable to generate sample data.')
+      }
+    })()
   }
 
   return (
@@ -127,6 +145,33 @@ export default function LoadSampleDataDialog({ open, onClose }: LoadSampleDataDi
 
       <DialogContent dividers>
         <Stack spacing={3}>
+          {busy && progress ? (
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: 'primary.light',
+                bgcolor: 'action.hover',
+              }}
+            >
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Working — please wait
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                {progress.message}
+              </Typography>
+              <LinearProgress
+                variant="determinate"
+                value={progress.percent}
+                sx={{ height: 8, borderRadius: 1 }}
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+                {progress.percent}% · Large datasets can take several seconds
+              </Typography>
+            </Box>
+          ) : null}
+
           <Typography variant="body2" color="text.secondary">
             Generated data follows application rules: one PAF number belongs to one person
             (revisions change details or duration, not the person); positions may be filled by
@@ -134,7 +179,7 @@ export default function LoadSampleDataDialog({ open, onClose }: LoadSampleDataDi
             positions.
           </Typography>
 
-          <FormControl>
+          <FormControl disabled={busy}>
             <FormLabel id="sample-data-mode-label">Existing data</FormLabel>
             <RadioGroup
               aria-labelledby="sample-data-mode-label"
@@ -159,6 +204,7 @@ export default function LoadSampleDataDialog({ open, onClose }: LoadSampleDataDi
             type="number"
             value={recordCount}
             onChange={(event) => setRecordCount(event.target.value)}
+            disabled={busy}
             slotProps={{
               htmlInput: { min: MIN_RECORDS, max: MAX_RECORDS, step: 1 },
             }}
@@ -179,6 +225,7 @@ export default function LoadSampleDataDialog({ open, onClose }: LoadSampleDataDi
               step={5}
               valueLabelDisplay="auto"
               valueLabelFormat={(value) => `${value}% positions`}
+              disabled={busy}
               marks={[
                 { value: 20, label: 'More PAFs' },
                 { value: 50, label: '50/50' },
@@ -201,6 +248,7 @@ export default function LoadSampleDataDialog({ open, onClose }: LoadSampleDataDi
               disableSwap
               valueLabelDisplay="auto"
               valueLabelFormat={formatDollar}
+              disabled={busy}
               marks={[
                 { value: HOURLY_COST_SLIDER_MIN, label: formatDollar(HOURLY_COST_SLIDER_MIN) },
                 { value: 100, label: '$100' },
@@ -212,13 +260,19 @@ export default function LoadSampleDataDialog({ open, onClose }: LoadSampleDataDi
             </Typography>
           </Box>
 
-          {preview ? (
+          {preview && !busy ? (
             <Alert severity="info" variant="outlined">
               About <strong>{preview.positions}</strong> position groups and{' '}
               <strong>{preview.pafs}</strong> PAF numbers (~{preview.perCompany} records per
               company). Position hourly costs will fall between{' '}
               <strong>{formatDollar(hourlyCostMin)}</strong> and{' '}
               <strong>{formatDollar(hourlyCostMax)}</strong>.
+              {mode === 'replace' ? (
+                <>
+                  {' '}
+                  Replace mode clears current staffing and PAF data before writing the new set.
+                </>
+              ) : null}
             </Alert>
           ) : null}
 
@@ -236,7 +290,7 @@ export default function LoadSampleDataDialog({ open, onClose }: LoadSampleDataDi
           disabled={busy || !countValid || !costRangeValid}
           startIcon={<ScienceIcon />}
         >
-          {busy ? 'Generating…' : 'Generate'}
+          {busy ? 'Working…' : 'Generate'}
         </Button>
       </DialogActions>
     </Dialog>

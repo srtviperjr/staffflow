@@ -1132,13 +1132,61 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
   }
 }
 
+export type SampleDataProgress = {
+  phase: 'clearing' | 'generating' | 'validating' | 'saving' | 'reloading'
+  message: string
+  /** 0–100 */
+  percent: number
+}
+
+function yieldToUi(ms = 0): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
+/** Keep each progress phase on screen long enough to read. */
+async function holdPhase(ms = 350): Promise<void> {
+  await yieldToUi(ms)
+}
+
 /**
  * Persist generated sample data. Replace clears position/PAF stores first;
  * append merges with existing request data.
+ *
+ * Runs in async phases and yields to the UI so progress feedback can paint.
  */
-export function applySampleDataLoad(options: ApplySampleDataOptions): GeneratedSampleData['summary'] {
-  const existingStaffing = options.mode === 'append' ? readStoredStaffing() : []
-  const existingAuthorizations = options.mode === 'append' ? readStoredAuthorizations() : []
+export async function applySampleDataLoad(
+  options: ApplySampleDataOptions,
+  onProgress?: (progress: SampleDataProgress) => void,
+): Promise<GeneratedSampleData['summary']> {
+  const report = (
+    phase: SampleDataProgress['phase'],
+    message: string,
+    percent: number,
+  ) => {
+    onProgress?.({ phase, message, percent })
+  }
+
+  // Let React paint the busy/progress state before heavy work.
+  await holdPhase(80)
+
+  let existingStaffing: StaffingPlanRequest[] = []
+  let existingAuthorizations: ProjectAuthorizationRequest[] = []
+
+  if (options.mode === 'replace') {
+    report('clearing', 'Clearing existing position and PAF data…', 8)
+    await holdPhase()
+    localStorage.removeItem(STAFFING_STORAGE_KEY)
+    localStorage.removeItem(PAF_STORAGE_KEY)
+    await holdPhase(200)
+  } else {
+    existingStaffing = readStoredStaffing()
+    existingAuthorizations = readStoredAuthorizations()
+  }
+
+  report('generating', 'Generating sample requests…', 20)
+  await holdPhase()
 
   const generated = generateSampleData({
     recordCount: options.recordCount,
@@ -1157,12 +1205,25 @@ export function applySampleDataLoad(options: ApplySampleDataOptions): GeneratedS
       ? [...existingAuthorizations, ...generated.authorizations]
       : generated.authorizations
 
+  report(
+    'validating',
+    `Validating ${staffing.length} position rows and ${authorizations.length} PAFs…`,
+    70,
+  )
+  await holdPhase()
+
   assertPafNumberOwnsOnePerson(authorizations)
   assertNoActivePafOverlaps(staffing, authorizations)
+
+  report('saving', 'Saving sample data…', 88)
+  await holdPhase()
 
   localStorage.setItem(STAFFING_STORAGE_KEY, JSON.stringify(staffing))
   localStorage.setItem(PAF_STORAGE_KEY, JSON.stringify(authorizations))
   markSeedCurrent()
+
+  report('reloading', 'Reloading the app with the new dataset…', 96)
+  await holdPhase(450)
 
   return generated.summary
 }
