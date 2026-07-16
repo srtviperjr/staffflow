@@ -26,14 +26,15 @@ export function getApprovedStaffingRequests(requests: StaffingPlanRequest[]) {
 
 /**
  * Main staffing-plan rows: latest approved per position group.
- * Groups that only have a first/pending (or rejected) revision still appear,
- * matching PAF Register behaviour.
+ * Groups with only a first pending revision still appear; first/only rejected
+ * revisions stay hidden (they surface under expand when a main row exists).
  */
 export function getStaffingPlanMainRequests(requests: StaffingPlanRequest[]) {
   const approved = getApprovedStaffingRequests(requests)
   const approvedGroups = new Set(approved.map((request) => request.revisionGroupId))
   const pendingOnly = getCurrentStaffingPlanRequests(requests).filter(
-    (request) => !approvedGroups.has(request.revisionGroupId),
+    (request) =>
+      !approvedGroups.has(request.revisionGroupId) && request.status === 'pending',
   )
   return [...approved, ...pendingOnly]
 }
