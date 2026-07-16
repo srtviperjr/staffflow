@@ -62,11 +62,6 @@ export interface StaffingMatrixRow {
   loads: Record<string, number | null>
 }
 
-export interface StaffingMatrixSummary {
-  label: string
-  values: Record<string, number>
-}
-
 export type MatrixColumnId =
   | 'positionNumber'
   | 'status'
@@ -153,8 +148,6 @@ export const DEFAULT_STICKY_COLUMNS: MatrixColumnId[] = ['positionNumber', 'stat
 export const METADATA_COLUMNS = MATRIX_COLUMN_DEFS.map((column) => column.label)
 
 const COLUMN_BY_ID = new Map(MATRIX_COLUMN_DEFS.map((column) => [column.id, column]))
-
-const OFFICE_SUMMARY_DEMO = [74, 76, 69, 74, 76, 69, 78, 29, 78, 76, 72, 76, 74, 78, 74, 76]
 
 export function getMatrixColumn(id: MatrixColumnId): MatrixColumnDef | undefined {
   return COLUMN_BY_ID.get(id)
@@ -370,20 +363,6 @@ export function buildStaffingMatrixRows(
       )
     })
     .sort((a, b) => a.sortNumber.localeCompare(b.sortNumber, undefined, { numeric: true }))
-}
-
-export function buildSummaryRows(periods: string[]): StaffingMatrixSummary[] {
-  const siteComm = Object.fromEntries(periods.map((period) => [period, 105]))
-  const siteConst = Object.fromEntries(periods.map((period) => [period, 88]))
-  const office = Object.fromEntries(
-    periods.map((period, index) => [period, OFFICE_SUMMARY_DEMO[index % OFFICE_SUMMARY_DEMO.length]]),
-  )
-
-  return [
-    { label: 'Site - Comm', values: siteComm },
-    { label: 'Site - Const', values: siteConst },
-    { label: 'Office', values: office },
-  ]
 }
 
 export function getRowMetadataValues(row: StaffingMatrixRow): string[] {

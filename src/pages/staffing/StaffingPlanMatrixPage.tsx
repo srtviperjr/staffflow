@@ -76,7 +76,6 @@ import {
   DEFAULT_STICKY_COLUMNS,
   MATRIX_COLUMN_DEFS,
   buildStaffingMatrixRows,
-  buildSummaryRows,
   filterMatrixRows,
   getMatrixPeriods,
   getOrderedVisibleColumns,
@@ -101,15 +100,6 @@ const cellSx = {
   px: 1,
   py: 0.75,
   whiteSpace: 'nowrap' as const,
-}
-
-const stickyMetaSx = {
-  ...cellSx,
-  position: 'sticky' as const,
-  left: 0,
-  zIndex: 2,
-  bgcolor: 'background.paper',
-  minWidth: 110,
 }
 
 const periodHeaderSx = {
@@ -477,7 +467,6 @@ export default function StaffingPlanMatrixPage() {
     [visibleStaffingRequests, visibleAuthorizationRequests, periods],
   )
   const filteredRows = useMemo(() => filterMatrixRows(rows, filters), [rows, filters])
-  const summaryRows = useMemo(() => buildSummaryRows(periods), [periods])
   const visibleColumnDefs = useMemo(
     () => getOrderedVisibleColumns(columnOrder, visibleColumns),
     [columnOrder, visibleColumns],
@@ -618,8 +607,6 @@ export default function StaffingPlanMatrixPage() {
     [columnOrder],
   )
 
-  // Expand + Actions + visible metadata columns
-  const metadataColSpan = visibleColumnDefs.length + 2
   const detailColSpan = visibleColumnDefs.length
 
   return (
@@ -784,50 +771,10 @@ export default function StaffingPlanMatrixPage() {
                 sx={{
                   borderCollapse: 'separate',
                   borderSpacing: 0,
-                  // Keep label + filter rows stacked; summary rows above scroll away.
                   '& .MuiTableCell-stickyHeader': { backgroundClip: 'padding-box' },
                 }}
               >
                 <TableHead>
-                  {summaryRows.map((summary) => (
-                    <TableRow key={summary.label}>
-                      <TableCell
-                        colSpan={Math.max(metadataColSpan, 1)}
-                        sx={{
-                          ...stickyMetaSx,
-                          // Summary rows scroll with content so headers/filters stay locked.
-                          position: 'relative',
-                          top: 'auto',
-                          left: 0,
-                          zIndex: 1,
-                          bgcolor: '#e53935',
-                          color: 'white',
-                          fontWeight: 700,
-                        }}
-                      >
-                        {summary.label}
-                      </TableCell>
-                      {periods.map((period) => (
-                        <TableCell
-                          key={`${summary.label}-${period}`}
-                          align="center"
-                          sx={{
-                            ...cellSx,
-                            position: 'relative',
-                            top: 'auto',
-                            bgcolor: '#e53935',
-                            color: 'white',
-                            fontWeight: 700,
-                            minWidth: 58,
-                            zIndex: 1,
-                          }}
-                        >
-                          {summary.values[period]}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-
                   <TableRow>
                     <TableCell
                       sx={{
