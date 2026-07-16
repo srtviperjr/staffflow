@@ -244,8 +244,8 @@ export function advanceWorkflow(
         const actionNow = pendingAction
 
         if (actionNow === 'reject') {
-          // Prefer an explicit reject/no edge from this step; otherwise walk forward
-          // to the next manual decision and take No there.
+          // Any rejection ends the workflow: follow an explicit reject/no edge when
+          // present, otherwise mark rejected immediately (do not continue approve path).
           const rejectTarget = followBranch(workflow, current.id, 'no')
           if (rejectTarget) {
             pendingAction = undefined
@@ -257,20 +257,13 @@ export function advanceWorkflow(
             continue
           }
 
-          const forward = followSingle(workflow, current.id)
-          if (forward) {
-            // Keep reject action so a following manual decision can consume it
-            nextProgress = appendHistory({ ...nextProgress, currentNodeId: forward }, forward)
-            continue
-          }
-
           return {
             ...buildResult(workflow, nextProgress, current, true, false),
             status: 'rejected',
           }
         }
 
-        // approve → continue along the default edge; keep action for a following decision
+        // approve → continue along the default (non-reject) edge
         const target = followSingle(workflow, current.id)
         if (!target) {
           pendingAction = undefined
@@ -279,7 +272,16 @@ export function advanceWorkflow(
             status: 'approved',
           }
         }
+        pendingAction = undefined
         nextProgress = appendHistory({ ...nextProgress, currentNodeId: target }, target, 'yes')
+        // If the next node is a manual decision, apply this approve as Yes immediately
+        const nextNode = getNode(workflow, target)
+        if (
+          nextNode?.type === 'decision' &&
+          (nextNode.data.decisionMode || 'manual') === 'manual'
+        ) {
+          pendingAction = 'approve'
+        }
         continue
       }
 

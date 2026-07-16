@@ -1,9 +1,9 @@
 import { filterByCompanyVisibility, type Company } from '../constants/companies'
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import type { AppRole } from '../types/roles'
-import type { StaffingPlanRequest } from '../types/staffingPlan'
+import type { Phase, StaffingPlanRequest } from '../types/staffingPlan'
 import type { WorkflowDefinition } from '../types/workflow'
-import { isAdmin, roleIdsOf } from './permissions'
+import { isAdmin, ROLE_PROJECT_DIRECTOR, roleIdsOf } from './permissions'
 
 export type PendingApprovalKind = 'staffing-plan' | 'project-authorization'
 
@@ -42,16 +42,39 @@ export function isWaitingForUserRole(
   return userRoleIds.includes(data.roleId)
 }
 
+/**
+ * Project Directors only act on staffing requests for their assigned project (phase).
+ */
+function matchesProjectDirectorScope(
+  node: WorkflowDefinition['nodes'][number] | undefined,
+  requestPhase: Phase | undefined,
+  userProject: Phase | null | undefined,
+  adminBypass: boolean,
+): boolean {
+  if (!node || node.data.roleId !== ROLE_PROJECT_DIRECTOR) return true
+  if (adminBypass) return true
+  if (!userProject || !requestPhase) return false
+  return userProject === requestPhase
+}
+
 /** True when the request is waiting on a step/decision owned by this user's roles. */
 export function canActOnWorkflowRequest(
-  request: { workflow?: { currentNodeId: string; workflowId: string }; status: string },
+  request: {
+    workflow?: { currentNodeId: string; workflowId: string }
+    status: string
+    phase?: Phase
+  },
   roles: AppRole[],
   getWorkflow: (workflowId: string) => WorkflowDefinition | undefined,
-  fallbackRoleId = 'role-manager',
+  options?: {
+    fallbackRoleId?: string
+    userProject?: Phase | null
+  },
 ): boolean {
   if (request.status !== 'pending') return false
   const userRoleIds = roleIdsOf(roles)
   const adminBypass = isAdmin(roles)
+  const fallbackRoleId = options?.fallbackRoleId ?? 'role-manager'
 
   if (!request.workflow) {
     return adminBypass || userRoleIds.includes(fallbackRoleId)
@@ -59,7 +82,8 @@ export function canActOnWorkflowRequest(
 
   const workflow = getWorkflow(request.workflow.workflowId)
   const node = currentNode(workflow, request)
-  return isWaitingForUserRole(node, userRoleIds, adminBypass)
+  if (!isWaitingForUserRole(node, userRoleIds, adminBypass)) return false
+  return matchesProjectDirectorScope(node, request.phase, options?.userProject, adminBypass)
 }
 
 export function isCostEngineerReviewStep(
@@ -77,9 +101,10 @@ export function getPendingApprovalsForUser(options: {
   pafRequests: ProjectAuthorizationRequest[]
   roles: AppRole[]
   company: Company | undefined | null
+  userProject?: Phase | null
   getWorkflow: (workflowId: string) => WorkflowDefinition | undefined
 }): PendingApprovalItem[] {
-  const { staffingRequests, pafRequests, roles, company, getWorkflow } = options
+  const { staffingRequests, pafRequests, roles, company, userProject, getWorkflow } = options
   const userRoleIds = roleIdsOf(roles)
   const adminBypass = isAdmin(roles)
 
@@ -91,17 +116,9 @@ export function getPendingApprovalsForUser(options: {
   )
 
   const staffingItems: PendingApprovalItem[] = visibleStaffing
-    .filter((request) => {
-      const workflow = request.workflow
-        ? getWorkflow(request.workflow.workflowId)
-        : undefined
-      const node = currentNode(workflow, request)
-      // Fallback: no workflow attached → managers/admins can review pending
-      if (!request.workflow) {
-        return adminBypass || userRoleIds.includes('role-manager')
-      }
-      return isWaitingForUserRole(node, userRoleIds, adminBypass)
-    })
+    .filter((request) =>
+      canActOnWorkflowRequest(request, roles, getWorkflow, { userProject }),
+    )
     .map((request) => {
       const workflow = request.workflow
         ? getWorkflow(request.workflow.workflowId)

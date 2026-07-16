@@ -1095,6 +1095,7 @@ export default function StaffingPlanMatrixPage() {
                               row.positionRequest,
                               currentUserRoles,
                               getWorkflow,
+                              { userProject: currentUser?.project },
                             ) ? (
                               <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
                                 <Button
@@ -1367,7 +1368,9 @@ export default function StaffingPlanMatrixPage() {
         canReview={
           Boolean(
             selectedStaffing &&
-              canActOnWorkflowRequest(selectedStaffing, currentUserRoles, getWorkflow),
+              canActOnWorkflowRequest(selectedStaffing, currentUserRoles, getWorkflow, {
+                userProject: currentUser?.project,
+              }),
           )
         }
         showCost={showCost}

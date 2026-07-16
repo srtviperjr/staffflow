@@ -140,7 +140,7 @@ function candidateName(seed: number) {
   return `${pick(FIRST_NAMES, seed)} ${pick(LAST_NAMES, seed * 3 + 1)}`
 }
 
-/** Waiting on Cost Engineer before manager review (no hourly cost yet). */
+/** Waiting on Cost Engineer costing approval (no hourly cost yet). */
 function staffingPendingAtCostWorkflow(): WorkflowProgress {
   return {
     workflowId: 'workflow-staffing-plan-approval',
@@ -153,9 +153,34 @@ function staffingPendingAtCostWorkflow(): WorkflowProgress {
   }
 }
 
-/** Waiting on manager after Cost Engineer has entered hourly cost. */
-function staffingPendingWorkflow(company: string): WorkflowProgress {
+function pdNodeForPhase(phase: string): 'sp-pd-js1' | 'sp-pd-js2' {
+  return phase === 'JS2' ? 'sp-pd-js2' : 'sp-pd-js1'
+}
+
+/** Waiting on Project Director after Costing Approved. */
+function staffingPendingAtPdWorkflow(phase: string): WorkflowProgress {
+  const pdNode = pdNodeForPhase(phase)
+  return {
+    workflowId: 'workflow-staffing-plan-approval',
+    currentNodeId: pdNode,
+    history: [
+      { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
+      { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
+      {
+        nodeId: 'sp-project-gate',
+        arrivedAt: submittedAt(0),
+        branch: phase === 'JS1' ? 'yes' : 'no',
+      },
+      { nodeId: pdNode, arrivedAt: submittedAt(0) },
+    ],
+  }
+}
+
+/** Waiting on manager after Cost Engineer and Project Director. */
+function staffingPendingWorkflow(company: string, phase: string): WorkflowProgress {
   const reviewNode = company === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
+  const pdNode = pdNodeForPhase(phase)
   return {
     workflowId: 'workflow-staffing-plan-approval',
     currentNodeId: reviewNode,
@@ -163,6 +188,12 @@ function staffingPendingWorkflow(company: string): WorkflowProgress {
       { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
       { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
       { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
+      {
+        nodeId: 'sp-project-gate',
+        arrivedAt: submittedAt(0),
+        branch: phase === 'JS1' ? 'yes' : 'no',
+      },
+      { nodeId: pdNode, arrivedAt: submittedAt(0), branch: 'yes' },
       {
         nodeId: 'sp-hiring-gate',
         arrivedAt: submittedAt(0),
@@ -173,8 +204,9 @@ function staffingPendingWorkflow(company: string): WorkflowProgress {
   }
 }
 
-function staffingApprovedWorkflow(company: string): WorkflowProgress {
+function staffingApprovedWorkflow(company: string, phase: string): WorkflowProgress {
   const reviewNode = company === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
+  const pdNode = pdNodeForPhase(phase)
   return {
     workflowId: 'workflow-staffing-plan-approval',
     currentNodeId: 'sp-end-ok',
@@ -182,6 +214,12 @@ function staffingApprovedWorkflow(company: string): WorkflowProgress {
       { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
       { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
       { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
+      {
+        nodeId: 'sp-project-gate',
+        arrivedAt: submittedAt(0),
+        branch: phase === 'JS1' ? 'yes' : 'no',
+      },
+      { nodeId: pdNode, arrivedAt: submittedAt(0), branch: 'yes' },
       {
         nodeId: 'sp-hiring-gate',
         arrivedAt: submittedAt(0),
@@ -195,8 +233,9 @@ function staffingApprovedWorkflow(company: string): WorkflowProgress {
   }
 }
 
-function staffingRejectedWorkflow(company: string): WorkflowProgress {
+function staffingRejectedWorkflow(company: string, phase: string): WorkflowProgress {
   const reviewNode = company === 'Bantrel' ? 'sp-review-bantrel' : 'sp-review-other'
+  const pdNode = pdNodeForPhase(phase)
   return {
     workflowId: 'workflow-staffing-plan-approval',
     currentNodeId: 'sp-end-reject',
@@ -204,6 +243,12 @@ function staffingRejectedWorkflow(company: string): WorkflowProgress {
       { nodeId: 'sp-start', arrivedAt: submittedAt(0) },
       { nodeId: 'sp-submit', arrivedAt: submittedAt(0) },
       { nodeId: 'sp-cost-review', arrivedAt: submittedAt(0), branch: 'yes' },
+      {
+        nodeId: 'sp-project-gate',
+        arrivedAt: submittedAt(0),
+        branch: phase === 'JS1' ? 'yes' : 'no',
+      },
+      { nodeId: pdNode, arrivedAt: submittedAt(0), branch: 'yes' },
       {
         nodeId: 'sp-hiring-gate',
         arrivedAt: submittedAt(0),
@@ -569,7 +614,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
             lwp,
             submittedAt: submittedAt(idIndex),
             reviewedAt: reviewedAt(idIndex + 1),
-            workflow: staffingApprovedWorkflow(company),
+            workflow: staffingApprovedWorkflow(company, phase),
             totalHours: '1200',
             hourlyCost: '90',
             hoursToGo: '600',
@@ -591,8 +636,8 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
             reviewedAt: revisionTwoStatus === 'approved' ? reviewedAt(idIndex + 3) : undefined,
             workflow:
               revisionTwoStatus === 'approved'
-                ? staffingApprovedWorkflow(company)
-                : staffingPendingWorkflow(company),
+                ? staffingApprovedWorkflow(company, phase)
+                : staffingPendingWorkflow(company, phase),
             totalHours: '1800',
             hoursToGo: '900',
             // Cost change vs r1 so revision diffs can show a delta.
@@ -600,7 +645,9 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
           }),
         )
       } else {
-        const awaitingCost = status === 'pending' && (companyIndex + i) % 2 === 0
+        const pendingBucket = (companyIndex + i) % 3
+        const awaitingCost = status === 'pending' && pendingBucket === 0
+        const awaitingPd = status === 'pending' && pendingBucket === 1
         staffing.push(
           buildStaffingPosition(company, idIndex, {
             id: groupId,
@@ -619,12 +666,14 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
             hourlyCost: awaitingCost ? '' : undefined,
             workflow:
               status === 'approved'
-                ? staffingApprovedWorkflow(company)
+                ? staffingApprovedWorkflow(company, phase)
                 : status === 'rejected'
-                  ? staffingRejectedWorkflow(company)
+                  ? staffingRejectedWorkflow(company, phase)
                   : awaitingCost
                     ? staffingPendingAtCostWorkflow()
-                    : staffingPendingWorkflow(company),
+                    : awaitingPd
+                      ? staffingPendingAtPdWorkflow(phase)
+                      : staffingPendingWorkflow(company, phase),
           }),
         )
       }
@@ -669,7 +718,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
       lwp,
       submittedAt: submittedAt(idIndex),
       reviewedAt: reviewedAt(idIndex + 1),
-      workflow: staffingApprovedWorkflow(company),
+      workflow: staffingApprovedWorkflow(company, phase),
     })
     staffing.push(host)
     allStaffingForRules.push(host)

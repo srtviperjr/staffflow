@@ -447,14 +447,23 @@ export default function StaffingPlanFormPage({
                     onChange={(e) => updateField('hourlyCost', e.target.value)}
                     fullWidth
                     helperText="Cost rate per hour (Cost Engineer)"
-                    slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+                    slotProps={{
+                      htmlInput: { inputMode: 'decimal' },
+                      input: {
+                        startAdornment: (
+                          <Typography component="span" sx={{ mr: 0.5, color: 'text.secondary' }}>
+                            $
+                          </Typography>
+                        ),
+                      },
+                    }}
                   />
                 </Grid>
               ) : null}
               {canViewCost && positionCost != null ? (
                 <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                   <TextField
-                    label="Position Cost"
+                    label="Total Cost"
                     value={formatCostAmount(positionCost)}
                     fullWidth
                     helperText="Hours To Go × Hourly Cost"

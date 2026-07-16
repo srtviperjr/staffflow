@@ -129,7 +129,7 @@ export const DEFAULT_ROLES: AppRole[] = [
     id: 'role-cost-engineer',
     name: 'Cost Engineer',
     description:
-      'First approver on staffing position requests; enters and maintains hourly cost',
+      'Performs Costing Approved on staffing position requests; enters hourly cost',
     userIds: ['user-009', 'user-010', 'user-011'],
     createdAt: '2026-06-01T09:00:00.000Z',
   },

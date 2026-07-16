@@ -27,7 +27,7 @@ export function isProjectDirector(roles: AppRole[]): boolean {
   return hasRole(roles, ROLE_PROJECT_DIRECTOR) || isAdmin(roles)
 }
 
-/** Hourly / position cost fields — Cost Engineers edit; Project Directors may view. */
+/** Hourly / total cost fields — Cost Engineers edit; Project Directors may view. */
 export function canViewCostInfo(roles: AppRole[]): boolean {
   return (
     hasRole(roles, ROLE_COST_ENGINEER) ||
@@ -48,6 +48,7 @@ export function canReviewRequests(roles: AppRole[]): boolean {
   return (
     isManager(roles) ||
     hasRole(roles, ROLE_COST_ENGINEER) ||
+    hasRole(roles, ROLE_PROJECT_DIRECTOR) ||
     isAdmin(roles)
   )
 }

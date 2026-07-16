@@ -154,12 +154,12 @@ function RequestDetails({
             label="Hourly Cost"
             value={hourly.display}
             changed={rateChanged}
-            previousValue={rateChanged ? previous?.hourlyCost : undefined}
+            previousValue={rateChanged ? hourly.previousDisplay : undefined}
             delta={rateChanged ? hourly.delta : undefined}
           />
           {currentPositionCost != null ? (
             <ChangedFieldDetail
-              label="Position Cost"
+              label="Total Cost"
               value={formatCostAmount(currentPositionCost)}
               changed={positionCostChanged}
               previousValue={
@@ -314,7 +314,9 @@ export default function StaffingPlanManagerPage() {
                   previousRevision,
                   STAFFING_PLAN_COMPARE_FIELDS,
                 )
-                const canAct = canActOnWorkflowRequest(request, currentUserRoles, getWorkflow)
+                const canAct = canActOnWorkflowRequest(request, currentUserRoles, getWorkflow, {
+                  userProject: currentUser?.project,
+                })
                 const atCostStep = isCostEngineerReviewStep(request, getWorkflow)
                 const hourlyDraft = draftHourlyCost[request.id] ?? request.hourlyCost ?? ''
                 const draftPositionCost = computePositionCost(request.hoursToGo, hourlyDraft)
@@ -396,12 +398,24 @@ export default function StaffingPlanManagerPage() {
                             fullWidth
                             size="small"
                             error={Boolean(costError[request.id])}
-                            helperText={costError[request.id] || 'Required before Cost Engineer approval'}
-                            slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+                            helperText={
+                              costError[request.id] ||
+                              'Required for Costing Approved'
+                            }
+                            slotProps={{
+                              htmlInput: { inputMode: 'decimal' },
+                              input: {
+                                startAdornment: (
+                                  <Typography component="span" sx={{ mr: 0.5, color: 'text.secondary' }}>
+                                    $
+                                  </Typography>
+                                ),
+                              },
+                            }}
                           />
                           {draftPositionCost != null ? (
                             <Typography variant="body2" sx={{ mt: 1.25 }}>
-                              <strong>Position Cost:</strong> {formatCostAmount(draftPositionCost)}
+                              <strong>Total Cost:</strong> {formatCostAmount(draftPositionCost)}
                               <Typography component="span" variant="caption" color="text.secondary">
                                 {' '}
                                 (Hours To Go × Hourly Cost)

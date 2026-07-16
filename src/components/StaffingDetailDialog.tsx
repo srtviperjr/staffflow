@@ -15,7 +15,11 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 import type { StaffingPlanRequest } from '../types/staffingPlan'
 import { formatDisplayDate } from '../utils/staffingPlanDates'
-import { computePositionCost, formatCostAmount } from '../utils/positionCost'
+import {
+  computePositionCost,
+  formatCostAmount,
+  formatHourlyCostDisplay,
+} from '../utils/positionCost'
 
 interface StaffingDetailDialogProps {
   request: StaffingPlanRequest | null
@@ -92,9 +96,9 @@ export default function StaffingDetailDialog({
             <Detail label="Hours To Go" value={request.hoursToGo} />
             {showCost ? (
               <>
-                <Detail label="Hourly Cost" value={request.hourlyCost} />
+                <Detail label="Hourly Cost" value={formatHourlyCostDisplay(request.hourlyCost)} />
                 {positionCost != null ? (
-                  <Detail label="Position Cost" value={formatCostAmount(positionCost)} />
+                  <Detail label="Total Cost" value={formatCostAmount(positionCost)} />
                 ) : null}
               </>
             ) : null}

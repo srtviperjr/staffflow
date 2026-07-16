@@ -63,9 +63,17 @@ export default function HomePage() {
         pafRequests,
         roles: currentUserRoles,
         company: currentUser?.company,
+        userProject: currentUser?.project,
         getWorkflow,
       }),
-    [staffingRequests, pafRequests, currentUserRoles, currentUser?.company, getWorkflow],
+    [
+      staffingRequests,
+      pafRequests,
+      currentUserRoles,
+      currentUser?.company,
+      currentUser?.project,
+      getWorkflow,
+    ],
   )
 
   const availableWorkflows = [
