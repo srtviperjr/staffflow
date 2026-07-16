@@ -56,7 +56,9 @@ import {
   STICKY_EXPAND_DETAIL_WIDTH,
   buildStickyColumnLayout,
   columnWidth,
+  groupStickyColumnsFirst,
   loadStickyColumnIds,
+  mergeColumnOrder,
   stickyEdgeShadow,
 } from '../../utils/stickyTableColumns'
 import type { ProjectAuthorizationRequest } from '../../types/projectAuthorization'
@@ -72,9 +74,9 @@ import {
   type PafRegisterColumnId,
 } from '../../utils/pafRegister'
 
-const COLUMN_ORDER_KEY = 'paf-register-column-order'
-const COLUMN_VISIBLE_KEY = 'paf-register-visible-columns'
-const COLUMN_STICKY_KEY = 'paf-register-sticky-columns'
+const COLUMN_ORDER_KEY = 'paf-register-column-order-v2'
+const COLUMN_VISIBLE_KEY = 'paf-register-visible-columns-v2'
+const COLUMN_STICKY_KEY = 'paf-register-sticky-columns-v2'
 const EXPAND_COL_WIDTH = 48
 const ACTIONS_COL_WIDTH = 118
 const META_WIDTH_FALLBACK = 110
@@ -114,17 +116,8 @@ function statusChipColor(status: string): 'default' | 'warning' | 'success' | 'e
 function loadColumnOrder(): PafRegisterColumnId[] {
   try {
     const stored = localStorage.getItem(COLUMN_ORDER_KEY)
-    if (!stored) return [...DEFAULT_PAF_COLUMN_ORDER]
-    const parsed = JSON.parse(stored) as PafRegisterColumnId[]
-    if (!Array.isArray(parsed)) return [...DEFAULT_PAF_COLUMN_ORDER]
-    const known = new Set(DEFAULT_PAF_COLUMN_ORDER)
-    const filtered = parsed.filter((id) => known.has(id))
-    for (const id of DEFAULT_PAF_COLUMN_ORDER) {
-      if (filtered.includes(id)) continue
-      const defaultIndex = DEFAULT_PAF_COLUMN_ORDER.indexOf(id)
-      filtered.splice(Math.min(defaultIndex, filtered.length), 0, id)
-    }
-    return filtered
+    const parsed = stored ? (JSON.parse(stored) as PafRegisterColumnId[]) : null
+    return mergeColumnOrder(parsed, DEFAULT_PAF_COLUMN_ORDER, DEFAULT_PAF_STICKY_COLUMNS)
   } catch {
     return [...DEFAULT_PAF_COLUMN_ORDER]
   }
@@ -258,9 +251,15 @@ export default function PafRegisterPage() {
   }
 
   const toggleColumnSticky = (columnId: PafRegisterColumnId) => {
-    setStickyColumns((prev) =>
-      prev.includes(columnId) ? prev.filter((id) => id !== columnId) : [...prev, columnId],
-    )
+    setStickyColumns((prev) => {
+      const next = prev.includes(columnId)
+        ? prev.filter((id) => id !== columnId)
+        : [...prev, columnId]
+      if (!prev.includes(columnId)) {
+        setColumnOrder((order) => groupStickyColumnsFirst(order, next))
+      }
+      return next
+    })
   }
 
   const moveColumn = (columnId: PafRegisterColumnId, direction: -1 | 1) => {

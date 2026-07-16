@@ -65,3 +65,37 @@ export function loadStickyColumnIds<T extends string>(
     return [...defaults]
   }
 }
+
+/**
+ * Keep sticky columns contiguous at the start of the order so freeze-left
+ * works (non-sticky columns between sticky ones break the sticky block).
+ */
+export function groupStickyColumnsFirst<T extends string>(
+  columnOrder: readonly T[],
+  stickyColumnIds: readonly T[],
+): T[] {
+  const stickySet = new Set(stickyColumnIds)
+  const stickyOrdered = columnOrder.filter((id) => stickySet.has(id))
+  const rest = columnOrder.filter((id) => !stickySet.has(id))
+  return [...stickyOrdered, ...rest]
+}
+
+/** Merge a stored order with defaults, then put `leadingIds` first. */
+export function mergeColumnOrder<T extends string>(
+  stored: readonly T[] | null | undefined,
+  defaults: readonly T[],
+  leadingIds: readonly T[] = [],
+): T[] {
+  if (!stored || !Array.isArray(stored)) {
+    return [...defaults]
+  }
+  const known = new Set(defaults)
+  const filtered = stored.filter((id) => known.has(id))
+  for (const id of defaults) {
+    if (filtered.includes(id)) continue
+    const defaultIndex = defaults.indexOf(id)
+    filtered.splice(Math.min(defaultIndex, filtered.length), 0, id)
+  }
+  if (leadingIds.length === 0) return filtered
+  return groupStickyColumnsFirst(filtered, leadingIds)
+}
