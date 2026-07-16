@@ -9,6 +9,7 @@ export type LocationCategory = 'Site - Comm' | 'Site - Const' | 'Office'
 
 export interface StaffingMatrixRow {
   id: string
+  revisionGroupId: string
   authorization?: ProjectAuthorizationRequest
   phase: string
   projectOffice: string
@@ -216,6 +217,7 @@ function buildRow(
 
   return {
     id: position.id,
+    revisionGroupId: position.revisionGroupId,
     authorization,
     phase: position.phase,
     projectOffice: position.locationType,

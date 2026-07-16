@@ -10,7 +10,6 @@ import {
   Divider,
   FormControl,
   IconButton,
-  InputLabel,
   List,
   ListItem,
   ListItemIcon,
@@ -27,7 +26,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import TableChartIcon from '@mui/icons-material/TableChart'
+import VerifiedIcon from '@mui/icons-material/Verified'
 import ViewColumnIcon from '@mui/icons-material/ViewColumn'
 import FilterAltOffIcon from '@mui/icons-material/FilterAltOff'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
@@ -40,34 +39,31 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import PafDetailDialog from '../../components/PafDetailDialog'
-import StaffingDetailDialog from '../../components/StaffingDetailDialog'
 import RejectDialog from '../../components/RejectDialog'
 import { filterByCompanyVisibility } from '../../constants/companies'
 import { useProjectAuthorizationRequests } from '../../context/ProjectAuthorizationContext'
 import { useRoles } from '../../context/RolesContext'
-import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
 import { canReviewRequests, canSubmitRequests } from '../../utils/permissions'
 import {
-  getRelatedItemsForStaffingPosition,
+  getRelatedItemsForPafRequest,
   type RelatedRegisterItem,
 } from '../../utils/relatedRegisterItems'
+import { ganttBarRole, statusBarColor } from '../../utils/ganttPeriods'
 import type { ProjectAuthorizationRequest } from '../../types/projectAuthorization'
-import type { StaffingPlanRequest } from '../../types/staffingPlan'
 import {
-  DEFAULT_COLUMN_ORDER,
-  MATRIX_COLUMN_DEFS,
-  buildStaffingMatrixRows,
-  buildSummaryRows,
-  filterMatrixRows,
-  getMatrixPeriods,
-  getOrderedVisibleColumns,
-  getUniqueColumnValues,
-  type MatrixColumnId,
-  type StaffingMatrixRow,
-} from '../../utils/staffingPlanMatrix'
+  DEFAULT_PAF_COLUMN_ORDER,
+  PAF_REGISTER_COLUMN_DEFS,
+  buildPafRegisterRows,
+  filterPafRegisterRows,
+  getOrderedVisiblePafColumns,
+  getPafRegisterPeriods,
+  getUniquePafColumnValues,
+  type PafRegisterColumnId,
+  type PafRegisterRow,
+} from '../../utils/pafRegister'
 
-const COLUMN_ORDER_KEY = 'staffing-matrix-column-order'
-const COLUMN_VISIBLE_KEY = 'staffing-matrix-visible-columns'
+const COLUMN_ORDER_KEY = 'paf-register-column-order'
+const COLUMN_VISIBLE_KEY = 'paf-register-visible-columns'
 
 const cellSx = {
   border: '1px solid #bdbdbd',
@@ -77,153 +73,131 @@ const cellSx = {
   whiteSpace: 'nowrap' as const,
 }
 
-const stickyMetaSx = {
-  ...cellSx,
-  position: 'sticky' as const,
-  left: 0,
-  zIndex: 2,
-  bgcolor: 'background.paper',
-  minWidth: 110,
-}
-
 const periodHeaderSx = {
   ...cellSx,
-  minWidth: 58,
-  maxWidth: 58,
+  minWidth: 28,
+  maxWidth: 28,
   textAlign: 'center' as const,
   verticalAlign: 'bottom' as const,
   height: 96,
-  p: 0.5,
+  p: 0.25,
 }
 
 const rotatedLabelSx = {
   writingMode: 'vertical-rl' as const,
   transform: 'rotate(180deg)',
-  fontSize: '0.7rem',
+  fontSize: '0.65rem',
   fontWeight: 600,
   lineHeight: 1.1,
 }
 
-function formatPeriodLabel(period: string) {
-  return period
-}
-
-function formatLoad(value: number | null | undefined) {
-  if (value == null) return ''
-  return Number.isInteger(value) ? String(value) : value.toFixed(2)
-}
-
-function statusColor(status: string): 'default' | 'warning' | 'success' | 'error' {
+function statusChipColor(status: string): 'default' | 'warning' | 'success' | 'error' {
   if (status === 'approved') return 'success'
   if (status === 'rejected') return 'error'
   return 'warning'
 }
 
-function loadColumnOrder(): MatrixColumnId[] {
+function loadColumnOrder(): PafRegisterColumnId[] {
   try {
     const stored = localStorage.getItem(COLUMN_ORDER_KEY)
-    if (!stored) return [...DEFAULT_COLUMN_ORDER]
-    const parsed = JSON.parse(stored) as MatrixColumnId[]
-    if (!Array.isArray(parsed)) return [...DEFAULT_COLUMN_ORDER]
-    const known = new Set(DEFAULT_COLUMN_ORDER)
+    if (!stored) return [...DEFAULT_PAF_COLUMN_ORDER]
+    const parsed = JSON.parse(stored) as PafRegisterColumnId[]
+    if (!Array.isArray(parsed)) return [...DEFAULT_PAF_COLUMN_ORDER]
+    const known = new Set(DEFAULT_PAF_COLUMN_ORDER)
     const filtered = parsed.filter((id) => known.has(id))
-    for (const id of DEFAULT_COLUMN_ORDER) {
+    for (const id of DEFAULT_PAF_COLUMN_ORDER) {
       if (!filtered.includes(id)) filtered.push(id)
     }
     return filtered
   } catch {
-    return [...DEFAULT_COLUMN_ORDER]
+    return [...DEFAULT_PAF_COLUMN_ORDER]
   }
 }
 
-function loadVisibleColumns(): MatrixColumnId[] {
+function loadVisibleColumns(): PafRegisterColumnId[] {
   try {
     const stored = localStorage.getItem(COLUMN_VISIBLE_KEY)
-    if (!stored) return [...DEFAULT_COLUMN_ORDER]
-    const parsed = JSON.parse(stored) as MatrixColumnId[]
-    if (!Array.isArray(parsed) || parsed.length === 0) return [...DEFAULT_COLUMN_ORDER]
-    const known = new Set(DEFAULT_COLUMN_ORDER)
+    if (!stored) return [...DEFAULT_PAF_COLUMN_ORDER]
+    const parsed = JSON.parse(stored) as PafRegisterColumnId[]
+    if (!Array.isArray(parsed) || parsed.length === 0) return [...DEFAULT_PAF_COLUMN_ORDER]
+    const known = new Set(DEFAULT_PAF_COLUMN_ORDER)
     return parsed.filter((id) => known.has(id))
   } catch {
-    return [...DEFAULT_COLUMN_ORDER]
+    return [...DEFAULT_PAF_COLUMN_ORDER]
   }
 }
 
-function renderMetadataCell(
-  row: StaffingMatrixRow,
-  columnId: MatrixColumnId,
-  value: string,
-  onCreatePaf: (positionId: string) => void,
-  onOpenPaf: (authorization: ProjectAuthorizationRequest) => void,
-) {
-  if (columnId !== 'candidate') {
-    return value
-  }
-
-  if (!row.authorization) {
+function GanttCell({
+  period,
+  periods,
+  row,
+}: {
+  period: string
+  periods: string[]
+  row: PafRegisterRow
+}) {
+  const role = ganttBarRole(period, periods, row.startBiWeekRaw, row.lwpRaw)
+  if (role === 'none') {
     return (
-      <Button
-        variant="text"
-        size="small"
-        onClick={() => onCreatePaf(row.id)}
+      <TableCell
         sx={{
-          textTransform: 'none',
+          ...cellSx,
+          minWidth: 28,
+          maxWidth: 28,
           p: 0,
-          minWidth: 0,
-          fontWeight: 400,
-          fontSize: '0.75rem',
-          color: 'text.secondary',
-          verticalAlign: 'baseline',
-          '&:hover': { color: 'primary.main' },
+          bgcolor: 'rgba(0,0,0,0.02)',
         }}
-      >
-        None
-      </Button>
+      />
     )
   }
 
+  const color = statusBarColor(row.status)
+  const radius =
+    role === 'single'
+      ? 6
+      : role === 'start'
+        ? '6px 0 0 6px'
+        : role === 'end'
+          ? '0 6px 6px 0'
+          : 0
+
   return (
-    <Button
-      variant="text"
-      size="small"
-      onClick={() => onOpenPaf(row.authorization!)}
+    <TableCell
       sx={{
-        textTransform: 'none',
-        p: 0,
-        minWidth: 0,
-        fontWeight: 600,
-        fontSize: '0.75rem',
-        verticalAlign: 'baseline',
+        ...cellSx,
+        minWidth: 28,
+        maxWidth: 28,
+        p: 0.25,
+        borderLeft: role === 'middle' || role === 'end' ? 'none' : undefined,
+        borderRight: role === 'middle' || role === 'start' ? 'none' : undefined,
       }}
     >
-      {value}
-    </Button>
+      <Box
+        sx={{
+          height: 18,
+          bgcolor: color,
+          borderRadius: radius,
+          opacity: 0.9,
+        }}
+        title={`${row.candidate}: ${row.startBiWeek} → ${row.lwp}`}
+      />
+    </TableCell>
   )
 }
 
-export default function StaffingPlanMatrixPage() {
+export default function PafRegisterPage() {
   const navigate = useNavigate()
   const { currentUser, currentUserRoles } = useRoles()
-  const {
-    requests: staffingRequests,
-    approveRequest: approveStaffing,
-    rejectRequest: rejectStaffing,
-  } = useStaffingPlanRequests()
-  const {
-    requests: authorizationRequests,
-    approveRequest: approvePaf,
-    rejectRequest: rejectPaf,
-  } = useProjectAuthorizationRequests()
+  const { requests, approveRequest, rejectRequest } = useProjectAuthorizationRequests()
   const canRevise = canSubmitRequests(currentUserRoles)
   const canReview = canReviewRequests(currentUserRoles)
 
   const [selectedPaf, setSelectedPaf] = useState<ProjectAuthorizationRequest | null>(null)
-  const [selectedStaffing, setSelectedStaffing] = useState<StaffingPlanRequest | null>(null)
   const [rejectTarget, setRejectTarget] = useState<RelatedRegisterItem | null>(null)
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({})
-  const [columnOrder, setColumnOrder] = useState<MatrixColumnId[]>(loadColumnOrder)
-  const [visibleColumns, setVisibleColumns] = useState<MatrixColumnId[]>(loadVisibleColumns)
-  const [filters, setFilters] = useState<Partial<Record<MatrixColumnId, string>>>({})
+  const [columnOrder, setColumnOrder] = useState<PafRegisterColumnId[]>(loadColumnOrder)
+  const [visibleColumns, setVisibleColumns] = useState<PafRegisterColumnId[]>(loadVisibleColumns)
+  const [filters, setFilters] = useState<Partial<Record<PafRegisterColumnId, string>>>({})
   const [columnsAnchor, setColumnsAnchor] = useState<HTMLElement | null>(null)
 
   useEffect(() => {
@@ -234,61 +208,33 @@ export default function StaffingPlanMatrixPage() {
     localStorage.setItem(COLUMN_VISIBLE_KEY, JSON.stringify(visibleColumns))
   }, [visibleColumns])
 
-  const visibleStaffingRequests = useMemo(
-    () => filterByCompanyVisibility(staffingRequests, currentUser?.company),
-    [staffingRequests, currentUser?.company],
-  )
-  const visibleAuthorizationRequests = useMemo(
-    () => filterByCompanyVisibility(authorizationRequests, currentUser?.company),
-    [authorizationRequests, currentUser?.company],
+  const visibleRequests = useMemo(
+    () => filterByCompanyVisibility(requests, currentUser?.company),
+    [requests, currentUser?.company],
   )
 
-  const periods = useMemo(() => getMatrixPeriods(), [])
-  const rows = useMemo(
-    () => buildStaffingMatrixRows(visibleStaffingRequests, visibleAuthorizationRequests, periods),
-    [visibleStaffingRequests, visibleAuthorizationRequests, periods],
-  )
-  const filteredRows = useMemo(() => filterMatrixRows(rows, filters), [rows, filters])
-  const summaryRows = useMemo(() => buildSummaryRows(periods), [periods])
+  const periods = useMemo(() => getPafRegisterPeriods(), [])
+  const rows = useMemo(() => buildPafRegisterRows(visibleRequests), [visibleRequests])
+  const filteredRows = useMemo(() => filterPafRegisterRows(rows, filters), [rows, filters])
   const visibleColumnDefs = useMemo(
-    () => getOrderedVisibleColumns(columnOrder, visibleColumns),
+    () => getOrderedVisiblePafColumns(columnOrder, visibleColumns),
     [columnOrder, visibleColumns],
   )
 
   const relatedByRowId = useMemo(() => {
     const map = new Map<string, RelatedRegisterItem[]>()
     for (const row of rows) {
-      const position = visibleStaffingRequests.find((request) => request.id === row.id)
-      if (!position) {
-        map.set(row.id, [])
-        continue
-      }
-      map.set(
-        row.id,
-        getRelatedItemsForStaffingPosition(
-          position,
-          visibleStaffingRequests,
-          visibleAuthorizationRequests,
-        ),
-      )
+      map.set(row.id, getRelatedItemsForPafRequest(row.request, visibleRequests))
     }
     return map
-  }, [rows, visibleStaffingRequests, visibleAuthorizationRequests])
+  }, [rows, visibleRequests])
 
   const activeFilterCount = useMemo(
     () => Object.values(filters).filter(Boolean).length,
     [filters],
   )
 
-  const handleCreatePaf = (positionId: string) => {
-    navigate(`/project-authorization?positionId=${positionId}`)
-  }
-
-  const handleRevise = (positionId: string) => {
-    navigate(`/staffing-plan/revise/${positionId}`)
-  }
-
-  const setFilterValue = (columnId: MatrixColumnId, value: string) => {
+  const setFilterValue = (columnId: PafRegisterColumnId, value: string) => {
     setFilters((prev) => {
       if (!value) {
         const next = { ...prev }
@@ -301,7 +247,7 @@ export default function StaffingPlanMatrixPage() {
 
   const clearFilters = () => setFilters({})
 
-  const toggleColumnVisible = (columnId: MatrixColumnId) => {
+  const toggleColumnVisible = (columnId: PafRegisterColumnId) => {
     setVisibleColumns((prev) => {
       if (prev.includes(columnId)) {
         if (prev.length === 1) return prev
@@ -311,7 +257,7 @@ export default function StaffingPlanMatrixPage() {
     })
   }
 
-  const moveColumn = (columnId: MatrixColumnId, direction: -1 | 1) => {
+  const moveColumn = (columnId: PafRegisterColumnId, direction: -1 | 1) => {
     setColumnOrder((prev) => {
       const index = prev.indexOf(columnId)
       if (index < 0) return prev
@@ -325,47 +271,26 @@ export default function StaffingPlanMatrixPage() {
   }
 
   const resetColumns = () => {
-    setColumnOrder([...DEFAULT_COLUMN_ORDER])
-    setVisibleColumns([...DEFAULT_COLUMN_ORDER])
-  }
-
-  const toggleExpanded = (rowId: string) => {
-    setExpandedRows((prev) => ({ ...prev, [rowId]: !prev[rowId] }))
-  }
-
-  const openRelatedItem = (item: RelatedRegisterItem) => {
-    if (item.kind === 'staffing-plan' && item.staffingRequest) {
-      setSelectedStaffing(item.staffingRequest)
-      return
-    }
-    if (item.pafRequest) setSelectedPaf(item.pafRequest)
-  }
-
-  const handleApproveRelated = (item: RelatedRegisterItem) => {
-    if (item.kind === 'staffing-plan') approveStaffing(item.id)
-    else approvePaf(item.id)
-    setSelectedStaffing(null)
-    setSelectedPaf(null)
-  }
-
-  const handleRejectConfirm = (comment: string) => {
-    if (!rejectTarget) return
-    if (rejectTarget.kind === 'staffing-plan') rejectStaffing(rejectTarget.id, comment)
-    else rejectPaf(rejectTarget.id, comment)
-    setRejectTarget(null)
-    setSelectedStaffing(null)
-    setSelectedPaf(null)
+    setColumnOrder([...DEFAULT_PAF_COLUMN_ORDER])
+    setVisibleColumns([...DEFAULT_PAF_COLUMN_ORDER])
   }
 
   const orderedColumnDefsForPanel = useMemo(
     () =>
       columnOrder
-        .map((id) => MATRIX_COLUMN_DEFS.find((column) => column.id === id))
-        .filter((column): column is (typeof MATRIX_COLUMN_DEFS)[number] => Boolean(column)),
+        .map((id) => PAF_REGISTER_COLUMN_DEFS.find((column) => column.id === id))
+        .filter((column): column is (typeof PAF_REGISTER_COLUMN_DEFS)[number] => Boolean(column)),
     [columnOrder],
   )
 
   const metadataColSpan = visibleColumnDefs.length + 1 + (canRevise ? 1 : 0)
+
+  const handleRejectConfirm = (comment: string) => {
+    if (!rejectTarget) return
+    rejectRequest(rejectTarget.id, comment)
+    setRejectTarget(null)
+    setSelectedPaf(null)
+  }
 
   return (
     <Box>
@@ -380,13 +305,13 @@ export default function StaffingPlanMatrixPage() {
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <TableChartIcon color="primary" sx={{ fontSize: 36 }} />
+          <VerifiedIcon color="secondary" sx={{ fontSize: 36 }} />
           <Box>
-            <Typography variant="h4" color="primary">
-              Staffing Plan
+            <Typography variant="h4" color="secondary">
+              PAF Register
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Expand rows to view revisions and pending approvals. Date columns stay fixed.
+              PAF requests and revisions with a Gantt-style duration calendar on the right.
             </Typography>
           </Box>
         </Box>
@@ -403,6 +328,7 @@ export default function StaffingPlanMatrixPage() {
           </Button>
           <Button
             variant="contained"
+            color="secondary"
             size="small"
             startIcon={<ViewColumnIcon />}
             onClick={(event) => setColumnsAnchor(event.currentTarget)}
@@ -430,7 +356,7 @@ export default function StaffingPlanMatrixPage() {
             </Button>
           </Box>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-            Show/hide and reorder metadata fields. Bi-week date columns cannot be changed.
+            Show/hide and reorder fields. The duration calendar stays fixed on the right.
           </Typography>
           <Divider sx={{ mb: 1 }} />
           <List dense disablePadding>
@@ -444,7 +370,6 @@ export default function StaffingPlanMatrixPage() {
                       <IconButton
                         edge="end"
                         size="small"
-                        aria-label={`Move ${column.label} up`}
                         disabled={index === 0}
                         onClick={() => moveColumn(column.id, -1)}
                       >
@@ -453,7 +378,6 @@ export default function StaffingPlanMatrixPage() {
                       <IconButton
                         edge="end"
                         size="small"
-                        aria-label={`Move ${column.label} down`}
                         disabled={index === orderedColumnDefsForPanel.length - 1}
                         onClick={() => moveColumn(column.id, 1)}
                       >
@@ -486,11 +410,10 @@ export default function StaffingPlanMatrixPage() {
           {rows.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 8 }}>
               <Typography variant="h6" color="text.secondary" gutterBottom>
-                No approved positions yet
+                No PAF requests yet
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Approve position requests to populate the staffing plan matrix. PAF requests are
-                optional and can be linked later.
+                Submit PAF requests against approved staffing positions to populate the register.
               </Typography>
             </Box>
           ) : filteredRows.length === 0 ? (
@@ -506,40 +429,6 @@ export default function StaffingPlanMatrixPage() {
             <TableContainer sx={{ maxHeight: '75vh', overflow: 'auto', border: '1px solid #bdbdbd' }}>
               <Table size="small" stickyHeader sx={{ borderCollapse: 'collapse' }}>
                 <TableHead>
-                  {summaryRows.map((summary) => (
-                    <TableRow key={summary.label}>
-                      <TableCell
-                        colSpan={Math.max(metadataColSpan, 1)}
-                        sx={{
-                          ...stickyMetaSx,
-                          left: 0,
-                          zIndex: 5,
-                          bgcolor: '#e53935',
-                          color: 'white',
-                          fontWeight: 700,
-                        }}
-                      >
-                        {summary.label}
-                      </TableCell>
-                      {periods.map((period) => (
-                        <TableCell
-                          key={`${summary.label}-${period}`}
-                          align="center"
-                          sx={{
-                            ...cellSx,
-                            bgcolor: '#e53935',
-                            color: 'white',
-                            fontWeight: 700,
-                            minWidth: 58,
-                            zIndex: 4,
-                          }}
-                        >
-                          {summary.values[period]}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-
                   <TableRow>
                     <TableCell
                       sx={{
@@ -548,11 +437,10 @@ export default function StaffingPlanMatrixPage() {
                         top: 0,
                         left: 0,
                         zIndex: 6,
-                        bgcolor: '#9e9e9e',
+                        bgcolor: '#6a1b9a',
                         color: 'white',
                         fontWeight: 700,
                         minWidth: 48,
-                        width: 48,
                       }}
                     />
                     {visibleColumnDefs.map((column) => (
@@ -563,7 +451,7 @@ export default function StaffingPlanMatrixPage() {
                           position: 'sticky',
                           top: 0,
                           zIndex: 5,
-                          bgcolor: '#9e9e9e',
+                          bgcolor: '#6a1b9a',
                           color: 'white',
                           fontWeight: 700,
                           minWidth: column.minWidth ?? 110,
@@ -579,7 +467,7 @@ export default function StaffingPlanMatrixPage() {
                           position: 'sticky',
                           top: 0,
                           zIndex: 5,
-                          bgcolor: '#9e9e9e',
+                          bgcolor: '#6a1b9a',
                           color: 'white',
                           fontWeight: 700,
                           minWidth: 96,
@@ -591,9 +479,9 @@ export default function StaffingPlanMatrixPage() {
                     {periods.map((period) => (
                       <TableCell
                         key={period}
-                        sx={{ ...periodHeaderSx, bgcolor: '#9e9e9e', color: 'white', zIndex: 4 }}
+                        sx={{ ...periodHeaderSx, bgcolor: '#6a1b9a', color: 'white', zIndex: 4 }}
                       >
-                        <Box sx={rotatedLabelSx}>{formatPeriodLabel(period)}</Box>
+                        <Box sx={rotatedLabelSx}>{period}</Box>
                       </TableCell>
                     ))}
                   </TableRow>
@@ -606,12 +494,12 @@ export default function StaffingPlanMatrixPage() {
                         top: 40,
                         left: 0,
                         zIndex: 6,
-                        bgcolor: '#eceff1',
+                        bgcolor: '#f3e5f5',
                         minWidth: 48,
                       }}
                     />
                     {visibleColumnDefs.map((column) => {
-                      const options = getUniqueColumnValues(rows, column.id)
+                      const options = getUniquePafColumnValues(rows, column.id)
                       return (
                         <TableCell
                           key={`filter-${column.id}`}
@@ -620,17 +508,13 @@ export default function StaffingPlanMatrixPage() {
                             position: 'sticky',
                             top: 40,
                             zIndex: 5,
-                            bgcolor: '#eceff1',
+                            bgcolor: '#f3e5f5',
                             minWidth: column.minWidth ?? 110,
                             p: 0.5,
                           }}
                         >
                           <FormControl size="small" fullWidth>
-                            <InputLabel id={`filter-${column.id}-label`} shrink={false} sx={{ display: 'none' }}>
-                              {column.label}
-                            </InputLabel>
                             <Select
-                              labelId={`filter-${column.id}-label`}
                               displayEmpty
                               value={filters[column.id] ?? ''}
                               onChange={(event) => setFilterValue(column.id, event.target.value)}
@@ -660,24 +544,26 @@ export default function StaffingPlanMatrixPage() {
                           position: 'sticky',
                           top: 40,
                           zIndex: 5,
-                          bgcolor: '#eceff1',
+                          bgcolor: '#f3e5f5',
                           minWidth: 96,
                         }}
                       />
                     ) : null}
-                    {periods.map((period) => (
-                      <TableCell
-                        key={`filter-period-${period}`}
-                        sx={{
-                          ...cellSx,
-                          position: 'sticky',
-                          top: 40,
-                          zIndex: 4,
-                          bgcolor: '#eceff1',
-                          minWidth: 58,
-                        }}
-                      />
-                    ))}
+                    <TableCell
+                      colSpan={periods.length}
+                      sx={{
+                        ...cellSx,
+                        position: 'sticky',
+                        top: 40,
+                        zIndex: 4,
+                        bgcolor: '#f3e5f5',
+                        fontSize: '0.7rem',
+                        color: 'text.secondary',
+                        textAlign: 'center',
+                      }}
+                    >
+                      Duration calendar (no values — bar shows start bi-week through LWP)
+                    </TableCell>
                   </TableRow>
                 </TableHead>
 
@@ -696,14 +582,15 @@ export default function StaffingPlanMatrixPage() {
                               zIndex: 1,
                               bgcolor: 'background.paper',
                               minWidth: 48,
-                              width: 48,
                               p: 0.25,
                             }}
                           >
                             <IconButton
                               size="small"
-                              aria-label={expanded ? 'Collapse related items' : 'Expand related items'}
-                              onClick={() => toggleExpanded(row.id)}
+                              aria-label={expanded ? 'Collapse revisions' : 'Expand revisions'}
+                              onClick={() =>
+                                setExpandedRows((prev) => ({ ...prev, [row.id]: !prev[row.id] }))
+                              }
                               disabled={related.length === 0}
                             >
                               {expanded ? <RemoveIcon fontSize="small" /> : <AddIcon fontSize="small" />}
@@ -714,17 +601,27 @@ export default function StaffingPlanMatrixPage() {
                             return (
                               <TableCell
                                 key={`${row.id}-${column.id}`}
-                                sx={{
-                                  ...cellSx,
-                                  minWidth: column.minWidth ?? 110,
-                                }}
+                                sx={{ ...cellSx, minWidth: column.minWidth ?? 110 }}
                               >
-                                {renderMetadataCell(
-                                  row,
-                                  column.id,
-                                  value,
-                                  handleCreatePaf,
-                                  setSelectedPaf,
+                                {column.id === 'status' ? (
+                                  <Chip size="small" label={value} color={statusChipColor(value)} />
+                                ) : column.id === 'candidate' ? (
+                                  <Button
+                                    variant="text"
+                                    size="small"
+                                    onClick={() => setSelectedPaf(row.request)}
+                                    sx={{
+                                      textTransform: 'none',
+                                      p: 0,
+                                      minWidth: 0,
+                                      fontWeight: 600,
+                                      fontSize: '0.75rem',
+                                    }}
+                                  >
+                                    {value}
+                                  </Button>
+                                ) : (
+                                  value
                                 )}
                               </TableCell>
                             )
@@ -734,36 +631,34 @@ export default function StaffingPlanMatrixPage() {
                               <Button
                                 size="small"
                                 variant="outlined"
+                                color="secondary"
                                 startIcon={<EditIcon />}
-                                onClick={() => handleRevise(row.id)}
-                                sx={{ textTransform: 'none', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                                onClick={() => navigate(`/project-authorization/revise/${row.id}`)}
+                                sx={{ textTransform: 'none', fontSize: '0.75rem' }}
                               >
                                 Revise
                               </Button>
                             </TableCell>
                           ) : null}
                           {periods.map((period) => (
-                            <TableCell
+                            <GanttCell
                               key={`${row.id}-${period}`}
-                              align="center"
-                              sx={{
-                                ...cellSx,
-                                bgcolor: row.loads[period] != null ? 'rgba(211, 84, 0, 0.06)' : undefined,
-                                fontWeight: row.loads[period] != null ? 600 : 400,
-                                color: row.loads[period] != null ? 'primary.main' : 'text.secondary',
-                              }}
-                            >
-                              {formatLoad(row.loads[period])}
-                            </TableCell>
+                              period={period}
+                              periods={periods}
+                              row={row}
+                            />
                           ))}
                         </TableRow>
 
                         {expanded
                           ? related.map((item) => (
-                              <TableRow key={`${row.id}-related-${item.kind}-${item.id}`} sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
+                              <TableRow
+                                key={`${row.id}-rev-${item.id}`}
+                                sx={{ bgcolor: 'rgba(106, 27, 154, 0.04)' }}
+                              >
                                 <TableCell
                                   colSpan={metadataColSpan}
-                                  sx={{ ...cellSx, bgcolor: 'rgba(245,245,245,0.9)', py: 1 }}
+                                  sx={{ ...cellSx, bgcolor: 'rgba(243,229,245,0.65)', py: 1 }}
                                 >
                                   <Box
                                     sx={{
@@ -780,17 +675,11 @@ export default function StaffingPlanMatrixPage() {
                                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
                                           {item.title}
                                         </Typography>
-                                        <Chip
-                                          size="small"
-                                          label={item.kind === 'staffing-plan' ? 'Position' : 'PAF'}
-                                          variant="outlined"
-                                          color={item.kind === 'staffing-plan' ? 'primary' : 'secondary'}
-                                        />
                                         <Chip size="small" label={`Rev ${item.revision}`} variant="outlined" />
                                         <Chip
                                           size="small"
                                           label={item.status}
-                                          color={statusColor(item.status)}
+                                          color={statusChipColor(item.status)}
                                         />
                                       </Box>
                                       <Typography variant="caption" color="text.secondary">
@@ -798,12 +687,12 @@ export default function StaffingPlanMatrixPage() {
                                         {new Date(item.submittedAt).toLocaleString()}
                                       </Typography>
                                     </Box>
-                                    <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+                                    <Stack direction="row" spacing={1}>
                                       <Button
                                         size="small"
                                         variant="outlined"
                                         startIcon={<VisibilityIcon />}
-                                        onClick={() => openRelatedItem(item)}
+                                        onClick={() => item.pafRequest && setSelectedPaf(item.pafRequest)}
                                       >
                                         View
                                       </Button>
@@ -814,7 +703,7 @@ export default function StaffingPlanMatrixPage() {
                                             variant="contained"
                                             color="success"
                                             startIcon={<CheckCircleIcon />}
-                                            onClick={() => handleApproveRelated(item)}
+                                            onClick={() => approveRequest(item.id)}
                                           >
                                             Approve
                                           </Button>
@@ -835,7 +724,7 @@ export default function StaffingPlanMatrixPage() {
                                 {periods.map((period) => (
                                   <TableCell
                                     key={`${row.id}-${item.id}-${period}`}
-                                    sx={{ ...cellSx, bgcolor: 'rgba(245,245,245,0.9)' }}
+                                    sx={{ ...cellSx, bgcolor: 'rgba(243,229,245,0.65)', minWidth: 28 }}
                                   />
                                 ))}
                               </TableRow>
@@ -851,12 +740,12 @@ export default function StaffingPlanMatrixPage() {
 
           {rows.length > 0 && filteredRows.length > 0 ? (
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
-              Showing {filteredRows.length} of {rows.length} positions
+              Showing {filteredRows.length} of {rows.length} PAF requests
               {activeFilterCount > 0
                 ? ` · ${activeFilterCount} filter${activeFilterCount === 1 ? '' : 's'} applied`
                 : ''}
               {' · '}
-              {visibleColumnDefs.length} metadata columns visible
+              Calendar bars show duration from start bi-week to LWP
             </Typography>
           ) : null}
         </CardContent>
@@ -868,7 +757,7 @@ export default function StaffingPlanMatrixPage() {
         canReview={canReview}
         onApprove={() => {
           if (!selectedPaf) return
-          approvePaf(selectedPaf.id)
+          approveRequest(selectedPaf.id)
           setSelectedPaf(null)
         }}
         onReject={() => {
@@ -882,30 +771,6 @@ export default function StaffingPlanMatrixPage() {
             revision: selectedPaf.revision,
             submittedAt: selectedPaf.submittedAt,
             pafRequest: selectedPaf,
-          })
-        }}
-      />
-
-      <StaffingDetailDialog
-        request={selectedStaffing}
-        onClose={() => setSelectedStaffing(null)}
-        canReview={canReview}
-        onApprove={() => {
-          if (!selectedStaffing) return
-          approveStaffing(selectedStaffing.id)
-          setSelectedStaffing(null)
-        }}
-        onReject={() => {
-          if (!selectedStaffing) return
-          setRejectTarget({
-            id: selectedStaffing.id,
-            kind: 'staffing-plan',
-            title: selectedStaffing.position,
-            subtitle: `Position ${selectedStaffing.positionNumber}`,
-            status: selectedStaffing.status,
-            revision: selectedStaffing.revision,
-            submittedAt: selectedStaffing.submittedAt,
-            staffingRequest: selectedStaffing,
           })
         }}
       />

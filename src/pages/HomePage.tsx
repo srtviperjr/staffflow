@@ -94,7 +94,9 @@ export default function HomePage() {
           icon: <VerifiedIcon color="secondary" sx={{ fontSize: 40 }} />,
           color: 'secondary' as const,
           primary: { label: 'Start request', to: '/project-authorization' },
-          secondary: undefined,
+          secondary: canViewMatrix
+            ? { label: 'Open PAF Register', to: '/project-authorization/register' }
+            : undefined,
         }
       : null,
     !canSubmit && canViewMatrix
@@ -105,7 +107,10 @@ export default function HomePage() {
           icon: <TableChartIcon color="primary" sx={{ fontSize: 40 }} />,
           color: 'primary' as const,
           primary: { label: 'Open staffing plan', to: '/staffing-plan/matrix' },
-          secondary: undefined,
+          secondary: {
+            label: 'Open PAF Register',
+            to: '/project-authorization/register',
+          },
         }
       : null,
   ].filter(Boolean) as Array<{

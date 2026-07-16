@@ -41,7 +41,9 @@ export default function Layout() {
   const isApplicationAdmin =
     path.startsWith('/roles') || path.startsWith('/users') || path.startsWith('/workflows')
   const wideLayout =
-    path.startsWith('/staffing-plan/matrix') || path.startsWith('/workflows')
+    path.startsWith('/staffing-plan/matrix') ||
+    path.startsWith('/project-authorization/register') ||
+    path.startsWith('/workflows')
 
   const staffItems = [
     canSubmit
@@ -92,6 +94,14 @@ export default function Layout() {
           to: '/project-authorization/manager',
           icon: <ManageAccountsIcon fontSize="small" />,
           active: path === '/project-authorization/manager',
+        }
+      : null,
+    canViewMatrix
+      ? {
+          label: 'PAF Register',
+          to: '/project-authorization/register',
+          icon: <TableChartIcon fontSize="small" />,
+          active: path === '/project-authorization/register',
         }
       : null,
   ].filter(Boolean) as Array<{

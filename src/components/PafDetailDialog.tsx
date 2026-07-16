@@ -1,20 +1,27 @@
 import {
   Box,
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Divider,
+  Stack,
   Typography,
 } from '@mui/material'
 import VerifiedIcon from '@mui/icons-material/Verified'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import CancelIcon from '@mui/icons-material/Cancel'
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import { formatDisplayDate } from '../utils/staffingPlanDates'
 
 interface PafDetailDialogProps {
   authorization: ProjectAuthorizationRequest | null
   onClose: () => void
+  canReview?: boolean
+  onApprove?: () => void
+  onReject?: () => void
 }
 
 function Detail({ label, value }: { label: string; value: string }) {
@@ -25,12 +32,38 @@ function Detail({ label, value }: { label: string; value: string }) {
   )
 }
 
-export default function PafDetailDialog({ authorization, onClose }: PafDetailDialogProps) {
+function statusColor(status: string): 'default' | 'warning' | 'success' | 'error' {
+  if (status === 'approved') return 'success'
+  if (status === 'rejected') return 'error'
+  return 'warning'
+}
+
+export default function PafDetailDialog({
+  authorization,
+  onClose,
+  canReview = false,
+  onApprove,
+  onReject,
+}: PafDetailDialogProps) {
+  const showActions = Boolean(
+    authorization && authorization.status === 'pending' && canReview,
+  )
+
   return (
     <Dialog open={Boolean(authorization)} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <VerifiedIcon color="primary" />
         PAF {authorization?.pafNumber}
+        {authorization ? (
+          <>
+            <Chip size="small" label={`Rev ${authorization.revision}`} variant="outlined" />
+            <Chip
+              size="small"
+              label={authorization.status}
+              color={statusColor(authorization.status)}
+            />
+          </>
+        ) : null}
       </DialogTitle>
       <DialogContent>
         {authorization && (
@@ -55,16 +88,44 @@ export default function PafDetailDialog({ authorization, onClose }: PafDetailDia
             <Detail label="Total Hours" value={authorization.totalHours} />
             <Detail label="Start Bi-Week" value={formatDisplayDate(authorization.startBiWeek)} />
             <Detail label="LWP" value={formatDisplayDate(authorization.lwp)} />
-            <Detail label="Revision" value={String(authorization.revision)} />
-            <Detail label="Status" value={authorization.status} />
           </Box>
         )}
         <Divider sx={{ my: 2 }} />
         <Typography variant="caption" color="text.secondary">
           Submitted {authorization ? new Date(authorization.submittedAt).toLocaleString() : ''}
+          {authorization?.reviewedAt
+            ? ` · Reviewed ${new Date(authorization.reviewedAt).toLocaleString()}`
+            : ''}
         </Typography>
+        {authorization?.rejectionComment ? (
+          <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+            Rejection: {authorization.rejectionComment}
+          </Typography>
+        ) : null}
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+      <DialogActions sx={{ px: 3, pb: 2, justifyContent: 'space-between' }}>
+        {showActions ? (
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<CheckCircleIcon />}
+              onClick={onApprove}
+            >
+              Approve
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<CancelIcon />}
+              onClick={onReject}
+            >
+              Reject
+            </Button>
+          </Stack>
+        ) : (
+          <span />
+        )}
         <Button onClick={onClose} variant="contained">
           Close
         </Button>

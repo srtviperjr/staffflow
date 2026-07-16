@@ -22,6 +22,7 @@ import StaffingPlanManagerPage from './pages/staffing/StaffingPlanManagerPage'
 import StaffingPlanMatrixPage from './pages/staffing/StaffingPlanMatrixPage'
 import ProjectAuthorizationFormPage from './pages/authorization/ProjectAuthorizationFormPage'
 import ProjectAuthorizationManagerPage from './pages/authorization/ProjectAuthorizationManagerPage'
+import PafRegisterPage from './pages/authorization/PafRegisterPage'
 
 function App() {
   return (
@@ -53,6 +54,10 @@ function App() {
                         <Route
                           path="project-authorization/manager"
                           element={<ProjectAuthorizationManagerPage />}
+                        />
+                        <Route
+                          path="project-authorization/register"
+                          element={<PafRegisterPage />}
                         />
                         <Route
                           path="roles"
