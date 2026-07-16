@@ -1,5 +1,5 @@
 /** Bump when sample data shape or content must replace stored localStorage. */
-export const APP_SEED_VERSION = 'single-active-paf-v1'
+export const APP_SEED_VERSION = 'paf-date-overlap-bulk-v1'
 export const APP_SEED_VERSION_KEY = 'app-seed-version'
 
 export function isSeedCurrent(): boolean {

@@ -1,5 +1,6 @@
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import type { StaffingPlanRequest } from '../types/staffingPlan'
+import { findOverlappingActivePaf } from './pafDateRules'
 
 export function generatePafNumber(uuid: string = crypto.randomUUID()): string {
   return uuid.split('-')[0].toUpperCase()
@@ -75,48 +76,35 @@ export function getLatestApprovedAuthorizationByPosition(
   return byPosition
 }
 
-/** Pending or approved current PAFs — only one may occupy a staffing position. */
-export function isActivePafStatus(status: ProjectAuthorizationRequest['status']): boolean {
-  return status === 'pending' || status === 'approved'
-}
+export {
+  isActivePafStatus,
+  getDisplayAuthorizationForPosition as getActiveAuthorizationForPosition,
+  getActivePafsForPosition,
+  findOverlappingActivePaf,
+  validatePafSchedule,
+  positionWindowFullyCovered,
+} from './pafDateRules'
 
-export function getActiveAuthorizationForPosition(
-  position: StaffingPlanRequest,
-  authorizations: ProjectAuthorizationRequest[],
-  staffingRequests: StaffingPlanRequest[] = [],
-): ProjectAuthorizationRequest | undefined {
-  const staffingById = new Map(staffingRequests.map((request) => [request.id, request]))
-
-  return getCurrentAuthorizationRequests(authorizations).find((request) => {
-    if (!isActivePafStatus(request.status)) return false
-    if (request.staffingPlanRequestId === position.id) return true
-    const linked = staffingById.get(request.staffingPlanRequestId)
-    return linked?.revisionGroupId === position.revisionGroupId
-  })
-}
-
+/** True when another active PAF already covers the given (or full position) date window. */
 export function positionHasActivePaf(
   positionId: string,
   authorizations: ProjectAuthorizationRequest[],
   staffingRequests: StaffingPlanRequest[],
-  options?: { exceptRevisionGroupId?: string },
+  options?: { exceptRevisionGroupId?: string; range?: { startBiWeek: string; lwp: string } },
 ): ProjectAuthorizationRequest | undefined {
-  const position =
-    staffingRequests.find((request) => request.id === positionId) ??
-    ({
-      id: positionId,
-      revisionGroupId: positionId,
-    } as StaffingPlanRequest)
+  const position = staffingRequests.find((request) => request.id === positionId)
+  if (!position) return undefined
 
-  const active = getActiveAuthorizationForPosition(position, authorizations, staffingRequests)
-  if (!active) return undefined
-  if (
-    options?.exceptRevisionGroupId &&
-    active.revisionGroupId === options.exceptRevisionGroupId
-  ) {
-    return undefined
-  }
-  return active
+  return findOverlappingActivePaf(
+    position,
+    options?.range ?? {
+      startBiWeek: position.startBiWeek,
+      lwp: position.lwp,
+    },
+    authorizations,
+    staffingRequests,
+    { exceptRevisionGroupId: options?.exceptRevisionGroupId },
+  )
 }
 
 export function requestToFormData(

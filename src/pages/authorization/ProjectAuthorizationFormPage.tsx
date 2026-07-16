@@ -36,9 +36,9 @@ import {
   getApprovedStaffingRequests,
 } from '../../utils/approvedPositions'
 import {
-  positionHasActivePaf,
   requestToFormData,
   staffingPlanToFormData,
+  validatePafSchedule,
 } from '../../utils/projectAuthorizationRevisions'
 import { validateBiWeekDate, validateLwpDate } from '../../utils/staffingPlanDates'
 
@@ -136,13 +136,21 @@ export default function ProjectAuthorizationFormPage() {
       return
     }
 
-    if (
-      prefillPosition &&
-      !positionHasActivePaf(prefillPosition.id, allPafRequests, staffingRequests)
-    ) {
-      setForm(staffingPlanToFormData(prefillPosition))
-      setErrors({})
-      return
+    if (prefillPosition) {
+      const scheduleErrors = validatePafSchedule({
+        range: {
+          startBiWeek: prefillPosition.startBiWeek,
+          lwp: prefillPosition.lwp,
+        },
+        position: prefillPosition,
+        authorizations: allPafRequests,
+        staffingRequests,
+      })
+      if (Object.keys(scheduleErrors).length === 0) {
+        setForm(staffingPlanToFormData(prefillPosition))
+        setErrors({})
+        return
+      }
     }
 
     if (!currentUser?.company) return
@@ -168,27 +176,29 @@ export default function ProjectAuthorizationFormPage() {
   )
 
   const approvedPositionOptions = useMemo(
-    () =>
-      getApprovedPositionOptions(visibleStaffingRequests, form.functionalGroup, form.dsg, {
-        authorizations: allPafRequests,
-        includePositionId: isRevisionMode
-          ? revisionSource?.staffingPlanRequestId
-          : undefined,
-      }),
-    [
-      visibleStaffingRequests,
-      form.functionalGroup,
-      form.dsg,
-      allPafRequests,
-      isRevisionMode,
-      revisionSource?.staffingPlanRequestId,
-    ],
+    () => getApprovedPositionOptions(visibleStaffingRequests, form.functionalGroup, form.dsg),
+    [visibleStaffingRequests, form.functionalGroup, form.dsg],
+  )
+
+  const selectedPosition = useMemo(
+    () => approvedRequests.find((request) => request.id === form.staffingPlanRequestId),
+    [approvedRequests, form.staffingPlanRequestId],
   )
 
   const prefillBlocked = Boolean(
     prefillPosition &&
       !isRevisionMode &&
-      positionHasActivePaf(prefillPosition.id, allPafRequests, staffingRequests),
+      Object.keys(
+        validatePafSchedule({
+          range: {
+            startBiWeek: prefillPosition.startBiWeek,
+            lwp: prefillPosition.lwp,
+          },
+          position: prefillPosition,
+          authorizations: allPafRequests,
+          staffingRequests,
+        }),
+      ).length > 0,
   )
 
   const updateField = <K extends keyof ProjectAuthorizationFormData>(
@@ -237,14 +247,19 @@ export default function ProjectAuthorizationFormPage() {
     const lwpError = validateLwpDate(form.lwp)
     if (lwpError) nextErrors.lwp = lwpError
 
-    if (
-      form.staffingPlanRequestId &&
-      positionHasActivePaf(form.staffingPlanRequestId, allPafRequests, staffingRequests, {
+    if (form.staffingPlanRequestId && selectedPosition) {
+      const scheduleErrors = validatePafSchedule({
+        range: { startBiWeek: form.startBiWeek, lwp: form.lwp },
+        position: selectedPosition,
+        authorizations: allPafRequests,
+        staffingRequests,
         exceptRevisionGroupId: isRevisionMode ? revisionSource?.revisionGroupId : undefined,
       })
-    ) {
-      nextErrors.staffingPlanRequestId =
-        'This position already has an active PAF. Only one PAF can be attached at a time.'
+      if (scheduleErrors.startBiWeek) nextErrors.startBiWeek = scheduleErrors.startBiWeek
+      if (scheduleErrors.lwp) nextErrors.lwp = scheduleErrors.lwp
+      if (scheduleErrors.staffingPlanRequestId) {
+        nextErrors.staffingPlanRequestId = scheduleErrors.staffingPlanRequestId
+      }
     }
 
     setErrors(nextErrors)
@@ -254,10 +269,6 @@ export default function ProjectAuthorizationFormPage() {
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
     if (!validate()) return
-
-    const selectedPosition = approvedRequests.find(
-      (request) => request.id === form.staffingPlanRequestId,
-    )
     if (!selectedPosition) return
 
     const positionLabel = formatApprovedPositionLabel(selectedPosition)
@@ -328,7 +339,8 @@ export default function ProjectAuthorizationFormPage() {
           {prefillBlocked && (
             <Alert severity="warning" sx={{ mb: 2 }}>
               Position <strong>{formatApprovedPositionLabel(prefillPosition!)}</strong> already has
-              an active PAF. Choose a different approved position, or revise the existing PAF.
+              an active PAF covering its full available dates. Choose non-overlapping start/LWP
+              dates, revise the existing PAF, or pick another position.
             </Alert>
           )}
 
@@ -387,7 +399,7 @@ export default function ProjectAuthorizationFormPage() {
                   disabled={!form.functionalGroup || !form.dsg}
                   helperText={
                     form.functionalGroup && form.dsg
-                      ? 'Only positions without an active PAF are listed'
+                      ? 'PAF dates must stay within the position window and not overlap another PAF'
                       : 'Select functional group and DSG first'
                   }
                 />

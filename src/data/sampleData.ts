@@ -1,14 +1,84 @@
 import type { Company } from '../constants/companies'
+import { COMPANIES, defaultPhaseForCompany } from '../constants/companies'
+import {
+  AREAS,
+  CLASSES,
+  COUNTRIES,
+  DISCIPLINES,
+  DSG_OPTIONS,
+  FUNCTIONAL_GROUPS,
+  LOCATION_TYPES,
+  POSITIONS,
+  ROSTERS,
+  SUB_AREAS,
+} from '../constants/staffingPlanOptions'
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import type { StaffingPlanRequest } from '../types/staffingPlan'
 import type { WorkflowProgress } from '../types/workflow'
 import { formatApprovedPositionLabel } from '../utils/approvedPositions'
+import {
+  dateRangesOverlap,
+  getActivePafsForPosition,
+  isActivePafStatus,
+} from '../utils/pafDateRules'
+import { formatDateInput, parseDateInput } from '../utils/staffingPlanDates'
 import { markSeedCurrent } from './seedVersion'
 
 const STAFFING_STORAGE_KEY = 'staffing-plan-requests'
 const PAF_STORAGE_KEY = 'project-authorization-requests'
 
+/** Current staffing plan positions per company (plus extra revision rows). */
+const RECORDS_PER_COMPANY = 45
+
 const SUBMITTED_BASE = new Date('2026-06-01T09:00:00.000Z').getTime()
+const POSITION_WINDOW_START = '2026-07-05' // bi-weekly Sunday
+const POSITION_WINDOW_BIWEEKS = 26
+
+const FIRST_NAMES = [
+  'Jane',
+  'Priya',
+  'Tom',
+  'Carlos',
+  'Elena',
+  'Noah',
+  'Aisha',
+  'Marcus',
+  'Sofia',
+  'Liam',
+  'Hiro',
+  'Amara',
+  'Owen',
+  'Fatima',
+  'Diego',
+  'Chloe',
+  'Raj',
+  'Nora',
+  'Ethan',
+  'Mei',
+] as const
+
+const LAST_NAMES = [
+  'Smith',
+  'Sharma',
+  'Wilson',
+  'Mendez',
+  'Vasquez',
+  'Berger',
+  'Okoro',
+  'Chen',
+  'Patel',
+  'Nguyen',
+  'Kowalski',
+  'Andersson',
+  'Silva',
+  'Kim',
+  'Brown',
+  'Garcia',
+  'Murphy',
+  'Singh',
+  'Rossi',
+  'Ali',
+] as const
 
 function submittedAt(offsetDays: number) {
   return new Date(SUBMITTED_BASE + offsetDays * 86_400_000).toISOString()
@@ -16,6 +86,21 @@ function submittedAt(offsetDays: number) {
 
 function reviewedAt(offsetDays: number) {
   return new Date(SUBMITTED_BASE + offsetDays * 86_400_000 + 3_600_000).toISOString()
+}
+
+function pick<T>(items: readonly T[], index: number): T {
+  return items[((index % items.length) + items.length) % items.length]
+}
+
+function addBiWeeks(value: string, biWeeks: number): string {
+  const date = parseDateInput(value)
+  if (!date) return value
+  date.setDate(date.getDate() + biWeeks * 14)
+  return formatDateInput(date)
+}
+
+function candidateName(seed: number) {
+  return `${pick(FIRST_NAMES, seed)} ${pick(LAST_NAMES, seed * 3 + 1)}`
 }
 
 function staffingPendingWorkflow(company: string): WorkflowProgress {
@@ -79,8 +164,7 @@ function staffingRejectedWorkflow(company: string): WorkflowProgress {
 }
 
 function pafPendingWorkflow(company: string): WorkflowProgress {
-  const reviewNode =
-    company === 'Fluor' ? 'paf-review-contractor' : 'paf-review-standard'
+  const reviewNode = company === 'Fluor' ? 'paf-review-contractor' : 'paf-review-standard'
   return {
     workflowId: 'workflow-paf-approval',
     currentNodeId: reviewNode,
@@ -98,8 +182,7 @@ function pafPendingWorkflow(company: string): WorkflowProgress {
 }
 
 function pafApprovedWorkflow(company: string): WorkflowProgress {
-  const reviewNode =
-    company === 'Fluor' ? 'paf-review-contractor' : 'paf-review-standard'
+  const reviewNode = company === 'Fluor' ? 'paf-review-contractor' : 'paf-review-standard'
   return {
     workflowId: 'workflow-paf-approval',
     currentNodeId: 'paf-end-ok',
@@ -120,8 +203,7 @@ function pafApprovedWorkflow(company: string): WorkflowProgress {
 }
 
 function pafRejectedWorkflow(company: string): WorkflowProgress {
-  const reviewNode =
-    company === 'Fluor' ? 'paf-review-contractor' : 'paf-review-standard'
+  const reviewNode = company === 'Fluor' ? 'paf-review-contractor' : 'paf-review-standard'
   return {
     workflowId: 'workflow-paf-approval',
     currentNodeId: 'paf-end-reject',
@@ -141,296 +223,53 @@ function pafRejectedWorkflow(company: string): WorkflowProgress {
   }
 }
 
-export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = [
-  {
-    id: 'sample-sp-01',
-    revisionGroupId: 'sample-sp-01',
-    revision: 1,
-    isCurrentRevision: true,
-    positionNumber: 'SAMPLE01',
-    phase: 'JS1',
-    locationType: 'Project Office',
-    functionalGroup: 'Engineering',
-    dsg: '290 - Architecture',
-    area: 'FE',
-    subArea: 'DV',
-    country: 'Canada',
-    discipline: '29 - Architecture',
-    position: 'Architect',
-    class: 'E00 - Principal',
-    company: 'Bantrel',
-    eeIdSap: '',
-    sortNumber: '101',
-    totalHours: '2080',
-    hoursToGo: '1040',
-    roster: '5x2 (10 hrs)',
-    startBiWeek: '2026-07-05',
-    lwp: '2027-01-03',
-    status: 'approved',
-    submittedAt: submittedAt(0),
-    reviewedAt: reviewedAt(1),
-    workflow: staffingApprovedWorkflow('Bantrel'),
+function buildStaffingPosition(
+  company: Company,
+  index: number,
+  overrides: Partial<StaffingPlanRequest> & {
+    id: string
+    revisionGroupId: string
+    revision: number
+    isCurrentRevision: boolean
+    status: StaffingPlanRequest['status']
   },
-  {
-    id: 'sample-sp-02',
-    revisionGroupId: 'sample-sp-02',
-    revision: 1,
-    isCurrentRevision: true,
-    positionNumber: 'SAMPLE02',
-    phase: 'JS1',
-    locationType: 'Site - Comm',
-    functionalGroup: 'Engineering',
-    dsg: '260 - Electrical Engineering',
-    area: 'Process',
-    subArea: 'SS',
-    country: 'Chile',
-    discipline: '26 - Electrical Engineering',
-    position: 'Engineer',
-    class: 'E10 - Engineer',
-    company: 'Hatch',
-    eeIdSap: '',
-    sortNumber: '102',
-    totalHours: '1800',
-    hoursToGo: '900',
-    roster: '5x2 (10 hrs)',
-    startBiWeek: '2026-07-05',
-    lwp: '2027-01-03',
-    status: 'approved',
-    submittedAt: submittedAt(1),
-    reviewedAt: reviewedAt(2),
-    workflow: staffingApprovedWorkflow('Hatch'),
-  },
-  {
-    id: 'sample-sp-03',
-    revisionGroupId: 'sample-sp-03',
-    revision: 1,
-    isCurrentRevision: true,
-    positionNumber: 'SAMPLE03',
-    phase: 'JS2',
-    locationType: 'Site - Const',
-    functionalGroup: 'Engineering',
-    dsg: '270 - Systems and Process Control Engineering',
-    area: 'NPI',
-    subArea: 'UG',
-    country: 'South Africa',
-    discipline: '27 - Systems and Process Control',
-    position: 'PCS Lead',
-    class: 'E09 - Senior Engineer',
-    company: 'Fluor',
-    eeIdSap: '',
-    sortNumber: '103',
-    totalHours: '2200',
-    hoursToGo: '1100',
-    roster: '5x2 (10 hrs)',
-    startBiWeek: '2026-06-21',
-    lwp: '2026-12-27',
-    status: 'approved',
-    submittedAt: submittedAt(2),
-    reviewedAt: reviewedAt(3),
-    workflow: staffingApprovedWorkflow('Fluor'),
-  },
-  {
-    id: 'sample-sp-04',
-    revisionGroupId: 'sample-sp-04',
-    revision: 1,
-    isCurrentRevision: true,
-    positionNumber: 'SAMPLE04',
-    phase: 'JS1',
-    locationType: 'Project Office',
-    functionalGroup: 'Project Controls',
-    dsg: '610 - Planning and Scheduling',
-    area: 'Central Functions',
-    subArea: 'DV',
-    country: 'Canada',
-    discipline: '61 - Planning and Scheduling',
-    position: 'Senior Planner',
-    class: 'E09 - Senior Engineer',
-    company: 'BHP',
-    eeIdSap: '',
-    sortNumber: '104',
-    totalHours: '1900',
-    hoursToGo: '950',
-    roster: '5x2 (10 hrs)',
-    startBiWeek: '2026-07-05',
-    lwp: '2027-01-03',
-    status: 'approved',
-    submittedAt: submittedAt(3),
-    reviewedAt: reviewedAt(4),
-    workflow: staffingApprovedWorkflow('Hatch'),
-  },
-  {
-    id: 'sample-sp-05',
-    revisionGroupId: 'sample-sp-05',
-    revision: 1,
-    isCurrentRevision: true,
-    positionNumber: 'SAMPLE05',
-    phase: 'JS1',
-    locationType: 'Site - Comm',
-    functionalGroup: 'Construction Management',
-    dsg: '400 - Site Management, Construction Management, Construction Coordination',
-    area: 'Mining',
-    subArea: 'UG',
-    country: 'Canada',
-    discipline: '40 - Construction Management',
-    position: 'Package Coordinator',
-    class: 'E02 - Engineering, Project, Construction Manager',
-    company: 'Bantrel',
-    eeIdSap: '',
-    sortNumber: '105',
-    totalHours: '2000',
-    hoursToGo: '1000',
-    roster: '5x2 (10 hrs)',
-    startBiWeek: '2026-06-21',
-    lwp: '2026-12-27',
-    status: 'pending',
-    submittedAt: submittedAt(4),
-    workflow: staffingPendingWorkflow('Bantrel'),
-  },
-  {
-    id: 'sample-sp-06',
-    revisionGroupId: 'sample-sp-06',
-    revision: 1,
-    isCurrentRevision: true,
-    positionNumber: 'SAMPLE06',
-    phase: 'JS1',
-    locationType: 'Project Office',
-    functionalGroup: 'Contracts & Procurement',
-    dsg: '330 - Expediting',
-    area: 'General',
-    subArea: 'SS',
-    country: 'India',
-    discipline: '33 - Expediting',
-    position: 'Expeditor - offsite',
-    class: 'X42 - Project Support Coordinator - India',
-    company: 'Hatch',
-    eeIdSap: 'SAP-88421',
-    sortNumber: '106',
-    totalHours: '1760',
-    hoursToGo: '880',
-    roster: '5x2 (10 hrs)',
-    startBiWeek: '2026-07-05',
-    lwp: '2027-01-03',
-    status: 'pending',
-    submittedAt: submittedAt(5),
-    workflow: staffingPendingWorkflow('Hatch'),
-  },
-  {
-    id: 'sample-sp-07',
-    revisionGroupId: 'sample-sp-07',
-    revision: 1,
-    isCurrentRevision: true,
-    positionNumber: 'SAMPLE07',
-    phase: 'JS2',
-    locationType: 'Site - Const',
-    functionalGroup: 'Project Management',
-    dsg: '140 - Risk Management',
-    area: 'Mining',
-    subArea: 'UG',
-    country: 'South Africa',
-    discipline: '14 - Risk Management',
-    position: 'Site Risk Specialist Mining',
-    class: 'E04 - Specialist/Supervisor',
-    company: 'Fluor',
-    eeIdSap: '',
-    sortNumber: '107',
-    totalHours: '1920',
-    hoursToGo: '960',
-    roster: '5x2 (10 hrs)',
-    startBiWeek: '2026-07-05',
-    lwp: '2027-01-03',
-    status: 'pending',
-    submittedAt: submittedAt(6),
-    workflow: staffingPendingWorkflow('Fluor'),
-  },
-  {
-    id: 'sample-sp-08',
-    revisionGroupId: 'sample-sp-08',
-    revision: 1,
-    isCurrentRevision: true,
-    positionNumber: 'SAMPLE08',
-    phase: 'JS1',
-    locationType: 'Project Office',
-    functionalGroup: 'Project Controls',
-    dsg: '630 - Cost Management',
-    area: 'Central Functions',
-    subArea: 'Wet Mill',
-    country: 'Chile',
-    discipline: '63 - Cost Management',
-    position: 'Cost Controller - Lead',
-    class: 'E02 - Engineering, Project, Construction Manager',
-    company: 'BHP',
-    eeIdSap: '',
-    sortNumber: '108',
-    totalHours: '1840',
-    hoursToGo: '920',
-    roster: '5x2 (10 hrs)',
-    startBiWeek: '2026-06-21',
-    lwp: '2026-12-27',
-    status: 'pending',
-    submittedAt: submittedAt(7),
-    workflow: staffingPendingWorkflow('Hatch'),
-  },
-  {
-    id: 'sample-sp-09',
-    revisionGroupId: 'sample-sp-09',
-    revision: 1,
-    isCurrentRevision: true,
-    positionNumber: 'SAMPLE09',
-    phase: 'JS1',
-    locationType: 'Project Office',
-    functionalGroup: 'Contracts & Procurement',
-    dsg: '321 - Purchasing Formation',
-    area: 'IPT',
-    subArea: 'DV',
-    country: 'Canada',
-    discipline: '32 - Purchasing',
-    position: 'Purchasing Agent',
-    class: 'E25 - Administrative Specialist',
-    company: 'Hatch',
-    eeIdSap: '',
-    sortNumber: '109',
-    totalHours: '1560',
-    hoursToGo: '780',
-    roster: '5x2 (10 hrs)',
-    startBiWeek: '2026-07-05',
-    lwp: '2027-01-03',
-    status: 'rejected',
-    submittedAt: submittedAt(8),
-    reviewedAt: reviewedAt(9),
-    rejectionComment: 'Position budget not approved for this phase.',
-    workflow: staffingRejectedWorkflow('Hatch'),
-  },
-  {
-    id: 'sample-sp-10',
-    revisionGroupId: 'sample-sp-10',
-    revision: 1,
-    isCurrentRevision: true,
-    positionNumber: 'SAMPLE10',
-    phase: 'JS2',
-    locationType: 'Site - Comm',
-    functionalGroup: 'Commissioning',
-    dsg: '500 - Commissioning Management',
-    area: 'NPI',
-    subArea: 'SS',
-    country: 'USA',
-    discipline: '50 - Commissioning Management',
-    position: 'I&C Lead NPI Area',
-    class: 'E09 - Senior Engineer',
-    company: 'Fluor',
-    eeIdSap: '',
-    sortNumber: '110',
-    totalHours: '2100',
-    hoursToGo: '1050',
-    roster: '5x2 (10 hrs)',
-    startBiWeek: '2026-06-21',
-    lwp: '2026-12-27',
-    status: 'rejected',
-    submittedAt: submittedAt(9),
-    reviewedAt: reviewedAt(10),
-    rejectionComment: 'Duplicate role — existing commissioning lead covers this area.',
-    workflow: staffingRejectedWorkflow('Fluor'),
-  },
-]
+): StaffingPlanRequest {
+  const seed = COMPANIES.indexOf(company) * 100 + index
+  const startBiWeek = overrides.startBiWeek ?? addBiWeeks(POSITION_WINDOW_START, index % 3)
+  const lwp = overrides.lwp ?? addBiWeeks(startBiWeek, POSITION_WINDOW_BIWEEKS)
+
+  return {
+    id: overrides.id,
+    revisionGroupId: overrides.revisionGroupId,
+    revision: overrides.revision,
+    supersedesId: overrides.supersedesId,
+    isCurrentRevision: overrides.isCurrentRevision,
+    positionNumber: overrides.positionNumber ?? `${company.slice(0, 2).toUpperCase()}${String(index + 1).padStart(3, '0')}`,
+    phase: overrides.phase ?? defaultPhaseForCompany(company),
+    locationType: overrides.locationType ?? pick(LOCATION_TYPES, seed),
+    functionalGroup: overrides.functionalGroup ?? pick(FUNCTIONAL_GROUPS, seed),
+    dsg: overrides.dsg ?? pick(DSG_OPTIONS, seed + 2),
+    area: overrides.area ?? pick(AREAS, seed + 1),
+    subArea: overrides.subArea ?? pick(SUB_AREAS, seed),
+    country: overrides.country ?? pick(COUNTRIES, seed + 4),
+    discipline: overrides.discipline ?? pick(DISCIPLINES, seed + 3),
+    position: overrides.position ?? pick(POSITIONS, seed + 5),
+    class: overrides.class ?? pick(CLASSES, seed + 6),
+    company,
+    eeIdSap: overrides.eeIdSap ?? '',
+    sortNumber: overrides.sortNumber ?? String(1000 + seed),
+    totalHours: overrides.totalHours ?? String(1600 + (seed % 8) * 80),
+    hoursToGo: overrides.hoursToGo ?? String(800 + (seed % 6) * 40),
+    roster: overrides.roster ?? pick(ROSTERS, seed),
+    startBiWeek,
+    lwp,
+    status: overrides.status,
+    submittedAt: overrides.submittedAt ?? submittedAt(index),
+    reviewedAt: overrides.reviewedAt,
+    rejectionComment: overrides.rejectionComment,
+    workflow: overrides.workflow,
+  }
+}
 
 function pafForPosition(
   position: StaffingPlanRequest,
@@ -439,7 +278,8 @@ function pafForPosition(
     candidateName: string
     pafNumber: string
     status: ProjectAuthorizationRequest['status']
-    company?: Company
+    startBiWeek: string
+    lwp: string
   },
 ): ProjectAuthorizationRequest {
   return {
@@ -462,87 +302,361 @@ function pafForPosition(
     sortNumber: overrides.sortNumber ?? position.sortNumber,
     totalHours: overrides.totalHours ?? position.totalHours,
     roster: overrides.roster ?? position.roster,
-    startBiWeek: overrides.startBiWeek ?? position.startBiWeek,
-    lwp: overrides.lwp ?? position.lwp,
+    startBiWeek: overrides.startBiWeek,
+    lwp: overrides.lwp,
     status: overrides.status,
-    submittedAt: overrides.submittedAt ?? submittedAt(12),
+    submittedAt: overrides.submittedAt ?? submittedAt(20),
     reviewedAt: overrides.reviewedAt,
     rejectionComment: overrides.rejectionComment,
     workflow: overrides.workflow,
   }
 }
 
-/** One active (pending/approved current) PAF per staffing position — no overlaps. */
-export const SAMPLE_PROJECT_AUTHORIZATION_REQUESTS: ProjectAuthorizationRequest[] = [
-  pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[0], {
-    id: 'sample-paf-01',
-    candidateName: 'Jane Smith',
-    pafNumber: 'PAF00001',
-    status: 'approved',
-    company: 'Bantrel',
-    submittedAt: submittedAt(11),
-    reviewedAt: reviewedAt(12),
-    workflow: pafApprovedWorkflow('Bantrel'),
-  }),
-  pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[1], {
-    id: 'sample-paf-02',
-    candidateName: 'Priya Sharma',
-    pafNumber: 'PAF00002',
-    status: 'pending',
-    company: 'Hatch',
-    country: 'India',
-    submittedAt: submittedAt(12),
-    workflow: pafPendingWorkflow('Hatch'),
-  }),
-  pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[2], {
-    id: 'sample-paf-03',
-    candidateName: 'Tom Wilson',
-    pafNumber: 'PAF00003',
-    status: 'rejected',
-    company: 'Fluor',
-    submittedAt: submittedAt(13),
-    reviewedAt: reviewedAt(14),
-    rejectionComment: 'Candidate does not meet minimum experience requirements.',
-    workflow: pafRejectedWorkflow('Fluor'),
-  }),
-  // Superseded approved revision — Noah (below) is the current active PAF on this position.
-  pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[3], {
-    id: 'sample-paf-04',
-    candidateName: 'Carlos Mendez',
-    pafNumber: 'PAF00004',
-    status: 'approved',
-    company: 'BHP',
-    eeIdSap: 'SAP-99102',
-    submittedAt: submittedAt(14),
-    reviewedAt: reviewedAt(15),
-    isCurrentRevision: false,
-    workflow: pafApprovedWorkflow('Hatch'),
-  }),
-  // New PAF on sp-03 after Tom was rejected — position is free once rejected.
-  pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[2], {
-    id: 'sample-paf-05',
-    candidateName: 'Elena Vasquez',
-    pafNumber: 'PAF00005',
-    status: 'approved',
-    company: 'Fluor',
-    submittedAt: submittedAt(15),
-    reviewedAt: reviewedAt(16),
-    workflow: pafApprovedWorkflow('Fluor'),
-  }),
-  // Revision of Carlos's PAF group — same position, same PAF number, only this revision is current.
-  pafForPosition(SAMPLE_STAFFING_PLAN_REQUESTS[3], {
-    id: 'sample-paf-06',
-    revisionGroupId: 'sample-paf-04',
-    revision: 2,
-    supersedesId: 'sample-paf-04',
-    candidateName: 'Noah Berger',
-    pafNumber: 'PAF00004',
-    status: 'pending',
-    company: 'BHP',
-    submittedAt: submittedAt(16),
-    workflow: pafPendingWorkflow('Hatch'),
-  }),
-]
+function assertNoActivePafOverlaps(
+  staffing: StaffingPlanRequest[],
+  authorizations: ProjectAuthorizationRequest[],
+) {
+  const currentPositions = staffing.filter((request) => request.isCurrentRevision)
+  for (const position of currentPositions) {
+    const active = getActivePafsForPosition(position, authorizations, staffing)
+    for (let i = 0; i < active.length; i += 1) {
+      for (let j = i + 1; j < active.length; j += 1) {
+        const a = active[i]
+        const b = active[j]
+        if (
+          dateRangesOverlap(
+            { startBiWeek: a.startBiWeek, lwp: a.lwp },
+            { startBiWeek: b.startBiWeek, lwp: b.lwp },
+          )
+        ) {
+          throw new Error(
+            `Sample data overlap on ${position.id}: ${a.pafNumber} (${a.startBiWeek}-${a.lwp}) vs ${b.pafNumber} (${b.startBiWeek}-${b.lwp})`,
+          )
+        }
+      }
+      if (aStartsBeforePosition(active[i], position)) {
+        throw new Error(
+          `Sample PAF ${active[i].pafNumber} starts before position ${position.id} availability`,
+        )
+      }
+      if (active[i].lwp > position.lwp) {
+        throw new Error(`Sample PAF ${active[i].pafNumber} ends after position ${position.id} LWP`)
+      }
+    }
+  }
+}
+
+function aStartsBeforePosition(
+  request: ProjectAuthorizationRequest,
+  position: StaffingPlanRequest,
+) {
+  const start = parseDateInput(request.startBiWeek)
+  const available = parseDateInput(position.startBiWeek)
+  if (!start || !available) return true
+  return start.getTime() < available.getTime()
+}
+
+function generateSampleData(): {
+  staffing: StaffingPlanRequest[]
+  authorizations: ProjectAuthorizationRequest[]
+} {
+  const staffing: StaffingPlanRequest[] = []
+  const authorizations: ProjectAuthorizationRequest[] = []
+  let pafCounter = 1
+
+  const nextPafNumber = () => `PAF${String(pafCounter++).padStart(5, '0')}`
+
+  for (const company of COMPANIES) {
+    for (let index = 0; index < RECORDS_PER_COMPANY; index += 1) {
+      const groupId = `sample-sp-${company.toLowerCase()}-${String(index + 1).padStart(2, '0')}`
+      const statusRoll = index % 10
+      const status: StaffingPlanRequest['status'] =
+        statusRoll === 8 ? 'pending' : statusRoll === 9 ? 'rejected' : 'approved'
+
+      const hasStaffingRevision = status === 'approved' && index % 9 === 0
+      const startBiWeek = addBiWeeks(POSITION_WINDOW_START, index % 3)
+      const lwp = addBiWeeks(startBiWeek, POSITION_WINDOW_BIWEEKS)
+
+      if (hasStaffingRevision) {
+        staffing.push(
+          buildStaffingPosition(company, index, {
+            id: `${groupId}-r1`,
+            revisionGroupId: groupId,
+            revision: 1,
+            isCurrentRevision: false,
+            status: 'approved',
+            startBiWeek,
+            lwp,
+            submittedAt: submittedAt(index),
+            reviewedAt: reviewedAt(index + 1),
+            workflow: staffingApprovedWorkflow(company),
+            totalHours: '1200',
+          }),
+        )
+        staffing.push(
+          buildStaffingPosition(company, index, {
+            id: `${groupId}-r2`,
+            revisionGroupId: groupId,
+            revision: 2,
+            supersedesId: `${groupId}-r1`,
+            isCurrentRevision: true,
+            status: 'approved',
+            startBiWeek,
+            lwp,
+            submittedAt: submittedAt(index + 2),
+            reviewedAt: reviewedAt(index + 3),
+            workflow: staffingApprovedWorkflow(company),
+            totalHours: '1800',
+            hoursToGo: '900',
+          }),
+        )
+      } else {
+        staffing.push(
+          buildStaffingPosition(company, index, {
+            id: groupId,
+            revisionGroupId: groupId,
+            revision: 1,
+            isCurrentRevision: true,
+            status,
+            startBiWeek,
+            lwp,
+            submittedAt: submittedAt(index),
+            reviewedAt:
+              status === 'pending' ? undefined : reviewedAt(index + 1),
+            rejectionComment:
+              status === 'rejected' ? 'Position budget not approved for this phase.' : undefined,
+            workflow:
+              status === 'approved'
+                ? staffingApprovedWorkflow(company)
+                : status === 'rejected'
+                  ? staffingRejectedWorkflow(company)
+                  : staffingPendingWorkflow(company),
+          }),
+        )
+      }
+
+      const currentPosition = staffing.find(
+        (request) => request.revisionGroupId === groupId && request.isCurrentRevision,
+      )
+      if (!currentPosition || currentPosition.status !== 'approved') continue
+
+      const pattern = index % 7
+      const midEnd = addBiWeeks(currentPosition.startBiWeek, 12)
+      const secondStart = addBiWeeks(midEnd, 1)
+      const seed = COMPANIES.indexOf(company) * 100 + index
+
+      if (pattern === 5) {
+        // Leave position open for new PAF creation demos.
+        continue
+      }
+
+      if (pattern === 0) {
+        // Single approved PAF covering first half of the window.
+        authorizations.push(
+          pafForPosition(currentPosition, {
+            id: `sample-paf-${company.toLowerCase()}-${index + 1}-a`,
+            candidateName: candidateName(seed),
+            pafNumber: nextPafNumber(),
+            status: 'approved',
+            startBiWeek: currentPosition.startBiWeek,
+            lwp: midEnd,
+            submittedAt: submittedAt(30 + index),
+            reviewedAt: reviewedAt(31 + index),
+            workflow: pafApprovedWorkflow(company),
+            eeIdSap: index % 4 === 0 ? `SAP-${20000 + seed}` : '',
+          }),
+        )
+        continue
+      }
+
+      if (pattern === 1) {
+        authorizations.push(
+          pafForPosition(currentPosition, {
+            id: `sample-paf-${company.toLowerCase()}-${index + 1}-a`,
+            candidateName: candidateName(seed),
+            pafNumber: nextPafNumber(),
+            status: 'pending',
+            startBiWeek: currentPosition.startBiWeek,
+            lwp: midEnd,
+            submittedAt: submittedAt(32 + index),
+            workflow: pafPendingWorkflow(company),
+          }),
+        )
+        continue
+      }
+
+      if (pattern === 2) {
+        // Rejected candidate replaced by a later approved PAF on the same window.
+        // Rejected PAFs do not occupy the position, so dates may match the replacement.
+        authorizations.push(
+          pafForPosition(currentPosition, {
+            id: `sample-paf-${company.toLowerCase()}-${index + 1}-a`,
+            candidateName: candidateName(seed),
+            pafNumber: nextPafNumber(),
+            status: 'rejected',
+            startBiWeek: currentPosition.startBiWeek,
+            lwp: midEnd,
+            submittedAt: submittedAt(33 + index),
+            reviewedAt: reviewedAt(34 + index),
+            rejectionComment: 'Candidate does not meet minimum experience requirements.',
+            workflow: pafRejectedWorkflow(company),
+          }),
+        )
+        authorizations.push(
+          pafForPosition(currentPosition, {
+            id: `sample-paf-${company.toLowerCase()}-${index + 1}-b`,
+            candidateName: candidateName(seed + 11),
+            pafNumber: nextPafNumber(),
+            status: 'approved',
+            startBiWeek: currentPosition.startBiWeek,
+            lwp: midEnd,
+            submittedAt: submittedAt(35 + index),
+            reviewedAt: reviewedAt(36 + index),
+            workflow: pafApprovedWorkflow(company),
+          }),
+        )
+        continue
+      }
+
+      if (pattern === 3) {
+        // Two sequential active PAFs — abutting, non-overlapping.
+        authorizations.push(
+          pafForPosition(currentPosition, {
+            id: `sample-paf-${company.toLowerCase()}-${index + 1}-a`,
+            candidateName: candidateName(seed),
+            pafNumber: nextPafNumber(),
+            status: 'approved',
+            startBiWeek: currentPosition.startBiWeek,
+            lwp: midEnd,
+            submittedAt: submittedAt(37 + index),
+            reviewedAt: reviewedAt(38 + index),
+            workflow: pafApprovedWorkflow(company),
+          }),
+        )
+        authorizations.push(
+          pafForPosition(currentPosition, {
+            id: `sample-paf-${company.toLowerCase()}-${index + 1}-b`,
+            candidateName: candidateName(seed + 17),
+            pafNumber: nextPafNumber(),
+            status: 'approved',
+            startBiWeek: secondStart,
+            lwp: currentPosition.lwp,
+            submittedAt: submittedAt(39 + index),
+            reviewedAt: reviewedAt(40 + index),
+            workflow: pafApprovedWorkflow(company),
+          }),
+        )
+        continue
+      }
+
+      if (pattern === 4) {
+        // Three-revision chain on the same date window (only latest is current/active).
+        const group = `sample-paf-${company.toLowerCase()}-${index + 1}`
+        const pafNumber = nextPafNumber()
+        const rev1 = pafForPosition(currentPosition, {
+          id: `${group}-r1`,
+          revisionGroupId: group,
+          revision: 1,
+          isCurrentRevision: false,
+          candidateName: candidateName(seed),
+          pafNumber,
+          status: 'approved',
+          startBiWeek: currentPosition.startBiWeek,
+          lwp: midEnd,
+          submittedAt: submittedAt(41 + index),
+          reviewedAt: reviewedAt(42 + index),
+          workflow: pafApprovedWorkflow(company),
+        })
+        const rev2 = pafForPosition(currentPosition, {
+          id: `${group}-r2`,
+          revisionGroupId: group,
+          revision: 2,
+          supersedesId: rev1.id,
+          isCurrentRevision: false,
+          candidateName: candidateName(seed + 1),
+          pafNumber,
+          status: 'approved',
+          startBiWeek: currentPosition.startBiWeek,
+          lwp: midEnd,
+          submittedAt: submittedAt(43 + index),
+          reviewedAt: reviewedAt(44 + index),
+          workflow: pafApprovedWorkflow(company),
+          totalHours: String(Number(currentPosition.totalHours) + 40),
+        })
+        const rev3 = pafForPosition(currentPosition, {
+          id: `${group}-r3`,
+          revisionGroupId: group,
+          revision: 3,
+          supersedesId: rev2.id,
+          isCurrentRevision: true,
+          candidateName: candidateName(seed + 2),
+          pafNumber,
+          status: 'pending',
+          startBiWeek: currentPosition.startBiWeek,
+          lwp: midEnd,
+          submittedAt: submittedAt(45 + index),
+          workflow: pafPendingWorkflow(company),
+          totalHours: String(Number(currentPosition.totalHours) + 80),
+        })
+        authorizations.push(rev1, rev2, rev3)
+        continue
+      }
+
+      // pattern 6: approved then revised to pending current
+      {
+        const group = `sample-paf-${company.toLowerCase()}-${index + 1}`
+        const pafNumber = nextPafNumber()
+        const rev1 = pafForPosition(currentPosition, {
+          id: `${group}-r1`,
+          revisionGroupId: group,
+          revision: 1,
+          isCurrentRevision: false,
+          candidateName: candidateName(seed),
+          pafNumber,
+          status: 'approved',
+          startBiWeek: secondStart,
+          lwp: currentPosition.lwp,
+          submittedAt: submittedAt(46 + index),
+          reviewedAt: reviewedAt(47 + index),
+          workflow: pafApprovedWorkflow(company),
+        })
+        const rev2 = pafForPosition(currentPosition, {
+          id: `${group}-r2`,
+          revisionGroupId: group,
+          revision: 2,
+          supersedesId: rev1.id,
+          isCurrentRevision: true,
+          candidateName: candidateName(seed + 5),
+          pafNumber,
+          status: 'pending',
+          startBiWeek: secondStart,
+          lwp: currentPosition.lwp,
+          submittedAt: submittedAt(48 + index),
+          workflow: pafPendingWorkflow(company),
+        })
+        authorizations.push(rev1, rev2)
+      }
+    }
+  }
+
+  assertNoActivePafOverlaps(staffing, authorizations)
+
+  // Soft sanity: every active PAF must use isActive status correctly in assert above.
+  for (const request of authorizations) {
+    if (!request.isCurrentRevision) continue
+    if (!isActivePafStatus(request.status) && request.status !== 'rejected') {
+      throw new Error(`Unexpected PAF status ${request.status} for ${request.id}`)
+    }
+  }
+
+  return { staffing, authorizations }
+}
+
+const generated = generateSampleData()
+
+export const SAMPLE_STAFFING_PLAN_REQUESTS: StaffingPlanRequest[] = generated.staffing
+export const SAMPLE_PROJECT_AUTHORIZATION_REQUESTS: ProjectAuthorizationRequest[] =
+  generated.authorizations
 
 export function seedSampleData() {
   localStorage.setItem(STAFFING_STORAGE_KEY, JSON.stringify(SAMPLE_STAFFING_PLAN_REQUESTS))
