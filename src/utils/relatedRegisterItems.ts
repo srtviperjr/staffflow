@@ -66,7 +66,7 @@ function toPafRelatedItem(request: ProjectAuthorizationRequest): RelatedRegister
     id: request.id,
     kind: 'project-authorization',
     title: request.candidateName,
-    subtitle: `PAF ${request.pafNumber} · Rev ${request.revision}`,
+    subtitle: `${request.pafNumber} · Rev ${request.revision}`,
     status: request.status,
     revision: request.revision,
     submittedAt: request.submittedAt,

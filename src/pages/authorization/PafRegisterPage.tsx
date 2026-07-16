@@ -794,7 +794,7 @@ export default function PafRegisterPage() {
             id: selectedPaf.id,
             kind: 'project-authorization',
             title: selectedPaf.candidateName,
-            subtitle: `PAF ${selectedPaf.pafNumber}`,
+            subtitle: selectedPaf.pafNumber,
             status: selectedPaf.status,
             revision: selectedPaf.revision,
             submittedAt: selectedPaf.submittedAt,

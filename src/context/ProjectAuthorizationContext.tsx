@@ -11,9 +11,10 @@ import type {
   ProjectAuthorizationRequest,
 } from '../types/projectAuthorization'
 import {
-  generatePafNumber,
+  authorizationPafNumbersChanged,
   getCurrentAuthorizationRequests,
   getRevisionHistory,
+  nextPafNumber,
   normalizeAuthorizationRequests,
   validatePafSchedule,
 } from '../utils/projectAuthorizationRevisions'
@@ -49,7 +50,13 @@ function loadRequests(): ProjectAuthorizationRequest[] {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
-      return normalizeAuthorizationRequests(JSON.parse(stored) as ProjectAuthorizationRequest[])
+      const parsed = JSON.parse(stored) as ProjectAuthorizationRequest[]
+      const normalized = normalizeAuthorizationRequests(parsed)
+      // Persist repairs when legacy UUID-style numbers (e.g. 55B4EF40) are rewritten.
+      if (authorizationPafNumbersChanged(parsed, normalized)) {
+        saveRequests(normalized)
+      }
+      return normalized
     }
 
     const seeded = normalizeAuthorizationRequests(SAMPLE_PROJECT_AUTHORIZATION_REQUESTS)
@@ -86,7 +93,7 @@ function buildRequestFromForm(
     class: data.class,
     company: data.company as ProjectAuthorizationRequest['company'],
     eeIdSap: data.eeIdSap.trim(),
-    pafNumber: overrides.pafNumber ?? generatePafNumber(overrides.id ?? crypto.randomUUID()),
+    pafNumber: overrides.pafNumber ?? nextPafNumber(),
     sortNumber: data.sortNumber.trim(),
     totalHours: data.totalHours.trim(),
     roster: data.roster,
@@ -161,7 +168,7 @@ export function ProjectAuthorizationProvider({ children }: { children: ReactNode
         revisionGroupId: id,
         revision: 1,
         isCurrentRevision: true,
-        pafNumber: generatePafNumber(id),
+        pafNumber: nextPafNumber(requests),
         status,
         workflow: workflowProgress,
       })

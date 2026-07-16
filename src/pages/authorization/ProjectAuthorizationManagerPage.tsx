@@ -242,7 +242,7 @@ export default function ProjectAuthorizationManagerPage() {
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                             <Typography variant="h6">{request.candidateName}</Typography>
                             <Chip
-                              label={`PAF ${request.pafNumber}`}
+                              label={request.pafNumber}
                               size="small"
                               color="info"
                               variant="outlined"

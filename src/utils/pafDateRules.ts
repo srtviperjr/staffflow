@@ -134,7 +134,7 @@ export function validatePafSchedule(args: {
       { exceptRevisionGroupId },
     )
     if (overlap) {
-      errors.lwp = `Dates overlap ${overlap.candidateName}'s PAF ${overlap.pafNumber} (${overlap.startBiWeek} – ${overlap.lwp}). People on the same position cannot overlap.`
+      errors.lwp = `Dates overlap ${overlap.candidateName}'s ${overlap.pafNumber} (${overlap.startBiWeek} – ${overlap.lwp}). People on the same position cannot overlap.`
     }
   }
 

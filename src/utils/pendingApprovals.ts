@@ -109,7 +109,7 @@ export function getPendingApprovalsForUser(options: {
         id: request.id,
         kind: 'project-authorization' as const,
         title: request.candidateName,
-        subtitle: `PAF ${request.pafNumber} · ${request.position}`,
+        subtitle: `${request.pafNumber} · ${request.position}`,
         company: request.company,
         submittedAt: request.submittedAt,
         workflowStepLabel: node?.data.label,

@@ -330,12 +330,12 @@ export default function ProjectAuthorizationFormPage({
       if (isRevisionMode && revisionSource) {
         reviseRequest(revisionSource.id, form, positionLabel, position)
         finish(
-          `Revision ${revisionSource.revision + 1} submitted for ${revisionSource.candidateName} (PAF ${revisionSource.pafNumber}).`,
+          `Revision ${revisionSource.revision + 1} submitted for ${revisionSource.candidateName} (${revisionSource.pafNumber}).`,
           { leavePage: true },
         )
       } else {
         const created = addRequest(form, positionLabel, position)
-        finish(`PAF request submitted successfully. PAF: ${created.pafNumber}.`, {
+        finish(`PAF request submitted successfully (${created.pafNumber}).`, {
           resetForm: true,
         })
       }
@@ -646,7 +646,7 @@ export default function ProjectAuthorizationFormPage({
                   <Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                       <Typography variant="subtitle1">{request.candidateName}</Typography>
-                      <Chip label={`PAF ${request.pafNumber}`} size="small" color="info" variant="outlined" />
+                      <Chip label={request.pafNumber} size="small" color="info" variant="outlined" />
                       <Chip label={`Rev ${request.revision}`} size="small" variant="outlined" />
                       <Chip label={request.company} size="small" variant="outlined" />
                       <Chip

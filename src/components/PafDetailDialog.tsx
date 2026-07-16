@@ -53,7 +53,7 @@ export default function PafDetailDialog({
     <Dialog open={Boolean(authorization)} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <VerifiedIcon color="primary" />
-        PAF {authorization?.pafNumber}
+        {authorization?.pafNumber}
         {authorization ? (
           <>
             <Chip size="small" label={`Rev ${authorization.revision}`} variant="outlined" />

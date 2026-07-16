@@ -22,6 +22,7 @@ import {
   getActivePafsForPosition,
   isActivePafStatus,
 } from '../utils/pafDateRules'
+import { formatPafNumber, maxPafSequence } from '../utils/projectAuthorizationRevisions'
 import { formatDateInput, parseDateInput } from '../utils/staffingPlanDates'
 import { markSeedCurrent } from './seedVersion'
 
@@ -411,15 +412,6 @@ function distributeCount(total: number, buckets: number): number[] {
   return Array.from({ length: buckets }, (_, index) => base + (index < remainder ? 1 : 0))
 }
 
-function maxPafCounter(authorizations: ProjectAuthorizationRequest[]): number {
-  let max = 0
-  for (const request of authorizations) {
-    const match = /^PAF(\d{5})$/.exec(request.pafNumber)
-    if (match) max = Math.max(max, Number(match[1]))
-  }
-  return max
-}
-
 function nextPositionIndexByCompany(
   company: Company,
   existing: StaffingPlanRequest[],
@@ -486,8 +478,8 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
 
   const staffing: StaffingPlanRequest[] = []
   const authorizations: ProjectAuthorizationRequest[] = []
-  let pafCounter = maxPafCounter(existingAuthorizations) + 1
-  const nextPafNumber = () => `PAF${String(pafCounter++).padStart(5, '0')}`
+  let pafCounter = maxPafSequence(existingAuthorizations) + 1
+  const allocatePafNumber = () => formatPafNumber(pafCounter++)
 
   const positionsPerCompany = distributeCount(positionGroups, COMPANIES.length)
   const companyPositionIndexes: Record<Company, number> = {
@@ -670,7 +662,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
         const first = pafForPosition(position, {
           id: `${idPrefix}-paf-${company.toLowerCase()}-${pafSeq}-a`,
           candidateName: candidateName(seed),
-          pafNumber: nextPafNumber(),
+          pafNumber: allocatePafNumber(),
           status: 'approved',
           startBiWeek: range.startBiWeek,
           lwp: firstEnd,
@@ -681,7 +673,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
         const second = pafForPosition(position, {
           id: `${idPrefix}-paf-${company.toLowerCase()}-${pafSeq}-b`,
           candidateName: candidateName(seed + 17),
-          pafNumber: nextPafNumber(),
+          pafNumber: allocatePafNumber(),
           status: 'approved',
           startBiWeek: secondStart,
           lwp: range.lwp,
@@ -701,7 +693,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
         const rejected = pafForPosition(position, {
           id: `${idPrefix}-paf-${company.toLowerCase()}-${pafSeq}-rej`,
           candidateName: candidateName(seed),
-          pafNumber: nextPafNumber(),
+          pafNumber: allocatePafNumber(),
           status: 'rejected',
           startBiWeek: range.startBiWeek,
           lwp: firstEnd,
@@ -714,7 +706,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
         const replacement = pafForPosition(position, {
           id: `${idPrefix}-paf-${company.toLowerCase()}-${pafSeq}-a`,
           candidateName: replacementName,
-          pafNumber: nextPafNumber(),
+          pafNumber: allocatePafNumber(),
           status: 'approved',
           startBiWeek: range.startBiWeek,
           lwp: firstEnd,
@@ -733,7 +725,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
       if (pattern === 4 || pattern === 5) {
         // Revision chain: same PAF number and same person; only details/duration change.
         const group = `${idPrefix}-paf-${company.toLowerCase()}-${pafSeq}`
-        const pafNumber = nextPafNumber()
+        const pafNumber = allocatePafNumber()
         const person = candidateName(seed)
         const eeIdSap = seed % 3 === 0 ? `SAP-${21000 + seed}` : ''
         const rev1End = firstEnd
@@ -810,7 +802,7 @@ export function generateSampleData(options: GenerateSampleDataOptions): Generate
       const single = pafForPosition(position, {
         id: `${idPrefix}-paf-${company.toLowerCase()}-${pafSeq}-a`,
         candidateName: candidateName(seed),
-        pafNumber: nextPafNumber(),
+        pafNumber: allocatePafNumber(),
         status,
         startBiWeek: range.startBiWeek,
         lwp: firstEnd,
