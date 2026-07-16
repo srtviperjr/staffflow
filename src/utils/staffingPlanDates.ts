@@ -75,15 +75,36 @@ export function validateBiWeekDate(value: string): string | undefined {
   return undefined
 }
 
+const MONTH_ABBREVIATIONS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const
+
+/** Display format: 3-Jun-2026 */
 export function formatDisplayDate(value: string): string {
   const date = parseDateInput(value)
   if (!date) return value
-  return date.toLocaleDateString(undefined, {
-    weekday: 'short',
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
+  return `${date.getDate()}-${MONTH_ABBREVIATIONS[date.getMonth()]}-${date.getFullYear()}`
+}
+
+/** Display an ISO timestamp as 3-Jun-2026, 09:00 */
+export function formatDisplayDateTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const dayPart = formatDisplayDate(formatDateInput(date))
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${dayPart}, ${hours}:${minutes}`
 }
 
 export function generateBiWeeklyPeriods(start: Date, count: number): string[] {
@@ -98,6 +119,35 @@ export function generateBiWeeklyPeriods(start: Date, count: number): string[] {
   const periods: string[] = []
   for (let index = 0; index < count; index += 1) {
     periods.push(formatDateInput(cursor))
+    cursor.setDate(cursor.getDate() + 14)
+  }
+  return periods
+}
+
+/** Bi-weekly period Sundays covering [rangeStart, rangeEnd] inclusive. */
+export function generateBiWeeklyPeriodsForRange(
+  rangeStart: string | Date,
+  rangeEnd: string | Date,
+): string[] {
+  const startDate =
+    typeof rangeStart === 'string' ? parseDateInput(rangeStart) : new Date(rangeStart)
+  const endDate = typeof rangeEnd === 'string' ? parseDateInput(rangeEnd) : new Date(rangeEnd)
+  if (!startDate || !endDate) return generateBiWeeklyPeriods(new Date(2026, 6, 5), 16)
+
+  const cursor = new Date(startDate)
+  if (!isSunday(cursor)) {
+    cursor.setDate(cursor.getDate() - cursor.getDay())
+  }
+  if (!isBiWeeklySunday(cursor)) {
+    cursor.setDate(cursor.getDate() - 7)
+  }
+
+  const endTime = endDate.getTime()
+  const periods: string[] = []
+  // Safety cap avoids runaway loops on bad data.
+  for (let index = 0; index < 80; index += 1) {
+    periods.push(formatDateInput(cursor))
+    if (cursor.getTime() >= endTime) break
     cursor.setDate(cursor.getDate() + 14)
   }
   return periods

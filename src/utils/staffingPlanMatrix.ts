@@ -7,7 +7,11 @@ import {
   getActiveAuthorizationForPosition,
   getActivePafsForPosition,
 } from './projectAuthorizationRevisions'
-import { generateBiWeeklyPeriods, parseDateInput } from './staffingPlanDates'
+import {
+  formatDisplayDate,
+  generateBiWeeklyPeriodsForRange,
+  parseDateInput,
+} from './staffingPlanDates'
 
 export type LocationCategory = 'Site - Comm' | 'Site - Const' | 'Office'
 
@@ -172,8 +176,35 @@ export function filterMatrixRows(
   )
 }
 
-export function getMatrixPeriods(count = 16): string[] {
-  return generateBiWeeklyPeriods(new Date(2026, 8, 27), count)
+/** Calendar periods covering all position and PAF durations in the plan. */
+export function getMatrixPeriods(
+  staffingRequests: StaffingPlanRequest[] = [],
+  authorizations: ProjectAuthorizationRequest[] = [],
+): string[] {
+  let minStart = ''
+  let maxEnd = ''
+
+  const consider = (start: string, end: string) => {
+    if (!start || !end) return
+    if (!minStart || start < minStart) minStart = start
+    if (!maxEnd || end > maxEnd) maxEnd = end
+  }
+
+  for (const request of staffingRequests) {
+    if (request.status === 'approved' || request.isCurrentRevision) {
+      consider(request.startBiWeek, request.lwp)
+    }
+  }
+  for (const request of authorizations) {
+    if (request.isCurrentRevision) {
+      consider(request.startBiWeek, request.lwp)
+    }
+  }
+
+  if (!minStart || !maxEnd) {
+    return generateBiWeeklyPeriodsForRange('2026-07-05', '2027-07-04')
+  }
+  return generateBiWeeklyPeriodsForRange(minStart, maxEnd)
 }
 
 function toLocationCategory(locationType: string): LocationCategory {
@@ -203,13 +234,7 @@ function generateDemoLoad(rowId: string, period: string, startBiWeek: string, lw
 }
 
 function formatMatrixDate(value: string): string {
-  const date = parseDateInput(value)
-  if (!date) return value
-  return date.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
+  return formatDisplayDate(value)
 }
 
 function toCalendarPeople(assignments: ProjectAuthorizationRequest[]): MatrixCalendarPerson[] {

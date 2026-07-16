@@ -1,6 +1,6 @@
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import type { StaffingPlanRequest } from '../types/staffingPlan'
-import { formatDisplayDate } from './staffingPlanDates'
+import { formatDisplayDate, formatDisplayDateTime } from './staffingPlanDates'
 import { personBarColor } from './ganttPeriods'
 
 export type RelatedRegisterKind = 'staffing-plan' | 'project-authorization'
@@ -34,7 +34,7 @@ function formatDatesCaption(startBiWeek?: string, lwp?: string, submittedAt?: st
   const parts: string[] = []
   if (startBiWeek) parts.push(`Start ${formatDisplayDate(startBiWeek)}`)
   if (lwp) parts.push(`Last working day ${formatDisplayDate(lwp)}`)
-  if (submittedAt) parts.push(`Submitted ${new Date(submittedAt).toLocaleString()}`)
+  if (submittedAt) parts.push(`Submitted ${formatDisplayDateTime(submittedAt)}`)
   return parts.join(' · ')
 }
 

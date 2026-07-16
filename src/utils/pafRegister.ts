@@ -1,7 +1,7 @@
 import type { ProjectAuthorizationRequest } from '../types/projectAuthorization'
 import { personBarColor } from './ganttPeriods'
 import { getCurrentAuthorizationRequests } from './projectAuthorizationRevisions'
-import { formatDisplayDate, generateBiWeeklyPeriods } from './staffingPlanDates'
+import { formatDisplayDate, generateBiWeeklyPeriodsForRange } from './staffingPlanDates'
 
 export type PafRegisterColumnId =
   | 'pafNumber'
@@ -70,8 +70,23 @@ export const DEFAULT_PAF_COLUMN_ORDER: PafRegisterColumnId[] =
 
 const COLUMN_BY_ID = new Map(PAF_REGISTER_COLUMN_DEFS.map((column) => [column.id, column]))
 
-export function getPafRegisterPeriods(count = 16): string[] {
-  return generateBiWeeklyPeriods(new Date(2026, 8, 27), count)
+/** Calendar periods covering all current PAF durations. */
+export function getPafRegisterPeriods(
+  requests: ProjectAuthorizationRequest[] = [],
+): string[] {
+  let minStart = ''
+  let maxEnd = ''
+
+  for (const request of getCurrentAuthorizationRequests(requests)) {
+    if (!request.startBiWeek || !request.lwp) continue
+    if (!minStart || request.startBiWeek < minStart) minStart = request.startBiWeek
+    if (!maxEnd || request.lwp > maxEnd) maxEnd = request.lwp
+  }
+
+  if (!minStart || !maxEnd) {
+    return generateBiWeeklyPeriodsForRange('2026-07-05', '2027-07-04')
+  }
+  return generateBiWeeklyPeriodsForRange(minStart, maxEnd)
 }
 
 export function getOrderedVisiblePafColumns(

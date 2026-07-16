@@ -4,6 +4,7 @@ import {
   ganttBarRole,
   personBarColor,
 } from '../utils/ganttPeriods'
+import { formatDisplayDate } from '../utils/staffingPlanDates'
 
 const cellSx = {
   border: '1px solid #bdbdbd',
@@ -77,7 +78,11 @@ export default function GanttBarCell({
   )
 }
 
-/** Person bars over an optional muted position-availability track. */
+/**
+ * Calendar cell for a staffing position:
+ * - slate bar spans the position duration
+ * - coloured person bars span each PAF's own start → last working day
+ */
 export function MultiPersonGanttCell({
   period,
   periods,
@@ -101,9 +106,10 @@ export function MultiPersonGanttCell({
   const covering = people.filter(
     (person) => ganttBarRole(period, periods, person.startBiWeek, person.lwp) !== 'none',
   )
-  const inPositionWindow = positionRange
-    ? ganttBarRole(period, periods, positionRange.startBiWeek, positionRange.lwp) !== 'none'
-    : false
+  const positionRole = positionRange
+    ? ganttBarRole(period, periods, positionRange.startBiWeek, positionRange.lwp)
+    : 'none'
+  const inPositionWindow = positionRole !== 'none'
 
   if (covering.length === 0 && !inPositionWindow) {
     return (
@@ -124,39 +130,36 @@ export function MultiPersonGanttCell({
         ...cellSx,
         minWidth,
         p: 0.25,
-        bgcolor: inPositionWindow && covering.length === 0 ? 'rgba(100, 116, 139, 0.12)' : undefined,
       }}
     >
-      {covering.length === 0 ? (
-        <Box
-          sx={{
-            height: 18,
-            bgcolor: 'rgba(100, 116, 139, 0.35)',
-            borderRadius: ganttBarRadius(
-              ganttBarRole(period, periods, positionRange!.startBiWeek, positionRange!.lwp),
-            ),
-          }}
-          title={`Position available: ${positionRange!.startBiWeek} → ${positionRange!.lwp}`}
-        />
-      ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-          {covering.map((person) => {
-            const role = ganttBarRole(period, periods, person.startBiWeek, person.lwp)
-            return (
-              <Box
-                key={person.id}
-                sx={{
-                  height: covering.length > 1 ? 8 : 18,
-                  bgcolor: person.color,
-                  borderRadius: ganttBarRadius(role),
-                  opacity: 0.92,
-                }}
-                title={`${person.candidateName}: ${person.startBiWeek} → ${person.lwp}`}
-              />
-            )
-          })}
-        </Box>
-      )}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+        {inPositionWindow ? (
+          <Box
+            sx={{
+              height: covering.length > 0 ? 5 : 18,
+              bgcolor: '#64748b',
+              borderRadius: ganttBarRadius(positionRole),
+              opacity: covering.length > 0 ? 0.45 : 0.8,
+            }}
+            title={`Position: ${formatDisplayDate(positionRange!.startBiWeek)} → ${formatDisplayDate(positionRange!.lwp)}`}
+          />
+        ) : null}
+        {covering.map((person) => {
+          const role = ganttBarRole(period, periods, person.startBiWeek, person.lwp)
+          return (
+            <Box
+              key={person.id}
+              sx={{
+                height: covering.length > 1 || inPositionWindow ? 10 : 18,
+                bgcolor: person.color,
+                borderRadius: ganttBarRadius(role),
+                opacity: 0.92,
+              }}
+              title={`${person.candidateName}: ${formatDisplayDate(person.startBiWeek)} → ${formatDisplayDate(person.lwp)}`}
+            />
+          )
+        })}
+      </Box>
     </TableCell>
   )
 }

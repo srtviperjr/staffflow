@@ -50,6 +50,7 @@ import {
   getRelatedItemsForPafRequest,
   type RelatedRegisterItem,
 } from '../../utils/relatedRegisterItems'
+import { formatDisplayDate } from '../../utils/staffingPlanDates'
 import type { ProjectAuthorizationRequest } from '../../types/projectAuthorization'
 import {
   DEFAULT_PAF_COLUMN_ORDER,
@@ -157,7 +158,7 @@ export default function PafRegisterPage() {
     [requests, currentUser?.company],
   )
 
-  const periods = useMemo(() => getPafRegisterPeriods(), [])
+  const periods = useMemo(() => getPafRegisterPeriods(visibleRequests), [visibleRequests])
   const rows = useMemo(() => buildPafRegisterRows(visibleRequests), [visibleRequests])
   const filteredRows = useMemo(() => filterPafRegisterRows(rows, filters), [rows, filters])
   const visibleColumnDefs = useMemo(
@@ -227,7 +228,7 @@ export default function PafRegisterPage() {
     [columnOrder],
   )
 
-  const metadataColSpan = visibleColumnDefs.length + 1 + (canRevise ? 1 : 0)
+  const detailColSpan = visibleColumnDefs.length
 
   const handleRejectConfirm = (comment: string) => {
     if (!rejectTarget) return
@@ -389,24 +390,22 @@ export default function PafRegisterPage() {
                         width: EXPAND_COL_WIDTH,
                       }}
                     />
-                    {canRevise ? (
-                      <TableCell
-                        sx={{
-                          ...cellSx,
-                          position: 'sticky',
-                          top: 0,
-                          left: EXPAND_COL_WIDTH,
-                          zIndex: 6,
-                          bgcolor: '#6a1b9a',
-                          color: 'white',
-                          fontWeight: 700,
-                          minWidth: ACTIONS_COL_WIDTH,
-                          width: ACTIONS_COL_WIDTH,
-                        }}
-                      >
-                        Actions
-                      </TableCell>
-                    ) : null}
+                    <TableCell
+                      sx={{
+                        ...cellSx,
+                        position: 'sticky',
+                        top: 0,
+                        left: EXPAND_COL_WIDTH,
+                        zIndex: 6,
+                        bgcolor: '#6a1b9a',
+                        color: 'white',
+                        fontWeight: 700,
+                        minWidth: ACTIONS_COL_WIDTH,
+                        width: ACTIONS_COL_WIDTH,
+                      }}
+                    >
+                      Actions
+                    </TableCell>
                     {visibleColumnDefs.map((column) => (
                       <TableCell
                         key={column.id}
@@ -429,7 +428,7 @@ export default function PafRegisterPage() {
                         key={period}
                         sx={{ ...periodHeaderSx, bgcolor: '#6a1b9a', color: 'white', zIndex: 4 }}
                       >
-                        <Box sx={rotatedLabelSx}>{period}</Box>
+                        <Box sx={rotatedLabelSx}>{formatDisplayDate(period)}</Box>
                       </TableCell>
                     ))}
                   </TableRow>
@@ -447,20 +446,18 @@ export default function PafRegisterPage() {
                         width: EXPAND_COL_WIDTH,
                       }}
                     />
-                    {canRevise ? (
-                      <TableCell
-                        sx={{
-                          ...cellSx,
-                          position: 'sticky',
-                          top: 40,
-                          left: EXPAND_COL_WIDTH,
-                          zIndex: 6,
-                          bgcolor: '#f3e5f5',
-                          minWidth: ACTIONS_COL_WIDTH,
-                          width: ACTIONS_COL_WIDTH,
-                        }}
-                      />
-                    ) : null}
+                    <TableCell
+                      sx={{
+                        ...cellSx,
+                        position: 'sticky',
+                        top: 40,
+                        left: EXPAND_COL_WIDTH,
+                        zIndex: 6,
+                        bgcolor: '#f3e5f5',
+                        minWidth: ACTIONS_COL_WIDTH,
+                        width: ACTIONS_COL_WIDTH,
+                      }}
+                    />
                     {visibleColumnDefs.map((column) => {
                       const options = getUniquePafColumnValues(rows, column.id)
                       return (
@@ -549,18 +546,18 @@ export default function PafRegisterPage() {
                               {expanded ? <RemoveIcon fontSize="small" /> : <AddIcon fontSize="small" />}
                             </IconButton>
                           </TableCell>
-                          {canRevise ? (
-                            <TableCell
-                              sx={{
-                                ...cellSx,
-                                position: 'sticky',
-                                left: EXPAND_COL_WIDTH,
-                                zIndex: 2,
-                                bgcolor: 'background.paper',
-                                minWidth: ACTIONS_COL_WIDTH,
-                                width: ACTIONS_COL_WIDTH,
-                              }}
-                            >
+                          <TableCell
+                            sx={{
+                              ...cellSx,
+                              position: 'sticky',
+                              left: EXPAND_COL_WIDTH,
+                              zIndex: 2,
+                              bgcolor: 'background.paper',
+                              minWidth: ACTIONS_COL_WIDTH,
+                              width: ACTIONS_COL_WIDTH,
+                            }}
+                          >
+                            {canRevise ? (
                               <Button
                                 size="small"
                                 variant="outlined"
@@ -571,8 +568,8 @@ export default function PafRegisterPage() {
                               >
                                 Revise
                               </Button>
-                            </TableCell>
-                          ) : null}
+                            ) : null}
+                          </TableCell>
                           {visibleColumnDefs.map((column) => {
                             const value = column.getValue(row)
                             return (
@@ -634,7 +631,40 @@ export default function PafRegisterPage() {
                                 sx={{ bgcolor: 'rgba(106, 27, 154, 0.04)' }}
                               >
                                 <TableCell
-                                  colSpan={metadataColSpan}
+                                  sx={{
+                                    ...cellSx,
+                                    position: 'sticky',
+                                    left: 0,
+                                    zIndex: 2,
+                                    bgcolor: 'rgba(243,229,245,0.95)',
+                                    minWidth: EXPAND_COL_WIDTH,
+                                    width: EXPAND_COL_WIDTH,
+                                    p: 0.25,
+                                  }}
+                                />
+                                <TableCell
+                                  sx={{
+                                    ...cellSx,
+                                    position: 'sticky',
+                                    left: EXPAND_COL_WIDTH,
+                                    zIndex: 2,
+                                    bgcolor: 'rgba(243,229,245,0.95)',
+                                    minWidth: ACTIONS_COL_WIDTH,
+                                    width: ACTIONS_COL_WIDTH,
+                                  }}
+                                >
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    startIcon={<VisibilityIcon />}
+                                    onClick={() => item.pafRequest && setSelectedPaf(item.pafRequest)}
+                                    sx={{ textTransform: 'none', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                                  >
+                                    View
+                                  </Button>
+                                </TableCell>
+                                <TableCell
+                                  colSpan={detailColSpan}
                                   sx={{ ...cellSx, bgcolor: 'rgba(243,229,245,0.65)', py: 1 }}
                                 >
                                   <Box
@@ -674,38 +704,28 @@ export default function PafRegisterPage() {
                                         {formatRelatedItemCaption(item)}
                                       </Typography>
                                     </Box>
-                                    <Stack direction="row" spacing={1}>
-                                      <Button
-                                        size="small"
-                                        variant="outlined"
-                                        startIcon={<VisibilityIcon />}
-                                        onClick={() => item.pafRequest && setSelectedPaf(item.pafRequest)}
-                                      >
-                                        View
-                                      </Button>
-                                      {canReview && item.status === 'pending' ? (
-                                        <>
-                                          <Button
-                                            size="small"
-                                            variant="contained"
-                                            color="success"
-                                            startIcon={<CheckCircleIcon />}
-                                            onClick={() => approveRequest(item.id)}
-                                          >
-                                            Approve
-                                          </Button>
-                                          <Button
-                                            size="small"
-                                            variant="outlined"
-                                            color="error"
-                                            startIcon={<CancelIcon />}
-                                            onClick={() => setRejectTarget(item)}
-                                          >
-                                            Reject
-                                          </Button>
-                                        </>
-                                      ) : null}
-                                    </Stack>
+                                    {canReview && item.status === 'pending' ? (
+                                      <Stack direction="row" spacing={1}>
+                                        <Button
+                                          size="small"
+                                          variant="contained"
+                                          color="success"
+                                          startIcon={<CheckCircleIcon />}
+                                          onClick={() => approveRequest(item.id)}
+                                        >
+                                          Approve
+                                        </Button>
+                                        <Button
+                                          size="small"
+                                          variant="outlined"
+                                          color="error"
+                                          startIcon={<CancelIcon />}
+                                          onClick={() => setRejectTarget(item)}
+                                        >
+                                          Reject
+                                        </Button>
+                                      </Stack>
+                                    ) : null}
                                   </Box>
                                 </TableCell>
                                 {periods.map((period) =>
