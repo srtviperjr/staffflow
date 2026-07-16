@@ -1,47 +1,51 @@
-import type { Company } from '../constants/companies'
-import type { StaffingPlanRequest } from '../types/staffingPlan'
+import type { Phase, StaffingPlanRequest } from '../types/staffingPlan'
 
-/** Canonical position number: Company-### (e.g. Hatch-001, Fluor-012). */
-export const POSITION_NUMBER_PATTERN = /^([A-Za-z][A-Za-z0-9]*)-(\d{3})$/
+/** Canonical position number: project prefix + sequence (JS1-001, JS2-012). */
+export const POSITION_NUMBER_PATTERN = /^(JS[12])-(\d{3})$/
+
+export type PositionNumberPrefix = 'JS1' | 'JS2'
 
 export function isValidPositionNumber(value: string | undefined | null): boolean {
   return Boolean(value && POSITION_NUMBER_PATTERN.test(value))
 }
 
-export function formatPositionNumber(company: string, sequence: number): string {
-  return `${company}-${String(Math.max(0, Math.floor(sequence))).padStart(3, '0')}`
+export function formatPositionNumber(phase: string, sequence: number): string {
+  const prefix = phase === 'JS2' ? 'JS2' : 'JS1'
+  return `${prefix}-${String(Math.max(0, Math.floor(sequence))).padStart(3, '0')}`
 }
 
 export function parsePositionNumber(
   value: string | undefined | null,
-): { company: string; sequence: number } | null {
+): { phase: PositionNumberPrefix; sequence: number } | null {
   if (!value) return null
   const match = POSITION_NUMBER_PATTERN.exec(value)
   if (!match) return null
-  return { company: match[1], sequence: Number(match[2]) }
+  return { phase: match[1] as PositionNumberPrefix, sequence: Number(match[2]) }
 }
 
-/** Highest ### used for a company among existing position numbers. */
+/** Highest ### used for a project prefix among existing position numbers. */
 export function maxPositionSequence(
-  company: string,
+  phase: string,
   requests: Array<{ positionNumber?: string }> = [],
 ): number {
+  const prefix = phase === 'JS2' ? 'JS2' : 'JS1'
   let max = 0
   for (const request of requests) {
     const parsed = parsePositionNumber(request.positionNumber)
-    if (parsed && parsed.company === company) {
+    if (parsed && parsed.phase === prefix) {
       max = Math.max(max, parsed.sequence)
     }
   }
   return max
 }
 
-/** Next sequential position number for a company (Hatch-001, Hatch-002, …). */
+/** Next sequential position number for a project (JS1-001, JS1-002, …). */
 export function nextPositionNumber(
-  company: string,
+  phase: string,
   existing: Array<{ positionNumber?: string }> = [],
 ): string {
-  return formatPositionNumber(company, maxPositionSequence(company, existing) + 1)
+  const prefix = phase === 'JS2' ? 'JS2' : 'JS1'
+  return formatPositionNumber(prefix, maxPositionSequence(prefix, existing) + 1)
 }
 
 export function normalizeStaffingPlanRequest(request: StaffingPlanRequest): StaffingPlanRequest {
@@ -56,35 +60,37 @@ export function normalizeStaffingPlanRequest(request: StaffingPlanRequest): Staf
 
 /**
  * Normalize revision metadata and repair non-canonical position numbers
- * (UUID fragments, HA001, etc.) to Company-###. Revisions in a group share one number.
+ * (Company-###, UUID fragments, HA001, etc.) to JS1-### / JS2-###.
+ * Revisions in a group share one number keyed by project phase.
  */
 export function normalizeStaffingPlanRequests(
   requests: StaffingPlanRequest[],
 ): StaffingPlanRequest[] {
   const normalized = requests.map(normalizeStaffingPlanRequest)
   const numberByGroup = new Map<string, string>()
-  const companyByGroup = new Map<string, Company | string>()
+  const phaseByGroup = new Map<string, Phase>()
 
   for (const request of normalized) {
-    if (!companyByGroup.has(request.revisionGroupId)) {
-      companyByGroup.set(request.revisionGroupId, request.company)
+    if (!phaseByGroup.has(request.revisionGroupId)) {
+      phaseByGroup.set(request.revisionGroupId, request.phase === 'JS2' ? 'JS2' : 'JS1')
     }
     if (
       isValidPositionNumber(request.positionNumber) &&
       !numberByGroup.has(request.revisionGroupId)
     ) {
       const parsed = parsePositionNumber(request.positionNumber)
-      // Keep a valid number when its company prefix matches the position's company.
-      if (parsed && parsed.company === request.company) {
+      const phase = phaseByGroup.get(request.revisionGroupId) ?? 'JS1'
+      // Keep a valid number when its project prefix matches the position's phase.
+      if (parsed && parsed.phase === phase) {
         numberByGroup.set(request.revisionGroupId, request.positionNumber)
       }
     }
   }
 
-  const nextByCompany = new Map<string, number>()
-  const bumpNext = (company: string) => {
-    if (!nextByCompany.has(company)) {
-      nextByCompany.set(company, maxPositionSequence(company, normalized) + 1)
+  const nextByPhase = new Map<PositionNumberPrefix, number>()
+  const bumpNext = (phase: PositionNumberPrefix) => {
+    if (!nextByPhase.has(phase)) {
+      nextByPhase.set(phase, maxPositionSequence(phase, normalized) + 1)
     }
   }
 
@@ -92,27 +98,27 @@ export function normalizeStaffingPlanRequests(
   for (const positionNumber of numberByGroup.values()) {
     const parsed = parsePositionNumber(positionNumber)
     if (!parsed) continue
-    bumpNext(parsed.company)
-    const current = nextByCompany.get(parsed.company) ?? 1
+    bumpNext(parsed.phase)
+    const current = nextByPhase.get(parsed.phase) ?? 1
     if (parsed.sequence >= current) {
-      nextByCompany.set(parsed.company, parsed.sequence + 1)
+      nextByPhase.set(parsed.phase, parsed.sequence + 1)
     }
   }
 
   for (const request of normalized) {
     if (numberByGroup.has(request.revisionGroupId)) continue
-    const company = companyByGroup.get(request.revisionGroupId) ?? request.company
-    bumpNext(company)
-    const sequence = nextByCompany.get(company) ?? 1
-    numberByGroup.set(request.revisionGroupId, formatPositionNumber(company, sequence))
-    nextByCompany.set(company, sequence + 1)
+    const phase = phaseByGroup.get(request.revisionGroupId) ?? 'JS1'
+    bumpNext(phase)
+    const sequence = nextByPhase.get(phase) ?? 1
+    numberByGroup.set(request.revisionGroupId, formatPositionNumber(phase, sequence))
+    nextByPhase.set(phase, sequence + 1)
   }
 
   const withCanonicalNumbers = normalized.map((request) => ({
     ...request,
     positionNumber:
       numberByGroup.get(request.revisionGroupId) ??
-      nextPositionNumber(request.company, normalized),
+      nextPositionNumber(request.phase, normalized),
   }))
 
   const latestByGroup = new Map<string, StaffingPlanRequest>()
