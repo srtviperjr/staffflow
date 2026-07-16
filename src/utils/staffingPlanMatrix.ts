@@ -45,6 +45,7 @@ export interface StaffingMatrixRow {
   country: string
   discipline: string
   position: string
+  positionNumber: string
   candidate: string
   class: string
   company: string
@@ -66,6 +67,8 @@ export interface StaffingMatrixSummary {
 }
 
 export type MatrixColumnId =
+  | 'positionNumber'
+  | 'candidate'
   | 'phase'
   | 'projectOffice'
   | 'functionalDsg'
@@ -74,7 +77,6 @@ export type MatrixColumnId =
   | 'country'
   | 'discipline'
   | 'position'
-  | 'candidate'
   | 'class'
   | 'company'
   | 'eeIdSap'
@@ -94,6 +96,8 @@ export interface MatrixColumnDef {
 }
 
 export const MATRIX_COLUMN_DEFS: MatrixColumnDef[] = [
+  { id: 'positionNumber', label: 'Position #', getValue: (row) => row.positionNumber, minWidth: 110 },
+  { id: 'candidate', label: 'Candidate', getValue: (row) => row.candidate, minWidth: 140 },
   { id: 'phase', label: 'Phase', getValue: (row) => row.phase, minWidth: 80 },
   { id: 'projectOffice', label: 'Project Office', getValue: (row) => row.projectOffice },
   { id: 'functionalDsg', label: 'Functional DSG', getValue: (row) => row.functionalDsg, minWidth: 160 },
@@ -102,7 +106,6 @@ export const MATRIX_COLUMN_DEFS: MatrixColumnDef[] = [
   { id: 'country', label: 'Country', getValue: (row) => row.country },
   { id: 'discipline', label: 'Discipline', getValue: (row) => row.discipline, minWidth: 140 },
   { id: 'position', label: 'Position', getValue: (row) => row.position, minWidth: 140 },
-  { id: 'candidate', label: 'Candidate', getValue: (row) => row.candidate, minWidth: 140 },
   { id: 'class', label: 'Class', getValue: (row) => row.class, minWidth: 140 },
   { id: 'company', label: 'Company', getValue: (row) => row.company },
   { id: 'eeIdSap', label: 'EE Id # / SAP', getValue: (row) => row.eeIdSap },
@@ -115,7 +118,32 @@ export const MATRIX_COLUMN_DEFS: MatrixColumnDef[] = [
   { id: 'lwp', label: 'Last Working Day', getValue: (row) => row.lwp, minWidth: 140 },
 ]
 
-export const DEFAULT_COLUMN_ORDER: MatrixColumnId[] = MATRIX_COLUMN_DEFS.map((column) => column.id)
+/** Position # and Candidate lead by default. */
+export const DEFAULT_COLUMN_ORDER: MatrixColumnId[] = [
+  'positionNumber',
+  'candidate',
+  'phase',
+  'projectOffice',
+  'functionalDsg',
+  'area',
+  'subArea',
+  'country',
+  'discipline',
+  'position',
+  'class',
+  'company',
+  'eeIdSap',
+  'paf',
+  'sortNumber',
+  'totalHours',
+  'hoursToGo',
+  'roster',
+  'startBiWeek',
+  'lwp',
+]
+
+/** Columns frozen while scrolling the Gantt (in addition to Expand + Actions). */
+export const DEFAULT_STICKY_COLUMNS: MatrixColumnId[] = ['positionNumber', 'candidate']
 
 /** @deprecated Prefer MATRIX_COLUMN_DEFS — kept for any residual label lookups */
 export const METADATA_COLUMNS = MATRIX_COLUMN_DEFS.map((column) => column.label)
@@ -295,6 +323,7 @@ function buildRow(
     country: position.country,
     discipline: position.discipline,
     position: position.position,
+    positionNumber: position.positionNumber,
     candidate: authorization?.candidateName ?? 'None',
     class: position.class,
     company: position.company,

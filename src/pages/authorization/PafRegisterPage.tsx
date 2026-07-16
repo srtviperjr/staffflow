@@ -31,6 +31,7 @@ import FilterAltOffIcon from '@mui/icons-material/FilterAltOff'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import RestartAltIcon from '@mui/icons-material/RestartAlt'
+import PushPinIcon from '@mui/icons-material/PushPin'
 import EditIcon from '@mui/icons-material/Edit'
 import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
@@ -53,12 +54,15 @@ import {
 import { formatDisplayDate } from '../../utils/staffingPlanDates'
 import {
   STICKY_EXPAND_DETAIL_WIDTH,
-  stickyDetailLeft,
+  buildStickyColumnLayout,
+  columnWidth,
+  loadStickyColumnIds,
   stickyEdgeShadow,
 } from '../../utils/stickyTableColumns'
 import type { ProjectAuthorizationRequest } from '../../types/projectAuthorization'
 import {
   DEFAULT_PAF_COLUMN_ORDER,
+  DEFAULT_PAF_STICKY_COLUMNS,
   PAF_REGISTER_COLUMN_DEFS,
   buildPafRegisterRows,
   filterPafRegisterRows,
@@ -70,9 +74,10 @@ import {
 
 const COLUMN_ORDER_KEY = 'paf-register-column-order'
 const COLUMN_VISIBLE_KEY = 'paf-register-visible-columns'
+const COLUMN_STICKY_KEY = 'paf-register-sticky-columns'
 const EXPAND_COL_WIDTH = 48
 const ACTIONS_COL_WIDTH = 118
-const DETAIL_STICKY_LEFT = stickyDetailLeft(EXPAND_COL_WIDTH, ACTIONS_COL_WIDTH)
+const META_WIDTH_FALLBACK = 110
 
 const cellSx = {
   border: '1px solid #bdbdbd',
@@ -115,7 +120,9 @@ function loadColumnOrder(): PafRegisterColumnId[] {
     const known = new Set(DEFAULT_PAF_COLUMN_ORDER)
     const filtered = parsed.filter((id) => known.has(id))
     for (const id of DEFAULT_PAF_COLUMN_ORDER) {
-      if (!filtered.includes(id)) filtered.push(id)
+      if (filtered.includes(id)) continue
+      const defaultIndex = DEFAULT_PAF_COLUMN_ORDER.indexOf(id)
+      filtered.splice(Math.min(defaultIndex, filtered.length), 0, id)
     }
     return filtered
   } catch {
@@ -130,10 +137,22 @@ function loadVisibleColumns(): PafRegisterColumnId[] {
     const parsed = JSON.parse(stored) as PafRegisterColumnId[]
     if (!Array.isArray(parsed) || parsed.length === 0) return [...DEFAULT_PAF_COLUMN_ORDER]
     const known = new Set(DEFAULT_PAF_COLUMN_ORDER)
-    return parsed.filter((id) => known.has(id))
+    const filtered = parsed.filter((id) => known.has(id))
+    for (const id of DEFAULT_PAF_STICKY_COLUMNS) {
+      if (!filtered.includes(id)) filtered.unshift(id)
+    }
+    return filtered.length > 0 ? filtered : [...DEFAULT_PAF_COLUMN_ORDER]
   } catch {
     return [...DEFAULT_PAF_COLUMN_ORDER]
   }
+}
+
+function loadStickyColumns(): PafRegisterColumnId[] {
+  return loadStickyColumnIds(
+    COLUMN_STICKY_KEY,
+    DEFAULT_PAF_STICKY_COLUMNS,
+    DEFAULT_PAF_COLUMN_ORDER,
+  )
 }
 
 export default function PafRegisterPage() {
@@ -148,6 +167,7 @@ export default function PafRegisterPage() {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({})
   const [columnOrder, setColumnOrder] = useState<PafRegisterColumnId[]>(loadColumnOrder)
   const [visibleColumns, setVisibleColumns] = useState<PafRegisterColumnId[]>(loadVisibleColumns)
+  const [stickyColumns, setStickyColumns] = useState<PafRegisterColumnId[]>(loadStickyColumns)
   const [filters, setFilters] = useState<Partial<Record<PafRegisterColumnId, string>>>({})
   const [columnsAnchor, setColumnsAnchor] = useState<HTMLElement | null>(null)
 
@@ -158,6 +178,10 @@ export default function PafRegisterPage() {
   useEffect(() => {
     localStorage.setItem(COLUMN_VISIBLE_KEY, JSON.stringify(visibleColumns))
   }, [visibleColumns])
+
+  useEffect(() => {
+    localStorage.setItem(COLUMN_STICKY_KEY, JSON.stringify(stickyColumns))
+  }, [stickyColumns])
 
   const visibleRequests = useMemo(
     () => filterByCompanyVisibility(requests, currentUser?.company),
@@ -170,6 +194,31 @@ export default function PafRegisterPage() {
   const visibleColumnDefs = useMemo(
     () => getOrderedVisiblePafColumns(columnOrder, visibleColumns),
     [columnOrder, visibleColumns],
+  )
+
+  const stickyLayout = useMemo(
+    () =>
+      buildStickyColumnLayout(
+        EXPAND_COL_WIDTH,
+        ACTIONS_COL_WIDTH,
+        visibleColumnDefs,
+        stickyColumns,
+        META_WIDTH_FALLBACK,
+      ),
+    [visibleColumnDefs, stickyColumns],
+  )
+
+  const stickyPlaceholders = useMemo(
+    () =>
+      stickyLayout.stickyVisibleIds.map((id) => {
+        const column = visibleColumnDefs.find((item) => item.id === id)
+        return {
+          id,
+          left: stickyLayout.leftFor(id) ?? EXPAND_COL_WIDTH + ACTIONS_COL_WIDTH,
+          width: columnWidth(column?.minWidth, META_WIDTH_FALLBACK),
+        }
+      }),
+    [stickyLayout, visibleColumnDefs],
   )
 
   const relatedByRowId = useMemo(() => {
@@ -208,6 +257,12 @@ export default function PafRegisterPage() {
     })
   }
 
+  const toggleColumnSticky = (columnId: PafRegisterColumnId) => {
+    setStickyColumns((prev) =>
+      prev.includes(columnId) ? prev.filter((id) => id !== columnId) : [...prev, columnId],
+    )
+  }
+
   const moveColumn = (columnId: PafRegisterColumnId, direction: -1 | 1) => {
     setColumnOrder((prev) => {
       const index = prev.indexOf(columnId)
@@ -224,6 +279,7 @@ export default function PafRegisterPage() {
   const resetColumns = () => {
     setColumnOrder([...DEFAULT_PAF_COLUMN_ORDER])
     setVisibleColumns([...DEFAULT_PAF_COLUMN_ORDER])
+    setStickyColumns([...DEFAULT_PAF_STICKY_COLUMNS])
   }
 
   const orderedColumnDefsForPanel = useMemo(
@@ -297,7 +353,7 @@ export default function PafRegisterPage() {
         onClose={() => setColumnsAnchor(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        slotProps={{ paper: { sx: { width: 360, maxHeight: 480 } } }}
+        slotProps={{ paper: { sx: { width: 400, maxHeight: 520 } } }}
       >
         <Box sx={{ p: 2 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
@@ -309,17 +365,31 @@ export default function PafRegisterPage() {
             </Button>
           </Box>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-            Show/hide and reorder fields. The duration calendar stays fixed on the right.
+            Show/hide, reorder, and pin sticky columns. Expand, Actions, and expand details always
+            stay fixed while the calendar scrolls.
           </Typography>
           <Divider sx={{ mb: 1 }} />
           <List dense disablePadding>
             {orderedColumnDefsForPanel.map((column, index) => {
               const checked = visibleColumns.includes(column.id)
+              const isSticky = stickyColumns.includes(column.id)
               return (
                 <ListItem
                   key={column.id}
                   secondaryAction={
                     <Stack direction="row" spacing={0.25}>
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        aria-label={
+                          isSticky ? `Unpin ${column.label}` : `Pin ${column.label} as sticky`
+                        }
+                        color={isSticky ? 'secondary' : 'default'}
+                        disabled={!checked}
+                        onClick={() => toggleColumnSticky(column.id)}
+                      >
+                        <PushPinIcon fontSize="small" />
+                      </IconButton>
                       <IconButton
                         edge="end"
                         size="small"
@@ -338,7 +408,7 @@ export default function PafRegisterPage() {
                       </IconButton>
                     </Stack>
                   }
-                  sx={{ pr: 10 }}
+                  sx={{ pr: 14 }}
                 >
                   <ListItemIcon sx={{ minWidth: 36 }}>
                     <Checkbox
@@ -350,7 +420,10 @@ export default function PafRegisterPage() {
                       slotProps={{ input: { 'aria-label': `Toggle ${column.label}` } }}
                     />
                   </ListItemIcon>
-                  <ListItemText primary={column.label} />
+                  <ListItemText
+                    primary={column.label}
+                    secondary={isSticky ? 'Sticky' : undefined}
+                  />
                 </ListItem>
               )
             })}
@@ -409,28 +482,40 @@ export default function PafRegisterPage() {
                         fontWeight: 700,
                         minWidth: ACTIONS_COL_WIDTH,
                         width: ACTIONS_COL_WIDTH,
-                        boxShadow: stickyEdgeShadow,
+                        boxShadow: stickyLayout.actionsHaveEdgeShadow
+                          ? stickyEdgeShadow
+                          : undefined,
                       }}
                     >
                       Actions
                     </TableCell>
-                    {visibleColumnDefs.map((column) => (
-                      <TableCell
-                        key={column.id}
-                        sx={{
-                          ...cellSx,
-                          position: 'sticky',
-                          top: 0,
-                          zIndex: 5,
-                          bgcolor: '#6a1b9a',
-                          color: 'white',
-                          fontWeight: 700,
-                          minWidth: column.minWidth ?? 110,
-                        }}
-                      >
-                        {column.label}
-                      </TableCell>
-                    ))}
+                    {visibleColumnDefs.map((column) => {
+                      const sticky = stickyLayout.isSticky(column.id)
+                      const width = columnWidth(column.minWidth, META_WIDTH_FALLBACK)
+                      return (
+                        <TableCell
+                          key={column.id}
+                          sx={{
+                            ...cellSx,
+                            position: 'sticky',
+                            top: 0,
+                            left: sticky ? stickyLayout.leftFor(column.id) : undefined,
+                            zIndex: sticky ? 5 : 4,
+                            bgcolor: '#6a1b9a',
+                            color: 'white',
+                            fontWeight: 700,
+                            minWidth: width,
+                            width: sticky ? width : undefined,
+                            boxShadow:
+                              sticky && stickyLayout.lastStickyId === column.id
+                                ? stickyEdgeShadow
+                                : undefined,
+                          }}
+                        >
+                          {column.label}
+                        </TableCell>
+                      )
+                    })}
                     {periods.map((period) => (
                       <TableCell
                         key={period}
@@ -464,11 +549,15 @@ export default function PafRegisterPage() {
                         bgcolor: '#f3e5f5',
                         minWidth: ACTIONS_COL_WIDTH,
                         width: ACTIONS_COL_WIDTH,
-                        boxShadow: stickyEdgeShadow,
+                        boxShadow: stickyLayout.actionsHaveEdgeShadow
+                          ? stickyEdgeShadow
+                          : undefined,
                       }}
                     />
                     {visibleColumnDefs.map((column) => {
                       const options = getUniquePafColumnValues(rows, column.id)
+                      const sticky = stickyLayout.isSticky(column.id)
+                      const width = columnWidth(column.minWidth, META_WIDTH_FALLBACK)
                       return (
                         <TableCell
                           key={`filter-${column.id}`}
@@ -476,10 +565,16 @@ export default function PafRegisterPage() {
                             ...cellSx,
                             position: 'sticky',
                             top: 40,
-                            zIndex: 5,
+                            left: sticky ? stickyLayout.leftFor(column.id) : undefined,
+                            zIndex: sticky ? 5 : 4,
                             bgcolor: '#f3e5f5',
-                            minWidth: column.minWidth ?? 110,
+                            minWidth: width,
+                            width: sticky ? width : undefined,
                             p: 0.5,
+                            boxShadow:
+                              sticky && stickyLayout.lastStickyId === column.id
+                                ? stickyEdgeShadow
+                                : undefined,
                           }}
                         >
                           <FormControl size="small" fullWidth>
@@ -565,7 +660,9 @@ export default function PafRegisterPage() {
                               minWidth: ACTIONS_COL_WIDTH,
                               width: ACTIONS_COL_WIDTH,
                               whiteSpace: 'normal',
-                              boxShadow: stickyEdgeShadow,
+                              boxShadow: stickyLayout.actionsHaveEdgeShadow
+                                ? stickyEdgeShadow
+                                : undefined,
                             }}
                           >
                             <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
@@ -624,10 +721,24 @@ export default function PafRegisterPage() {
                           </TableCell>
                           {visibleColumnDefs.map((column) => {
                             const value = column.getValue(row)
+                            const sticky = stickyLayout.isSticky(column.id)
+                            const width = columnWidth(column.minWidth, META_WIDTH_FALLBACK)
                             return (
                               <TableCell
                                 key={`${row.id}-${column.id}`}
-                                sx={{ ...cellSx, minWidth: column.minWidth ?? 110 }}
+                                sx={{
+                                  ...cellSx,
+                                  position: sticky ? 'sticky' : undefined,
+                                  left: sticky ? stickyLayout.leftFor(column.id) : undefined,
+                                  zIndex: sticky ? 2 : undefined,
+                                  bgcolor: sticky ? 'background.paper' : undefined,
+                                  minWidth: width,
+                                  width: sticky ? width : undefined,
+                                  boxShadow:
+                                    sticky && stickyLayout.lastStickyId === column.id
+                                      ? stickyEdgeShadow
+                                      : undefined,
+                                }}
                               >
                                 {column.id === 'status' ? (
                                   <Chip size="small" label={value} color={statusChipColor(value)} />
@@ -742,12 +853,26 @@ export default function PafRegisterPage() {
                                     ) : null}
                                   </Stack>
                                 </TableCell>
+                                {stickyPlaceholders.map((placeholder) => (
+                                  <TableCell
+                                    key={`${row.id}-${item.id}-sticky-${placeholder.id}`}
+                                    sx={{
+                                      ...cellSx,
+                                      position: 'sticky',
+                                      left: placeholder.left,
+                                      zIndex: 2,
+                                      bgcolor: 'rgba(243,229,245,0.95)',
+                                      minWidth: placeholder.width,
+                                      width: placeholder.width,
+                                    }}
+                                  />
+                                ))}
                                 <TableCell
-                                  colSpan={detailColSpan}
+                                  colSpan={Math.max(detailColSpan - stickyPlaceholders.length, 1)}
                                   sx={{
                                     ...cellSx,
                                     position: 'sticky',
-                                    left: DETAIL_STICKY_LEFT,
+                                    left: stickyLayout.detailLeft,
                                     zIndex: 1,
                                     bgcolor: 'rgba(243,229,245,0.95)',
                                     py: 1,
@@ -827,7 +952,8 @@ export default function PafRegisterPage() {
                 ? ` · ${activeFilterCount} filter${activeFilterCount === 1 ? '' : 's'} applied`
                 : ''}
               {' · '}
-              Expand a row to see pending/rejected revisions · Expand/Actions (and expand details) stay fixed while the calendar scrolls
+              Expand a row to see pending/rejected revisions · pin columns in Columns; Expand/Actions
+              and expand details stay fixed while the calendar scrolls
             </Typography>
           ) : null}
         </CardContent>

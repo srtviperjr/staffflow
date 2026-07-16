@@ -32,6 +32,7 @@ import FilterAltOffIcon from '@mui/icons-material/FilterAltOff'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import RestartAltIcon from '@mui/icons-material/RestartAlt'
+import PushPinIcon from '@mui/icons-material/PushPin'
 import EditIcon from '@mui/icons-material/Edit'
 import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
@@ -57,13 +58,16 @@ import {
 import { formatDisplayDate } from '../../utils/staffingPlanDates'
 import {
   STICKY_EXPAND_DETAIL_WIDTH,
-  stickyDetailLeft,
+  buildStickyColumnLayout,
+  columnWidth,
+  loadStickyColumnIds,
   stickyEdgeShadow,
 } from '../../utils/stickyTableColumns'
 import type { ProjectAuthorizationRequest } from '../../types/projectAuthorization'
 import type { StaffingPlanRequest } from '../../types/staffingPlan'
 import {
   DEFAULT_COLUMN_ORDER,
+  DEFAULT_STICKY_COLUMNS,
   MATRIX_COLUMN_DEFS,
   buildStaffingMatrixRows,
   buildSummaryRows,
@@ -77,9 +81,10 @@ import {
 
 const COLUMN_ORDER_KEY = 'staffing-matrix-column-order'
 const COLUMN_VISIBLE_KEY = 'staffing-matrix-visible-columns'
+const COLUMN_STICKY_KEY = 'staffing-matrix-sticky-columns'
 const EXPAND_COL_WIDTH = 48
 const ACTIONS_COL_WIDTH = 118
-const DETAIL_STICKY_LEFT = stickyDetailLeft(EXPAND_COL_WIDTH, ACTIONS_COL_WIDTH)
+const META_WIDTH_FALLBACK = 110
 
 const cellSx = {
   border: '1px solid #bdbdbd',
@@ -131,6 +136,8 @@ function RelatedExpandRow({
   item,
   periods,
   detailColSpan,
+  stickyPlaceholders,
+  detailLeft,
   canReview,
   onView,
   onApprove,
@@ -141,12 +148,16 @@ function RelatedExpandRow({
   item: RelatedRegisterItem
   periods: string[]
   detailColSpan: number
+  stickyPlaceholders: Array<{ id: string; left: number; width: number }>
+  detailLeft: number
   canReview: boolean
   onView: () => void
   onApprove: () => void
   onReject: () => void
   sectionBg: string
 }) {
+  const nonStickyColSpan = Math.max(detailColSpan - stickyPlaceholders.length, 1)
+
   return (
     <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
       <TableCell
@@ -209,12 +220,26 @@ function RelatedExpandRow({
           ) : null}
         </Stack>
       </TableCell>
+      {stickyPlaceholders.map((placeholder) => (
+        <TableCell
+          key={`${rowId}-${item.id}-sticky-${placeholder.id}`}
+          sx={{
+            ...cellSx,
+            position: 'sticky',
+            left: placeholder.left,
+            zIndex: 2,
+            bgcolor: sectionBg,
+            minWidth: placeholder.width,
+            width: placeholder.width,
+          }}
+        />
+      ))}
       <TableCell
-        colSpan={detailColSpan}
+        colSpan={nonStickyColSpan}
         sx={{
           ...cellSx,
           position: 'sticky',
-          left: DETAIL_STICKY_LEFT,
+          left: detailLeft,
           zIndex: 1,
           bgcolor: sectionBg,
           py: 1,
@@ -285,7 +310,9 @@ function loadColumnOrder(): MatrixColumnId[] {
     const known = new Set(DEFAULT_COLUMN_ORDER)
     const filtered = parsed.filter((id) => known.has(id))
     for (const id of DEFAULT_COLUMN_ORDER) {
-      if (!filtered.includes(id)) filtered.push(id)
+      if (filtered.includes(id)) continue
+      const defaultIndex = DEFAULT_COLUMN_ORDER.indexOf(id)
+      filtered.splice(Math.min(defaultIndex, filtered.length), 0, id)
     }
     return filtered
   } catch {
@@ -300,10 +327,18 @@ function loadVisibleColumns(): MatrixColumnId[] {
     const parsed = JSON.parse(stored) as MatrixColumnId[]
     if (!Array.isArray(parsed) || parsed.length === 0) return [...DEFAULT_COLUMN_ORDER]
     const known = new Set(DEFAULT_COLUMN_ORDER)
-    return parsed.filter((id) => known.has(id))
+    const filtered = parsed.filter((id) => known.has(id))
+    for (const id of DEFAULT_STICKY_COLUMNS) {
+      if (!filtered.includes(id)) filtered.unshift(id)
+    }
+    return filtered.length > 0 ? filtered : [...DEFAULT_COLUMN_ORDER]
   } catch {
     return [...DEFAULT_COLUMN_ORDER]
   }
+}
+
+function loadStickyColumns(): MatrixColumnId[] {
+  return loadStickyColumnIds(COLUMN_STICKY_KEY, DEFAULT_STICKY_COLUMNS, DEFAULT_COLUMN_ORDER)
 }
 
 function renderMetadataCell(
@@ -411,6 +446,7 @@ export default function StaffingPlanMatrixPage() {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({})
   const [columnOrder, setColumnOrder] = useState<MatrixColumnId[]>(loadColumnOrder)
   const [visibleColumns, setVisibleColumns] = useState<MatrixColumnId[]>(loadVisibleColumns)
+  const [stickyColumns, setStickyColumns] = useState<MatrixColumnId[]>(loadStickyColumns)
   const [filters, setFilters] = useState<Partial<Record<MatrixColumnId, string>>>({})
   const [columnsAnchor, setColumnsAnchor] = useState<HTMLElement | null>(null)
 
@@ -421,6 +457,10 @@ export default function StaffingPlanMatrixPage() {
   useEffect(() => {
     localStorage.setItem(COLUMN_VISIBLE_KEY, JSON.stringify(visibleColumns))
   }, [visibleColumns])
+
+  useEffect(() => {
+    localStorage.setItem(COLUMN_STICKY_KEY, JSON.stringify(stickyColumns))
+  }, [stickyColumns])
 
   const visibleStaffingRequests = useMemo(
     () => filterByCompanyVisibility(staffingRequests, currentUser?.company),
@@ -444,6 +484,31 @@ export default function StaffingPlanMatrixPage() {
   const visibleColumnDefs = useMemo(
     () => getOrderedVisibleColumns(columnOrder, visibleColumns),
     [columnOrder, visibleColumns],
+  )
+
+  const stickyLayout = useMemo(
+    () =>
+      buildStickyColumnLayout(
+        EXPAND_COL_WIDTH,
+        ACTIONS_COL_WIDTH,
+        visibleColumnDefs,
+        stickyColumns,
+        META_WIDTH_FALLBACK,
+      ),
+    [visibleColumnDefs, stickyColumns],
+  )
+
+  const stickyPlaceholders = useMemo(
+    () =>
+      stickyLayout.stickyVisibleIds.map((id) => {
+        const column = visibleColumnDefs.find((item) => item.id === id)
+        return {
+          id,
+          left: stickyLayout.leftFor(id) ?? EXPAND_COL_WIDTH + ACTIONS_COL_WIDTH,
+          width: columnWidth(column?.minWidth, META_WIDTH_FALLBACK),
+        }
+      }),
+    [stickyLayout, visibleColumnDefs],
   )
 
   const relatedByRowId = useMemo(() => {
@@ -502,6 +567,12 @@ export default function StaffingPlanMatrixPage() {
     })
   }
 
+  const toggleColumnSticky = (columnId: MatrixColumnId) => {
+    setStickyColumns((prev) =>
+      prev.includes(columnId) ? prev.filter((id) => id !== columnId) : [...prev, columnId],
+    )
+  }
+
   const moveColumn = (columnId: MatrixColumnId, direction: -1 | 1) => {
     setColumnOrder((prev) => {
       const index = prev.indexOf(columnId)
@@ -518,6 +589,7 @@ export default function StaffingPlanMatrixPage() {
   const resetColumns = () => {
     setColumnOrder([...DEFAULT_COLUMN_ORDER])
     setVisibleColumns([...DEFAULT_COLUMN_ORDER])
+    setStickyColumns([...DEFAULT_STICKY_COLUMNS])
   }
 
   const toggleExpanded = (rowId: string) => {
@@ -612,7 +684,7 @@ export default function StaffingPlanMatrixPage() {
         onClose={() => setColumnsAnchor(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        slotProps={{ paper: { sx: { width: 360, maxHeight: 480 } } }}
+        slotProps={{ paper: { sx: { width: 400, maxHeight: 520 } } }}
       >
         <Box sx={{ p: 2 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
@@ -624,17 +696,31 @@ export default function StaffingPlanMatrixPage() {
             </Button>
           </Box>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-            Show/hide and reorder metadata fields. Bi-week date columns cannot be changed.
+            Show/hide, reorder, and pin sticky columns. Expand, Actions, and expand details always
+            stay fixed while the calendar scrolls.
           </Typography>
           <Divider sx={{ mb: 1 }} />
           <List dense disablePadding>
             {orderedColumnDefsForPanel.map((column, index) => {
               const checked = visibleColumns.includes(column.id)
+              const isSticky = stickyColumns.includes(column.id)
               return (
                 <ListItem
                   key={column.id}
                   secondaryAction={
                     <Stack direction="row" spacing={0.25}>
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        aria-label={
+                          isSticky ? `Unpin ${column.label}` : `Pin ${column.label} as sticky`
+                        }
+                        color={isSticky ? 'primary' : 'default'}
+                        disabled={!checked}
+                        onClick={() => toggleColumnSticky(column.id)}
+                      >
+                        <PushPinIcon fontSize="small" />
+                      </IconButton>
                       <IconButton
                         edge="end"
                         size="small"
@@ -655,7 +741,7 @@ export default function StaffingPlanMatrixPage() {
                       </IconButton>
                     </Stack>
                   }
-                  sx={{ pr: 10 }}
+                  sx={{ pr: 14 }}
                 >
                   <ListItemIcon sx={{ minWidth: 36 }}>
                     <Checkbox
@@ -667,7 +753,10 @@ export default function StaffingPlanMatrixPage() {
                       slotProps={{ input: { 'aria-label': `Toggle ${column.label}` } }}
                     />
                   </ListItemIcon>
-                  <ListItemText primary={column.label} />
+                  <ListItemText
+                    primary={column.label}
+                    secondary={isSticky ? 'Sticky' : undefined}
+                  />
                 </ListItem>
               )
             })}
@@ -761,28 +850,40 @@ export default function StaffingPlanMatrixPage() {
                         fontWeight: 700,
                         minWidth: ACTIONS_COL_WIDTH,
                         width: ACTIONS_COL_WIDTH,
-                        boxShadow: stickyEdgeShadow,
+                        boxShadow: stickyLayout.actionsHaveEdgeShadow
+                          ? stickyEdgeShadow
+                          : undefined,
                       }}
                     >
                       Actions
                     </TableCell>
-                    {visibleColumnDefs.map((column) => (
-                      <TableCell
-                        key={column.id}
-                        sx={{
-                          ...cellSx,
-                          position: 'sticky',
-                          top: 0,
-                          zIndex: 5,
-                          bgcolor: '#9e9e9e',
-                          color: 'white',
-                          fontWeight: 700,
-                          minWidth: column.minWidth ?? 110,
-                        }}
-                      >
-                        {column.label}
-                      </TableCell>
-                    ))}
+                    {visibleColumnDefs.map((column) => {
+                      const sticky = stickyLayout.isSticky(column.id)
+                      const width = columnWidth(column.minWidth, META_WIDTH_FALLBACK)
+                      return (
+                        <TableCell
+                          key={column.id}
+                          sx={{
+                            ...cellSx,
+                            position: 'sticky',
+                            top: 0,
+                            left: sticky ? stickyLayout.leftFor(column.id) : undefined,
+                            zIndex: sticky ? 5 : 4,
+                            bgcolor: '#9e9e9e',
+                            color: 'white',
+                            fontWeight: 700,
+                            minWidth: width,
+                            width: sticky ? width : undefined,
+                            boxShadow:
+                              sticky && stickyLayout.lastStickyId === column.id
+                                ? stickyEdgeShadow
+                                : undefined,
+                          }}
+                        >
+                          {column.label}
+                        </TableCell>
+                      )
+                    })}
                     {periods.map((period) => (
                       <TableCell
                         key={period}
@@ -816,11 +917,15 @@ export default function StaffingPlanMatrixPage() {
                         bgcolor: '#eceff1',
                         minWidth: ACTIONS_COL_WIDTH,
                         width: ACTIONS_COL_WIDTH,
-                        boxShadow: stickyEdgeShadow,
+                        boxShadow: stickyLayout.actionsHaveEdgeShadow
+                          ? stickyEdgeShadow
+                          : undefined,
                       }}
                     />
                     {visibleColumnDefs.map((column) => {
                       const options = getUniqueColumnValues(rows, column.id)
+                      const sticky = stickyLayout.isSticky(column.id)
+                      const width = columnWidth(column.minWidth, META_WIDTH_FALLBACK)
                       return (
                         <TableCell
                           key={`filter-${column.id}`}
@@ -828,10 +933,16 @@ export default function StaffingPlanMatrixPage() {
                             ...cellSx,
                             position: 'sticky',
                             top: 40,
-                            zIndex: 5,
+                            left: sticky ? stickyLayout.leftFor(column.id) : undefined,
+                            zIndex: sticky ? 5 : 4,
                             bgcolor: '#eceff1',
-                            minWidth: column.minWidth ?? 110,
+                            minWidth: width,
+                            width: sticky ? width : undefined,
                             p: 0.5,
+                            boxShadow:
+                              sticky && stickyLayout.lastStickyId === column.id
+                                ? stickyEdgeShadow
+                                : undefined,
                           }}
                         >
                           <FormControl size="small" fullWidth>
@@ -920,7 +1031,9 @@ export default function StaffingPlanMatrixPage() {
                               bgcolor: 'background.paper',
                               minWidth: ACTIONS_COL_WIDTH,
                               width: ACTIONS_COL_WIDTH,
-                              boxShadow: stickyEdgeShadow,
+                              boxShadow: stickyLayout.actionsHaveEdgeShadow
+                                ? stickyEdgeShadow
+                                : undefined,
                             }}
                           >
                             {canRevise ? (
@@ -937,12 +1050,23 @@ export default function StaffingPlanMatrixPage() {
                           </TableCell>
                           {visibleColumnDefs.map((column) => {
                             const value = column.getValue(row)
+                            const sticky = stickyLayout.isSticky(column.id)
+                            const width = columnWidth(column.minWidth, META_WIDTH_FALLBACK)
                             return (
                               <TableCell
                                 key={`${row.id}-${column.id}`}
                                 sx={{
                                   ...cellSx,
-                                  minWidth: column.minWidth ?? 110,
+                                  position: sticky ? 'sticky' : undefined,
+                                  left: sticky ? stickyLayout.leftFor(column.id) : undefined,
+                                  zIndex: sticky ? 2 : undefined,
+                                  bgcolor: sticky ? 'background.paper' : undefined,
+                                  minWidth: width,
+                                  width: sticky ? width : undefined,
+                                  boxShadow:
+                                    sticky && stickyLayout.lastStickyId === column.id
+                                      ? stickyEdgeShadow
+                                      : undefined,
                                 }}
                               >
                                 {renderMetadataCell(
@@ -982,21 +1106,30 @@ export default function StaffingPlanMatrixPage() {
                                     zIndex: 2,
                                     bgcolor: 'rgba(236,239,241,0.95)',
                                     py: 0.75,
-                                    fontWeight: 700,
-                                    fontSize: '0.7rem',
-                                    letterSpacing: 0.3,
-                                    textTransform: 'uppercase',
-                                    color: 'text.secondary',
-                                    minWidth: DETAIL_STICKY_LEFT,
-                                    width: DETAIL_STICKY_LEFT,
+                                    minWidth: EXPAND_COL_WIDTH + ACTIONS_COL_WIDTH,
+                                    width: EXPAND_COL_WIDTH + ACTIONS_COL_WIDTH,
                                   }}
                                 />
+                                {stickyPlaceholders.map((placeholder) => (
+                                  <TableCell
+                                    key={`${row.id}-pos-section-sticky-${placeholder.id}`}
+                                    sx={{
+                                      ...cellSx,
+                                      position: 'sticky',
+                                      left: placeholder.left,
+                                      zIndex: 2,
+                                      bgcolor: 'rgba(236,239,241,0.95)',
+                                      minWidth: placeholder.width,
+                                      width: placeholder.width,
+                                    }}
+                                  />
+                                ))}
                                 <TableCell
-                                  colSpan={detailColSpan}
+                                  colSpan={Math.max(detailColSpan - stickyPlaceholders.length, 1)}
                                   sx={{
                                     ...cellSx,
                                     position: 'sticky',
-                                    left: DETAIL_STICKY_LEFT,
+                                    left: stickyLayout.detailLeft,
                                     zIndex: 1,
                                     bgcolor: 'rgba(236,239,241,0.95)',
                                     py: 0.75,
@@ -1028,6 +1161,8 @@ export default function StaffingPlanMatrixPage() {
                                 item={item}
                                 periods={periods}
                                 detailColSpan={detailColSpan}
+                                stickyPlaceholders={stickyPlaceholders}
+                                detailLeft={stickyLayout.detailLeft}
                                 canReview={canReview}
                                 onView={() => openRelatedItem(item)}
                                 onApprove={() => handleApproveRelated(item)}
@@ -1046,21 +1181,30 @@ export default function StaffingPlanMatrixPage() {
                                     zIndex: 2,
                                     bgcolor: 'rgba(236,239,241,0.95)',
                                     py: 0.75,
-                                    fontWeight: 700,
-                                    fontSize: '0.7rem',
-                                    letterSpacing: 0.3,
-                                    textTransform: 'uppercase',
-                                    color: 'text.secondary',
-                                    minWidth: DETAIL_STICKY_LEFT,
-                                    width: DETAIL_STICKY_LEFT,
+                                    minWidth: EXPAND_COL_WIDTH + ACTIONS_COL_WIDTH,
+                                    width: EXPAND_COL_WIDTH + ACTIONS_COL_WIDTH,
                                   }}
                                 />
+                                {stickyPlaceholders.map((placeholder) => (
+                                  <TableCell
+                                    key={`${row.id}-paf-section-sticky-${placeholder.id}`}
+                                    sx={{
+                                      ...cellSx,
+                                      position: 'sticky',
+                                      left: placeholder.left,
+                                      zIndex: 2,
+                                      bgcolor: 'rgba(236,239,241,0.95)',
+                                      minWidth: placeholder.width,
+                                      width: placeholder.width,
+                                    }}
+                                  />
+                                ))}
                                 <TableCell
-                                  colSpan={detailColSpan}
+                                  colSpan={Math.max(detailColSpan - stickyPlaceholders.length, 1)}
                                   sx={{
                                     ...cellSx,
                                     position: 'sticky',
-                                    left: DETAIL_STICKY_LEFT,
+                                    left: stickyLayout.detailLeft,
                                     zIndex: 1,
                                     bgcolor: 'rgba(236,239,241,0.95)',
                                     py: 0.75,
@@ -1092,6 +1236,8 @@ export default function StaffingPlanMatrixPage() {
                                 item={item}
                                 periods={periods}
                                 detailColSpan={detailColSpan}
+                                stickyPlaceholders={stickyPlaceholders}
+                                detailLeft={stickyLayout.detailLeft}
                                 canReview={canReview}
                                 onView={() => openRelatedItem(item)}
                                 onApprove={() => handleApproveRelated(item)}
