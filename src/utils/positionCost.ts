@@ -45,6 +45,24 @@ export function formatCostDelta(current: number | null, previous: number | null)
   return `Δ ${sign}$${abs}`
 }
 
+/** Format an hours change between revisions, e.g. "Δ +300" / "Δ −40". */
+export function formatHoursDelta(
+  currentRaw: string | undefined | null,
+  previousRaw: string | undefined | null,
+): string {
+  const current = parseCostNumber(currentRaw)
+  const previous = parseCostNumber(previousRaw)
+  if (current == null || previous == null) return ''
+  const delta = current - previous
+  if (delta === 0) return 'Δ 0'
+  const sign = delta > 0 ? '+' : '−'
+  const abs = Math.abs(delta).toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })
+  return `Δ ${sign}${abs}`
+}
+
 export function formatCostWithDelta(
   currentRaw: string,
   previousRaw: string | undefined,
