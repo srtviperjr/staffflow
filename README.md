@@ -2,6 +2,11 @@
 
 React + TypeScript + Material UI app with multiple request workflows for submitting and reviewing requests. Built with Vite and React Router.
 
+## Documentation
+
+- [Requirements thus far](./docs/REQUIREMENTS.md) — product requirements implemented to date
+- [Prompt history](./docs/PROMPTS.md) — user prompts used to build the app (Cursor Cloud sessions)
+
 ## Workflows
 
 ### Employee Onboarding (`/onboarding`)
@@ -17,19 +22,19 @@ React + TypeScript + Material UI app with multiple request workflows for submitt
 
 ### Staffing Plan (`/staffing-plan`)
 - Position request form with searchable dropdowns, date pickers, and validation
-- Manager review page with approve/reject (rejection requires a comment)
-- Excel-like staffing plan matrix (`/staffing-plan/matrix`) showing approved positions and authorized candidates with bi-weekly load
+- Multi-step approval: Requestor → Cost Engineer → Manager → Project Director
+- Excel-like staffing plan matrix (`/staffing-plan/matrix`) with revisions, related PAFs, and Gantt calendar
 
 ### PAF Requests (`/project-authorization`)
-- PAF request form linked to approved staffing plan positions (cascading Functional Group → DSG → Position)
-- Candidate details, roster, hours, and calendar date fields
-- Manager review page with review status and approve/reject workflow
+- PAF request form linked to approved staffing plan positions
+- Approval: Requestor → Manager → Project Director (by project)
+- PAF Register with revisions and Gantt visualization
 
 ## Routes
 
 | Route | Description |
 |-------|-------------|
-| `/` | Home — choose a workflow |
+| `/` | Home — available workflows + pending approvals |
 | `/onboarding` | Submit onboarding request |
 | `/onboarding/manager` | Review onboarding requests |
 | `/labour-change` | Submit labour change request |
@@ -39,6 +44,7 @@ React + TypeScript + Material UI app with multiple request workflows for submitt
 | `/staffing-plan/matrix` | Staffing plan matrix view |
 | `/project-authorization` | New PAF request |
 | `/project-authorization/manager` | PAF requests manager review |
+| `/project-authorization/register` | PAF register |
 
 ## Data Storage
 
@@ -62,3 +68,4 @@ Open [http://localhost:5173](http://localhost:5173) and choose a workflow from t
 - `npm run dev` — Start development server
 - `npm run build` — Production build
 - `npm run preview` — Preview production build
+- `npm run lint` — Lint with oxlint
