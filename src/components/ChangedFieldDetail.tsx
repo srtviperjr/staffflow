@@ -67,7 +67,8 @@ export function RevisionChangesLegend({ visible }: { visible: boolean }) {
 
   return (
     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-      Highlighted fields changed from the previous revision. Cost changes include a delta.
+      Highlighted fields changed from the previous revision. Hours and cost changes include a
+      delta.
     </Typography>
   )
 }

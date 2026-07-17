@@ -426,6 +426,7 @@ export default function StaffingPlanMatrixPage() {
     requests: staffingRequests,
     approveRequest: approveStaffing,
     rejectRequest: rejectStaffing,
+    getHistory: getStaffingHistory,
   } = useStaffingPlanRequests()
   const {
     requests: authorizationRequests,
@@ -1404,6 +1405,11 @@ export default function StaffingPlanMatrixPage() {
 
       <StaffingDetailDialog
         request={selectedStaffing}
+        revisionHistory={
+          selectedStaffing
+            ? getStaffingHistory(selectedStaffing.revisionGroupId)
+            : []
+        }
         onClose={() => setSelectedStaffing(null)}
         canReview={
           Boolean(

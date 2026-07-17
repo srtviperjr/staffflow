@@ -28,9 +28,9 @@ import { useRoles } from '../../context/RolesContext'
 import { useStaffingPlanRequests } from '../../context/StaffingPlanContext'
 import { useWorkflows } from '../../context/WorkflowContext'
 import RejectDialog from '../../components/RejectDialog'
-import { ChangedFieldDetail, RevisionChangesLegend } from '../../components/ChangedFieldDetail'
+import { RevisionChangesLegend } from '../../components/ChangedFieldDetail'
+import StaffingRevisionDetails from '../../components/StaffingRevisionDetails'
 import type { StaffingPlanRequest } from '../../types/staffingPlan'
-import { formatDisplayDate } from '../../utils/staffingPlanDates'
 import {
   getChangedFieldKeys,
   getPreviousRevision,
@@ -44,12 +44,7 @@ import { canEditHourlyCost, canViewCostInfo } from '../../utils/permissions'
 import { getStaffingApprovalSteps } from '../../utils/staffingApprovalSteps'
 import StaffingApprovalSteps from '../../components/StaffingApprovalSteps'
 import StaffingApprovalTrail from '../../components/StaffingApprovalTrail'
-import {
-  computePositionCost,
-  formatCostAmount,
-  formatCostDelta,
-  formatCostWithDelta,
-} from '../../utils/positionCost'
+import { computePositionCost, formatCostAmount } from '../../utils/positionCost'
 
 type FilterTab = 'all' | 'pending' | 'approved' | 'rejected'
 
@@ -71,128 +66,6 @@ function formatTimestamp(dateString: string) {
     hour: '2-digit',
     minute: '2-digit',
   })
-}
-
-function RequestDetails({
-  request,
-  previous,
-  changedFields,
-  showCost,
-}: {
-  request: StaffingPlanRequest
-  previous?: StaffingPlanRequest
-  changedFields?: Set<string>
-  showCost: boolean
-}) {
-  const changed = (field: string) => changedFields?.has(field) ?? false
-
-  const hourly = formatCostWithDelta(request.hourlyCost, previous?.hourlyCost)
-  const currentPositionCost = computePositionCost(request.hoursToGo, request.hourlyCost)
-  const previousPositionCost = previous
-    ? computePositionCost(previous.hoursToGo, previous.hourlyCost)
-    : null
-  const positionCostChanged =
-    currentPositionCost != null &&
-    previousPositionCost != null &&
-    currentPositionCost !== previousPositionCost
-  const hoursChanged = changed('hoursToGo')
-  const rateChanged = changed('hourlyCost')
-
-  return (
-    <Box
-      sx={{
-        display: 'grid',
-        gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
-        gap: 1.5,
-      }}
-    >
-      <ChangedFieldDetail label="Position Number" value={request.positionNumber} />
-      <ChangedFieldDetail label="Phase" value={request.phase} changed={changed('phase')} />
-      <ChangedFieldDetail label="Area" value={request.area} changed={changed('area')} />
-      <ChangedFieldDetail label="Sub Area" value={request.subArea} changed={changed('subArea')} />
-      <ChangedFieldDetail
-        label="Location Type"
-        value={request.locationType}
-        changed={changed('locationType')}
-      />
-      <ChangedFieldDetail
-        label="Functional Group"
-        value={request.functionalGroup}
-        changed={changed('functionalGroup')}
-      />
-      <ChangedFieldDetail label="DSG" value={request.dsg} changed={changed('dsg')} />
-      <ChangedFieldDetail label="Country" value={request.country} changed={changed('country')} />
-      <ChangedFieldDetail
-        label="Discipline"
-        value={request.discipline}
-        changed={changed('discipline')}
-      />
-      <ChangedFieldDetail label="Class" value={request.class} changed={changed('class')} />
-      <ChangedFieldDetail
-        label="Company"
-        value={request.company}
-        changed={changed('company')}
-      />
-      <ChangedFieldDetail label="Roster" value={request.roster} changed={changed('roster')} />
-      <ChangedFieldDetail label="EE Id / SAP" value={request.eeIdSap} changed={changed('eeIdSap')} />
-      <ChangedFieldDetail
-        label="Sort Number"
-        value={request.sortNumber}
-        changed={changed('sortNumber')}
-      />
-      <ChangedFieldDetail
-        label="Total Hours"
-        value={request.totalHours}
-        changed={changed('totalHours')}
-      />
-      <ChangedFieldDetail
-        label="Hours To Go"
-        value={request.hoursToGo}
-        changed={hoursChanged}
-        previousValue={hoursChanged ? previous?.hoursToGo : undefined}
-      />
-      {showCost ? (
-        <>
-          <ChangedFieldDetail
-            label="Hourly Cost"
-            value={hourly.display}
-            changed={rateChanged}
-            previousValue={rateChanged ? hourly.previousDisplay : undefined}
-            delta={rateChanged ? hourly.delta : undefined}
-          />
-          {currentPositionCost != null ? (
-            <ChangedFieldDetail
-              label="Total Cost"
-              value={formatCostAmount(currentPositionCost)}
-              changed={positionCostChanged}
-              previousValue={
-                positionCostChanged ? formatCostAmount(previousPositionCost) : undefined
-              }
-              delta={
-                positionCostChanged
-                  ? formatCostDelta(currentPositionCost, previousPositionCost)
-                  : undefined
-              }
-            />
-          ) : null}
-        </>
-      ) : null}
-      <ChangedFieldDetail
-        label="Start Bi-Week"
-        value={formatDisplayDate(request.startBiWeek)}
-        changed={changed('startBiWeek')}
-      />
-      <ChangedFieldDetail
-        label="Last Working Day"
-        value={formatDisplayDate(request.lwp)}
-        changed={changed('lwp')}
-      />
-      <ChangedFieldDetail label="Submitted" value={formatTimestamp(request.submittedAt)} />
-      {request.reviewedAt && (
-        <ChangedFieldDetail label="Reviewed" value={formatTimestamp(request.reviewedAt)} />
-      )}
-    </Box>
-  )
 }
 
 export default function StaffingPlanManagerPage() {
@@ -395,7 +268,7 @@ export default function StaffingPlanManagerPage() {
                       <Divider sx={{ my: 2 }} />
 
                       <RevisionChangesLegend visible={request.revision > 1} />
-                      <RequestDetails
+                      <StaffingRevisionDetails
                         request={request}
                         previous={previousRevision}
                         changedFields={changedFields}
@@ -530,7 +403,7 @@ export default function StaffingPlanManagerPage() {
                                       </Typography>
                                     </Box>
                                     <RevisionChangesLegend visible={entry.revision > 1} />
-                                    <RequestDetails
+                                    <StaffingRevisionDetails
                                       request={entry}
                                       previous={entryPrevious}
                                       changedFields={entryChangedFields}
